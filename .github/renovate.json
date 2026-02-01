@@ -25,5 +25,6 @@
   "postUpgradeTasks": {
     "commands": ["python scripts/update_requirements.py"],
     "fileFilters": ["requirements.txt", "requirements-dev.txt"]
-  }
+  },
+  "allowedCommands": ["^python scripts/update_requirements\\.py$"]
 }
