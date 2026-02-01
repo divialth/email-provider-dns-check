@@ -57,3 +57,15 @@ def test_to_text_uses_custom_template(monkeypatch, tmp_path):
     )
 
     assert output == "dummy-provider (v9)|example.com|5"
+
+
+def test_to_text_multiple_results_include_separator():
+    results = [
+        RecordCheck("MX", "PASS", "ok", {"found": ["mx"]}),
+        RecordCheck("SPF", "PASS", "ok", {"record": "v=spf1 -all"}),
+    ]
+
+    text = to_text(results, "example.com", "2026-01-31 19:37", "dummy-provider", "9")
+
+    assert "MX: PASS" in text
+    assert "SPF: PASS" in text

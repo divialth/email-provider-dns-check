@@ -1,4 +1,7 @@
+import pytest
+
 from provider_check.checker import DNSChecker
+from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import ProviderConfig, TXTConfig
 
 from tests.support import FakeResolver
@@ -158,3 +161,128 @@ def test_txt_verification_required_can_be_skipped():
 
     txt_result = next(r for r in results if r.record_type == "TXT")
     assert txt_result.status == "PASS"
+
+
+def test_txt_normalizes_names():
+    provider = ProviderConfig(
+        provider_id="txt_normalize",
+        name="TXT Normalize Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "example.test"
+    resolver = FakeResolver(
+        txt={
+            domain: ["token"],
+            f"verify.{domain}": ["token"],
+            "full": ["token"],
+            f"host.{domain}": ["token"],
+            f"simple.{domain}": ["token"],
+        }
+    )
+
+    checker = DNSChecker(
+        domain,
+        provider,
+        resolver=resolver,
+        strict=False,
+        additional_txt={
+            "@": ["token"],
+            "verify.{domain}": ["token"],
+            "full.": ["token"],
+            f"host.{domain}": ["token"],
+            "simple": ["token"],
+        },
+    )
+    results = checker.run_checks()
+
+    txt_result = next(r for r in results if r.record_type == "TXT")
+    assert txt_result.status == "PASS"
+
+
+def test_txt_lookup_error_returns_unknown():
+    class FailingResolver(FakeResolver):
+        def get_txt(self, domain: str):
+            raise DnsLookupError("TXT", domain, RuntimeError("timeout"))
+
+    provider = ProviderConfig(
+        provider_id="txt_required",
+        name="TXT Required Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(required={"_verify": ["token=one"]}),
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FailingResolver())
+    results = checker.run_checks()
+
+    txt_result = next(r for r in results if r.record_type == "TXT")
+    assert txt_result.status == "UNKNOWN"
+
+
+def test_txt_missing_records_reports_missing_names():
+    provider = ProviderConfig(
+        provider_id="txt_required",
+        name="TXT Required Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(required={"_verify": ["token=one"], "_verify2": ["token=two"]}),
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    txt_result = next(r for r in results if r.record_type == "TXT")
+    assert txt_result.status == "FAIL"
+    assert "missing_names" in txt_result.details
+
+
+def test_txt_missing_records_include_verification_required():
+    provider = ProviderConfig(
+        provider_id="txt_required",
+        name="TXT Required Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(required={"_verify": ["token=one"]}, verification_required=True),
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    txt_result = next(r for r in results if r.record_type == "TXT")
+    assert txt_result.status == "FAIL"
+    assert "verification_required" in txt_result.details
+
+
+def test_txt_verification_warning_with_required_values():
+    provider = ProviderConfig(
+        provider_id="txt_required",
+        name="TXT Required Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(required={"_verify": ["token=one"]}, verification_required=True),
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={"_verify.example.test": ["token=one"]})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    txt_result = next(r for r in results if r.record_type == "TXT")
+    assert txt_result.status == "WARN"

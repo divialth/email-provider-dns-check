@@ -10,6 +10,7 @@ from .dns_resolver import DnsLookupError, DnsResolver
 from .provider_config import ProviderConfig
 
 LOGGER = logging.getLogger(__name__)
+_SPF_QUALIFIERS = {"-", "~", "?"}
 
 
 @dataclasses.dataclass
@@ -289,14 +290,14 @@ class DNSChecker:
             f"{qualifier}{base}"
             for token in mechanisms
             for base, qualifier in [self._strip_spf_qualifier(token)]
-            if qualifier in "-~?"
+            if qualifier in _SPF_QUALIFIERS
         }
 
         required_base = set()
         required_exact = set()
         for token in required_mechanisms:
             base, qualifier = self._strip_spf_qualifier(token)
-            if qualifier in "-~?":
+            if qualifier in _SPF_QUALIFIERS:
                 required_exact.add(f"{qualifier}{base}")
             else:
                 required_base.add(base)
@@ -314,7 +315,7 @@ class DNSChecker:
             allowed_exact = set()
             for token in allowed_mechanisms:
                 base, qualifier = self._strip_spf_qualifier(token)
-                if qualifier in "-~?":
+                if qualifier in _SPF_QUALIFIERS:
                     allowed_exact.add(f"{qualifier}{base}")
                 else:
                     allowed_base.add(base)
@@ -329,7 +330,7 @@ class DNSChecker:
                 if token == policy_required_token:
                     continue
                 base, qualifier = self._strip_spf_qualifier(token)
-                exact = f"{qualifier}{base}" if qualifier in "-~?" else base
+                exact = f"{qualifier}{base}" if qualifier in _SPF_QUALIFIERS else base
                 if exact in allowed_exact or base in allowed_base:
                     continue
                 unexpected_tokens.append(token)

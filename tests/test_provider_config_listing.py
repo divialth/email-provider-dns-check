@@ -85,3 +85,44 @@ def test_external_providers_override_packaged(monkeypatch, tmp_path):
     overridden = next(provider for provider in providers if provider.provider_id == provider_id)
     assert overridden.name == "Override Provider"
     assert overridden.version == "9"
+
+
+def test_packaged_provider_enabled_string_is_parsed(monkeypatch):
+    class _FakeEntry:
+        def __init__(self, name: str, content: str):
+            self.name = name
+            self._content = content
+
+        @property
+        def suffix(self):
+            return ".yaml"
+
+        @property
+        def stem(self):
+            return self.name.rsplit(".", 1)[0]
+
+        def is_file(self):
+            return True
+
+        def read_text(self, encoding="utf-8"):
+            return self._content
+
+    class _FakeBase:
+        def __init__(self, entries):
+            self._entries = entries
+
+        def iterdir(self):
+            return list(self._entries)
+
+    content = textwrap.dedent("""
+        enabled: "false"
+        name: String Disabled
+        version: 1
+        records: {}
+        """).strip()
+    base = _FakeBase([_FakeEntry("string-disabled.yaml", content)])
+    monkeypatch.setattr(resources, "files", lambda _pkg: base)
+
+    packaged = _packaged_provider_ids()
+
+    assert "string-disabled" in packaged["__disabled__"]

@@ -79,3 +79,23 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -vv --color=yes
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: python -m pip install ".[test]"
+
+      - name: Run coverage
+        run: python -m coverage run -m pytest
+
+      - name: Enforce coverage threshold
+        run: python -m coverage report -m --fail-under=100

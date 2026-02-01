@@ -15,7 +15,7 @@ domain, provider name, provider version, and a report timestamp (UTC).
 
 ## Dependencies
 - Runtime: `dnspython`, `PyYAML`, `Jinja2`
-- Development/test (optional): `pytest`
+- Development/test (optional): `pytest`, `coverage`, `black`, `yamllint`
 - `requirements.txt` and `requirements-dev.txt` are auto-generated from `pyproject.toml`.
 
 ## Installation
@@ -162,6 +162,7 @@ pip install '.[test]'
 ./.venv/bin/python scripts/update_requirements.py
 ```
 - Run tests: `./.venv/bin/python -m pytest`
+- Run coverage: `./.venv/bin/coverage run -m pytest` then `./.venv/bin/coverage report -m --fail-under=100`
 - Format code: `./.venv/bin/black src tests`
 - Lint YAML: `./.venv/bin/yamllint -c .yamllint src`
 

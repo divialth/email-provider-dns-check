@@ -1,3 +1,5 @@
+import pytest
+
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import ProviderConfig, SPFConfig
@@ -299,3 +301,206 @@ def test_spf_required_modifiers_missing_fails():
 
     spf_result = next(r for r in results if r.record_type == "SPF")
     assert spf_result.status == "FAIL"
+
+
+def test_spf_requires_config():
+    provider = ProviderConfig(
+        provider_id="spf_none",
+        name="No SPF Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FakeResolver())
+
+    with pytest.raises(ValueError):
+        checker.check_spf()
+
+
+def test_build_expected_spf_requires_config():
+    provider = ProviderConfig(
+        provider_id="spf_none",
+        name="No SPF Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FakeResolver())
+
+    with pytest.raises(ValueError):
+        checker._build_expected_spf()
+
+
+def test_spf_no_records_fails():
+    provider = ProviderConfig(
+        provider_id="spf_missing",
+        name="Missing SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=["example.test"],
+            strict_record=None,
+            required_mechanisms=[],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={"example.test": ["not-spf"]})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "FAIL"
+
+
+def test_spf_requires_mechanism_base_pass():
+    provider = ProviderConfig(
+        provider_id="spf_required_mech",
+        name="Required Mechanism Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=[],
+            strict_record=None,
+            required_mechanisms=["a"],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={"example.test": ["v=spf1 a -all"]})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"
+
+
+def test_spf_accepts_additional_ip4_ip6():
+    provider = ProviderConfig(
+        provider_id="spf_ip",
+        name="IP SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=[],
+            strict_record=None,
+            required_mechanisms=[],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(
+        txt={
+            "example.test": [
+                "v=spf1 ip4:192.0.2.1 ip6:2001:db8::1 -all",
+            ]
+        }
+    )
+
+    checker = DNSChecker(
+        "example.test",
+        provider,
+        resolver=resolver,
+        strict=False,
+        additional_spf_ip4=["192.0.2.1"],
+        additional_spf_ip6=["2001:db8::1"],
+    )
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"
+
+
+def test_spf_required_and_allowed_mechanisms_cover_base():
+    provider = ProviderConfig(
+        provider_id="spf_required_allowed",
+        name="Required/Allowed SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=[],
+            strict_record=None,
+            required_mechanisms=["a"],
+            allowed_mechanisms=["mx"],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={"example.test": ["v=spf1 a mx -all"]})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"
+
+
+def test_spf_required_mechanism_with_qualifier_passes():
+    provider = ProviderConfig(
+        provider_id="spf_required_exact",
+        name="Required Exact SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=[],
+            strict_record=None,
+            required_mechanisms=["-ptr"],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={"example.test": ["v=spf1 -ptr -all"]})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"
+
+
+def test_spf_allowed_mechanism_with_qualifier_passes():
+    provider = ProviderConfig(
+        provider_id="spf_allowed_exact",
+        name="Allowed Exact SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=[],
+            strict_record=None,
+            required_mechanisms=[],
+            allowed_mechanisms=["-ptr"],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={"example.test": ["v=spf1 -ptr -all"]})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"

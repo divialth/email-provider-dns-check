@@ -1,4 +1,7 @@
+import pytest
+
 from provider_check.checker import DNSChecker
+from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import DMARCConfig, ProviderConfig
 
 from tests.support import BASE_PROVIDER, FakeResolver
@@ -82,3 +85,104 @@ def test_dmarc_missing_required_rua_fails():
 
     dmarc_result = next(r for r in results if r.record_type == "DMARC")
     assert dmarc_result.status == "FAIL"
+
+
+def test_dmarc_requires_config():
+    provider = ProviderConfig(
+        provider_id="dmarc_none",
+        name="No DMARC Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FakeResolver())
+
+    with pytest.raises(ValueError):
+        checker.check_dmarc()
+
+
+def test_dmarc_lookup_error_returns_unknown():
+    class FailingResolver(FakeResolver):
+        def get_txt(self, domain: str):
+            raise DnsLookupError("TXT", domain, RuntimeError("timeout"))
+
+    provider = ProviderConfig(
+        provider_id="dmarc_required",
+        name="DMARC Required Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            default_rua_localpart="postmaster",
+            required_rua=[],
+            required_tags={},
+        ),
+    )
+    checker = DNSChecker("example.test", provider, resolver=FailingResolver())
+
+    result = checker.check_dmarc()
+
+    assert result.status == "UNKNOWN"
+
+
+def test_dmarc_strict_mismatch_fails():
+    provider = ProviderConfig(
+        provider_id="dmarc_strict",
+        name="DMARC Strict Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            default_rua_localpart="postmaster",
+            required_rua=[],
+            required_tags={},
+        ),
+    )
+    resolver = FakeResolver(txt={"_dmarc.example.test": ["v=DMARC1;p=none;rua=mailto:x"]})
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
+    result = checker.check_dmarc()
+
+    assert result.status == "FAIL"
+
+
+def test_dmarc_records_missing_requirements_fail():
+    provider = ProviderConfig(
+        provider_id="dmarc_required",
+        name="DMARC Required Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            default_rua_localpart="postmaster",
+            required_rua=["mailto:agg@example.test"],
+            required_tags={"adkim": "s"},
+        ),
+    )
+    resolver = FakeResolver(
+        txt={
+            "_dmarc.example.test": [
+                "v=DMARC2;p=reject;rua=mailto:agg@example.test;adkim=s",
+                "v=DMARC1;p=none;rua=mailto:agg@example.test;adkim=s",
+                "v=DMARC1;p=reject",
+                "v=DMARC1;p=reject;rua=mailto:agg@example.test",
+            ]
+        }
+    )
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    result = checker.check_dmarc()
+
+    assert result.status == "FAIL"

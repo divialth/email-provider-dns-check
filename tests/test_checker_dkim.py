@@ -1,4 +1,7 @@
+import pytest
+
 from provider_check.checker import DNSChecker
+from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import DKIMConfig, ProviderConfig
 
 from tests.support import BASE_PROVIDER, FakeResolver
@@ -88,3 +91,149 @@ def test_dkim_txt_values_mismatch_warns():
     dkim_result = next(r for r in results if r.record_type == "DKIM")
     assert dkim_result.status == "WARN"
     assert "mismatched" in dkim_result.details
+
+
+def test_dkim_requires_config():
+    provider = ProviderConfig(
+        provider_id="dkim_none",
+        name="No DKIM Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FakeResolver())
+
+    with pytest.raises(ValueError):
+        checker.check_dkim()
+
+
+def test_dkim_cname_lookup_error_returns_unknown():
+    class FailingResolver(FakeResolver):
+        def get_cname(self, name: str):
+            raise DnsLookupError("CNAME", name, RuntimeError("timeout"))
+
+    provider = ProviderConfig(
+        provider_id="dkim_cname",
+        name="DKIM CNAME Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=DKIMConfig(
+            selectors=["s1"],
+            record_type="cname",
+            target_template="{selector}._domainkey.example.test.",
+            txt_values={},
+        ),
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FailingResolver())
+
+    result = checker.check_dkim()
+
+    assert result.status == "UNKNOWN"
+
+
+def test_dkim_cname_mismatch_warns():
+    provider = ProviderConfig(
+        provider_id="dkim_cname",
+        name="DKIM CNAME Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=DKIMConfig(
+            selectors=["s1"],
+            record_type="cname",
+            target_template="{selector}._domainkey.example.test.",
+            txt_values={},
+        ),
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(cname={"s1._domainkey.example.test": "wrong.target.example.test."})
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+
+    result = checker.check_dkim()
+
+    assert result.status == "WARN"
+    assert "mismatched" in result.details
+
+
+def test_dkim_txt_missing_selector_fails():
+    provider = ProviderConfig(
+        provider_id="dkim_txt",
+        name="DKIM TXT Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=DKIMConfig(
+            selectors=["s1"],
+            record_type="txt",
+            target_template=None,
+            txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+        ),
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={})
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+
+    result = checker.check_dkim()
+
+    assert result.status == "FAIL"
+    assert "missing" in result.details
+
+
+def test_dkim_txt_without_expected_value_marks_present():
+    provider = ProviderConfig(
+        provider_id="dkim_txt",
+        name="DKIM TXT Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=DKIMConfig(
+            selectors=["s1"],
+            record_type="txt",
+            target_template=None,
+            txt_values={},
+        ),
+        txt=None,
+        dmarc=None,
+    )
+    resolver = FakeResolver(txt={"s1._domainkey.example.test": ["v=DKIM1; k=rsa; p=ABC123"]})
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+
+    result = checker.check_dkim()
+
+    assert result.status == "PASS"
+    assert result.details["selectors"]["s1._domainkey.example.test"] == "present"
+
+
+def test_dkim_txt_lookup_error_returns_unknown():
+    class FailingResolver(FakeResolver):
+        def get_txt(self, name: str):
+            raise DnsLookupError("TXT", name, RuntimeError("timeout"))
+
+    provider = ProviderConfig(
+        provider_id="dkim_txt",
+        name="DKIM TXT Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=DKIMConfig(
+            selectors=["s1"],
+            record_type="txt",
+            target_template=None,
+            txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+        ),
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FailingResolver())
+
+    result = checker.check_dkim()
+
+    assert result.status == "UNKNOWN"

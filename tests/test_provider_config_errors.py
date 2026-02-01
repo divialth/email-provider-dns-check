@@ -1,0 +1,160 @@
+import textwrap
+
+import pytest
+
+import provider_check.provider_config as provider_config
+from provider_check.provider_config import ProviderConfig, load_provider_config
+
+
+def test_require_mapping_rejects_missing_or_invalid():
+    with pytest.raises(ValueError):
+        provider_config._require_mapping("dummy", "records", None)
+    with pytest.raises(ValueError):
+        provider_config._require_mapping("dummy", "records", [])
+
+
+def test_require_list_rejects_missing_or_invalid():
+    with pytest.raises(ValueError):
+        provider_config._require_list("dummy", "mx hosts", None)
+    with pytest.raises(ValueError):
+        provider_config._require_list("dummy", "mx hosts", {})
+
+
+def test_load_yaml_requires_mapping(tmp_path):
+    path = tmp_path / "invalid.yaml"
+    path.write_text("- item", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        provider_config._load_yaml(path)
+
+
+def test_load_provider_missing_version_raises():
+    with pytest.raises(ValueError):
+        provider_config._load_provider_from_data("bad", {"name": "Bad", "records": {}})
+
+
+def test_load_provider_records_optional():
+    data = {"version": "1", "name": "Optional Records"}
+
+    config = provider_config._load_provider_from_data("optional", data)
+
+    assert config.mx is None
+    assert config.spf is None
+
+
+def test_load_provider_mx_record_requires_mapping():
+    data = {
+        "version": "1",
+        "records": {"mx": {"hosts": ["mx.example."], "records": ["not-a-map"]}},
+    }
+
+    with pytest.raises(ValueError):
+        provider_config._load_provider_from_data("bad", data)
+
+
+def test_load_provider_mx_record_requires_host_and_priority():
+    data = {
+        "version": "1",
+        "records": {"mx": {"hosts": ["mx.example."], "records": [{"host": "mx.example."}]}},
+    }
+
+    with pytest.raises(ValueError):
+        provider_config._load_provider_from_data("bad", data)
+
+
+def test_load_provider_mx_hosts_added_from_records_and_priorities():
+    data = {
+        "version": "1",
+        "records": {
+            "mx": {
+                "hosts": [],
+                "records": [{"host": "mx1.example.", "priority": 10}],
+                "priorities": {"mx2.example.": 20},
+            }
+        },
+    }
+
+    config = provider_config._load_provider_from_data("mx", data)
+
+    assert config.mx is not None
+    assert "mx1.example." in config.mx.hosts
+    assert "mx2.example." in config.mx.hosts
+
+
+def test_load_provider_dkim_record_type_invalid():
+    data = {
+        "version": "1",
+        "records": {"dkim": {"selectors": ["s1"], "record_type": "invalid"}},
+    }
+
+    with pytest.raises(ValueError):
+        provider_config._load_provider_from_data("bad", data)
+
+
+def test_load_provider_dkim_cname_requires_target_template():
+    data = {
+        "version": "1",
+        "records": {"dkim": {"selectors": ["s1"], "record_type": "cname"}},
+    }
+
+    with pytest.raises(ValueError):
+        provider_config._load_provider_from_data("bad", data)
+
+
+def test_load_provider_txt_required_values_loaded():
+    data = {
+        "version": "1",
+        "records": {"txt": {"required": {"_verify": ["token-1", "token-2"]}}},
+    }
+
+    config = provider_config._load_provider_from_data("txt", data)
+
+    assert config.txt is not None
+    assert config.txt.required == {"_verify": ["token-1", "token-2"]}
+
+
+def test_load_provider_config_requires_selection():
+    with pytest.raises(ValueError):
+        load_provider_config("")
+
+
+def test_load_provider_config_matches_name(monkeypatch):
+    provider = ProviderConfig(
+        provider_id="dummy_id",
+        name="Friendly Mail",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    monkeypatch.setattr(provider_config, "list_providers", lambda: [provider])
+
+    loaded = load_provider_config("Friendly Mail")
+    assert loaded.provider_id == "dummy_id"
+
+
+def test_load_provider_config_unknown_raises(monkeypatch):
+    monkeypatch.setattr(provider_config, "list_providers", lambda: [])
+
+    with pytest.raises(ValueError) as exc:
+        load_provider_config("missing")
+
+    assert "Available: none" in str(exc.value)
+
+
+def test_list_providers_skips_invalid_yaml(monkeypatch, tmp_path):
+    provider_dir = tmp_path / "providers"
+    provider_dir.mkdir()
+    content = textwrap.dedent("""
+        name: Bad Provider
+        version: 1
+        records: []
+        """).strip()
+    (provider_dir / "bad.yaml").write_text(content, encoding="utf-8")
+
+    monkeypatch.setattr(provider_config, "_external_provider_dirs", lambda: [provider_dir])
+
+    providers = provider_config.list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
