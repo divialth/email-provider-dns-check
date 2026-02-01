@@ -22,6 +22,23 @@ jobs:
       - name: Check formatting
         run: python -m black --check .
 
+  requirements:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Regenerate requirements files
+        run: python scripts/update_requirements.py
+
+      - name: Ensure requirements are up to date
+        run: git diff --exit-code requirements.txt requirements-dev.txt
+
   yamllint:
     runs-on: ubuntu-latest
     steps:
