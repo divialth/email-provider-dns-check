@@ -61,4 +61,4 @@ jobs:
         run: python -m pip install ".[test]"
 
       - name: Run tests
-        run: python -m pytest -vv
+        run: python -m pytest -vv --color=yes
