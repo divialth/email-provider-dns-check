@@ -1,0 +1,29 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "configMigration": true,
+  "extends": [
+    "config:recommended",
+    "default:automergeDigest",
+    "customManagers:githubActionsVersions"
+  ],
+  "labels": ["dependencies"],
+  "dependencyDashboard": true,
+  "packageRules": [
+    {
+      "matchManagers": ["pip_requirements"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["pep621"],
+      "groupName": "python dependencies"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    }
+  ],
+  "postUpgradeTasks": {
+    "commands": ["python scripts/update_requirements.py"],
+    "fileFilters": ["requirements.txt", "requirements-dev.txt"]
+  }
+}
