@@ -80,21 +80,41 @@ class DNSChecker:
         self.skip_txt_verification = skip_txt_verification
 
     def run_checks(self) -> List[RecordCheck]:
-        results: List[RecordCheck] = []
+        LOGGER.info(
+            "Running DNS checks for %s with provider %s (v%s)",
+            self.domain,
+            self.provider.name,
+            self.provider.version,
+        )
+        checks: List[tuple[str, callable]] = []
         if self.provider.mx:
-            results.append(self.check_mx())
+            checks.append(("MX", self.check_mx))
         if self.provider.spf:
-            results.append(self.check_spf())
+            checks.append(("SPF", self.check_spf))
         if self.provider.dkim:
-            results.append(self.check_dkim())
+            checks.append(("DKIM", self.check_dkim))
         if self.provider.cname:
-            results.append(self.check_cname())
+            checks.append(("CNAME", self.check_cname))
         if self.provider.srv:
-            results.append(self.check_srv())
+            checks.append(("SRV", self.check_srv))
         if self.provider.txt or self.additional_txt or self.additional_txt_verification:
-            results.append(self.check_txt())
+            checks.append(("TXT", self.check_txt))
         if self.provider.dmarc:
-            results.append(self.check_dmarc())
+            checks.append(("DMARC", self.check_dmarc))
+
+        if not checks:
+            LOGGER.info("No checks enabled for %s", self.domain)
+            return []
+
+        LOGGER.debug("Enabled checks: %s", ", ".join(name for name, _check in checks))
+        results: List[RecordCheck] = []
+        for name, check in checks:
+            LOGGER.debug("Starting %s check", name)
+            result = check()
+            LOGGER.info("%s: %s - %s", result.record_type, result.status, result.message)
+            if result.details:
+                LOGGER.debug("%s details: %s", result.record_type, result.details)
+            results.append(result)
         return results
 
     @staticmethod

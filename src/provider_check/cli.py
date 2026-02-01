@@ -21,6 +21,8 @@ from .provider_config import (
     resolve_provider_config,
 )
 
+LOGGER = logging.getLogger(__name__)
+
 
 class _LiteralString(str):
     pass
@@ -281,8 +283,10 @@ def main(argv: List[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     _setup_logging(args.verbose)
+    LOGGER.debug("Parsed arguments: %s", args)
 
     if args.providers_list:
+        LOGGER.info("Listing available providers")
         providers = list_providers()
         min_id_width = 24
         min_version_width = 6
@@ -304,6 +308,7 @@ def main(argv: List[str] | None = None) -> int:
         return 0
 
     if args.provider_show:
+        LOGGER.info("Showing provider configuration for %s", args.provider_show)
         try:
             _, data = load_provider_config_data(args.provider_show)
         except ValueError as exc:
@@ -331,6 +336,20 @@ def main(argv: List[str] | None = None) -> int:
         provider = load_provider_config(args.provider)
     except ValueError as exc:
         parser.error(str(exc))
+
+    LOGGER.info(
+        "Checking %s with provider %s (v%s)",
+        args.domain,
+        provider.name,
+        provider.version,
+    )
+    LOGGER.debug(
+        "Options: strict=%s output=%s spf_policy=%s skip_txt_verification=%s",
+        args.strict,
+        args.output,
+        args.spf_policy,
+        args.skip_txt_verification,
+    )
 
     try:
         txt_records = _parse_txt_records(args.txt_records)
