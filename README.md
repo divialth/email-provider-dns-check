@@ -146,6 +146,7 @@ pip install '.[test]'
 ```
 - Run tests: `./.venv/bin/python -m pytest`
 - Format code: `./.venv/bin/black src tests`
+- Lint YAML: `./.venv/bin/yamllint -c .yamllint src`
 
 ## Notes
 - Strict mode enforces the exact DNS strings from the provider config (no extras).
