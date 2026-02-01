@@ -1,6 +1,13 @@
 ---
 name: mailbox.org
 version: 1
+short_description: "Recommended DNS records for mailbox.org custom domain email hosting"
+long_description: |
+  Check for mailbox.org custom-domain DNS records for MX, SPF, DKIM
+  and DMARC as defined in the official mailbox.org setup guidelines.
+  It also needs a user-supplied record for domain verification.
+  Use this configuration when your domain is set up according to those
+  mailbox.org instructions.
 records:
   mx:
     hosts:

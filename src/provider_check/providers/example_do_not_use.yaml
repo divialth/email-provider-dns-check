@@ -1,12 +1,16 @@
 ---
 # Example provider configuration with all supported fields.
 # This file is disabled by default and is meant purely for documentation.
-# It will NOT appear in --list-providers and cannot be selected unless
+# It will NOT appear in --providers-list and cannot be selected unless
 # you copy it into a custom provider directory and set enabled: true.
 
 enabled: false
 name: Example Provider (DO NOT USE)
 version: 1
+short_description: "Optional short summary of the provider (keep under 150 chars)."
+long_description: |
+  Optional long-form description of the provider. Use multiple lines to
+  explain what the configuration is intended for and any key assumptions.
 
 records:
   mx:

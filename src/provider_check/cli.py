@@ -9,10 +9,44 @@ import time
 from datetime import datetime, timezone
 from typing import List
 
+import yaml
+
 from . import __version__
 from .checker import DNSChecker
 from .output import summarize_status, to_human, to_json, to_text
-from .provider_config import list_providers, load_provider_config
+from .provider_config import list_providers, load_provider_config, load_provider_config_data
+
+
+class _LiteralString(str):
+    pass
+
+
+class _ProviderShowDumper(yaml.SafeDumper):
+    pass
+
+
+def _literal_string_representer(dumper: yaml.Dumper, value: _LiteralString) -> yaml.ScalarNode:
+    return dumper.represent_scalar("tag:yaml.org,2002:str", value, style="|")
+
+
+_ProviderShowDumper.add_representer(_LiteralString, _literal_string_representer)
+
+
+def _strip_long_description_indicator(rendered: str) -> str:
+    lines = rendered.splitlines()
+    updated = False
+    for idx, line in enumerate(lines):
+        if not line.startswith("long_description:"):
+            continue
+        remainder = line[len("long_description:") :].lstrip()
+        if remainder.startswith("|"):
+            lines[idx] = "long_description:"
+            updated = True
+            break
+    if not updated:
+        return rendered
+    suffix = "\n" if rendered.endswith("\n") else ""
+    return "\n".join(lines) + suffix
 
 
 def _setup_logging(verbosity: int) -> None:
@@ -38,93 +72,113 @@ def build_parser() -> argparse.ArgumentParser:
         description="Check email provider DNS records for a given domain",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("domain", nargs="?", help="Domain to validate")
-    parser.add_argument(
+    target_group = parser.add_argument_group("Target")
+    provider_group = parser.add_argument_group("Provider selection")
+    output_group = parser.add_argument_group("Output")
+    validation_group = parser.add_argument_group("Validation options")
+    logging_group = parser.add_argument_group("Logging")
+    misc_group = parser.add_argument_group("Misc")
+
+    target_group.add_argument("domain", nargs="?", help="Domain to validate")
+    provider_group.add_argument(
         "--provider",
-        help="Provider configuration to use (see --list-providers)",
+        help="Provider configuration to use (see --providers-list)",
     )
-    parser.add_argument(
-        "--list-providers",
+    provider_group.add_argument(
+        "--providers-list",
+        dest="providers_list",
         action="store_true",
         help="List available providers and exit",
     )
-    parser.add_argument(
+    provider_group.add_argument(
+        "--list-providers",
+        dest="providers_list",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    provider_group.add_argument(
+        "--provider-show",
+        dest="provider_show",
+        metavar="PROVIDER",
+        help="Show provider configuration and exit",
+    )
+    misc_group.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
         help="Show version and exit",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--output",
         choices=["text", "json", "human"],
         default="human",
         help="Output format",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--strict",
         action="store_true",
         help="Enforce exact provider configuration (no extras allowed)",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--dmarc-email",
         dest="dmarc_email",
         help="Email address for DMARC rua reports (mailto: prefix is added automatically)",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--dmarc-policy",
         dest="dmarc_policy",
         choices=["none", "quarantine", "reject"],
         default=None,
         help="DMARC policy (p=). Defaults to provider config.",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--spf-policy",
         dest="spf_policy",
         choices=["softfail", "hardfail"],
         default="hardfail",
         help="SPF policy: softfail (~all) or hardfail (-all)",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--spf-include",
         dest="spf_includes",
         action="append",
         default=[],
         help="Additional SPF include mechanisms",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--spf-ip4",
         dest="spf_ip4",
         action="append",
         default=[],
         help="Additional SPF ip4 mechanisms",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--spf-ip6",
         dest="spf_ip6",
         action="append",
         default=[],
         help="Additional SPF ip6 mechanisms",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--txt",
         dest="txt_records",
         action="append",
         default=[],
         help="Require TXT record in the form name=value (repeatable)",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--txt-verification",
         dest="txt_verification_records",
         action="append",
         default=[],
         help="Require TXT verification record in the form name=value (repeatable)",
     )
-    parser.add_argument(
+    validation_group.add_argument(
         "--skip-txt-verification",
         action="store_true",
         help="Skip provider-required TXT verification checks",
     )
-    parser.add_argument(
+    logging_group.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -154,18 +208,36 @@ def main(argv: List[str] | None = None) -> int:
 
     _setup_logging(args.verbose)
 
-    if args.list_providers:
+    if args.providers_list:
         providers = list_providers()
         for provider in providers:
             label = _format_provider_label(provider.name, provider.version)
             print(f"{provider.provider_id}\t{label}")
         return 0
 
+    if args.provider_show:
+        try:
+            _, data = load_provider_config_data(args.provider_show)
+        except ValueError as exc:
+            parser.error(str(exc))
+        if isinstance(data.get("long_description"), str):
+            data = dict(data)
+            data["long_description"] = _LiteralString(data["long_description"])
+        rendered = yaml.dump(
+            data,
+            Dumper=_ProviderShowDumper,
+            sort_keys=False,
+            width=10**9,
+            default_flow_style=False,
+        )
+        print(_strip_long_description_indicator(rendered))
+        return 0
+
     if not args.domain:
-        parser.error("domain is required unless --list-providers is used")
+        parser.error("domain is required unless --providers-list or --provider-show is used")
 
     if not args.provider:
-        parser.error("--provider is required unless --list-providers is used")
+        parser.error("--provider is required unless --providers-list or --provider-show is used")
 
     try:
         provider = load_provider_config(args.provider)

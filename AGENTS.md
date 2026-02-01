@@ -10,5 +10,6 @@
 - Keep tests organized by feature area; avoid growing monolithic test files.
 - Prefer coverage for all output formats and CLI flags when modifying output or CLI behavior.
 - Prefer provider-agnostic fixtures in tests (dummy providers) unless validating a real provider config is essential.
+- Avoid provider-specific names (e.g., mailbox.org) in tests unless validating real provider configs is required.
 - For Jinja2 templates, visually indent output expressions inside control blocks using spaces inside `{{ ... }}` so nesting is obvious without changing rendered output.
 - Ensure `yamllint -c .yamllint src` reports no errors before handoff.

@@ -45,7 +45,7 @@ cd email-provider-dns-check
 ```
 Then run:
 ```bash
-./provider-dns-check --list-providers
+./provider-dns-check --providers-list
 ./provider-dns-check example.com --provider dummy_provider
 ```
 The wrapper uses `python3` from your `PATH`, so ensure the runtime dependencies are already
@@ -53,13 +53,14 @@ installed in that environment.
 
 ## Usage
 ```bash
-provider-dns-check --list-providers
+provider-dns-check --providers-list
 provider-dns-check example.com --provider dummy_provider
 provider-dns-check example.com --provider dummy_provider --output json
 provider-dns-check example.com --provider dummy_provider --strict
 provider-dns-check example.com --provider dummy_provider --dmarc-policy quarantine --dmarc-email security@example.com
 provider-dns-check example.com --provider dummy_provider --spf-policy softfail --spf-include spf.protection.example
 provider-dns-check example.com --provider dummy_provider --txt-verification _verify=token
+provider-dns-check --provider-show mailbox.org
 ```
 
 ### Exit codes
@@ -69,8 +70,9 @@ provider-dns-check example.com --provider dummy_provider --txt-verification _ver
 - `3` UNKNOWN
 
 ### Options (summary)
-- `--provider PROVIDER`: provider configuration to use (required unless `--list-providers`)
-- `--list-providers`: list available provider configs and exit
+- `--provider PROVIDER`: provider configuration to use (required unless `--providers-list`)
+- `--providers-list`: list available provider configs and exit
+- `--provider-show PROVIDER`: show provider configuration and exit
 - `--version`: show the tool version and exit
 - `--output {text,json,human}`: choose output type (default: human; markdown table)
 - `--strict`: require exact provider configuration
@@ -90,7 +92,7 @@ Provider definitions are YAML files. Packaged providers live in
 subset of MX/SPF/DKIM/TXT/DMARC. For a fully documented example, see
 `src/provider_check/providers/example_do_not_use.yaml`.
 Use `enabled: false` at the top level to disable a provider (it will not appear in
-`--list-providers`). Boolean fields must be YAML booleans, and list fields must be YAML lists;
+`--providers-list`). Boolean fields must be YAML booleans, and list fields must be YAML lists;
 scalars are treated as invalid.
 
 Add or override providers by dropping files into one of these locations (first match wins if
@@ -100,8 +102,13 @@ provider IDs overlap):
 - `/usr/local/etc/provider-dns-check/providers`
 
 Drop a `*.yaml` or `*.yml` file into one of these locations and it will appear in
-`--list-providers`.
+`--providers-list`.
 Invalid provider configs are skipped with a warning.
+
+### Provider metadata fields
+Provider configs can include optional descriptive metadata:
+- `short_description`: single-line summary (keep under 150 characters)
+- `long_description`: multi-line description of the provider/configuration
 
 ### MX fields
 MX configs can validate hostnames and (optionally) priorities:

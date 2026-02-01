@@ -153,6 +153,89 @@ def test_load_provider_config_unknown_raises(monkeypatch):
     assert "Available: none" in str(exc.value)
 
 
+def test_load_provider_config_data_missing_source_raises(monkeypatch):
+    class _FakePath:
+        def __init__(self, name: str, content: str):
+            self.name = name
+            self._content = content
+
+        def read_text(self, encoding="utf-8"):
+            return self._content
+
+    provider = ProviderConfig(
+        provider_id="missing",
+        name="Missing Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    content = textwrap.dedent("""
+        enabled: false
+        name: Disabled Provider
+        version: 1
+        records: {}
+        """).strip()
+    monkeypatch.setattr(provider_config, "load_provider_config", lambda _selection: provider)
+    monkeypatch.setattr(
+        provider_config,
+        "_iter_provider_paths",
+        lambda: [_FakePath("missing.yaml", content)],
+    )
+
+    with pytest.raises(ValueError) as exc:
+        provider_config.load_provider_config_data("missing")
+
+    assert "source not found" in str(exc.value)
+
+
+def test_load_provider_config_data_returns_source(monkeypatch):
+    class _FakePath:
+        def __init__(self, name: str, content: str):
+            self.name = name
+            self._content = content
+
+        def read_text(self, encoding="utf-8"):
+            return self._content
+
+    provider = ProviderConfig(
+        provider_id="dummy",
+        name="Dummy Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    content = textwrap.dedent("""
+        name: Dummy Provider
+        version: 1
+        records: {}
+        """).strip()
+    monkeypatch.setattr(provider_config, "load_provider_config", lambda _selection: provider)
+    other_content = textwrap.dedent("""
+        name: Other Provider
+        version: 1
+        records: {}
+        """).strip()
+    monkeypatch.setattr(
+        provider_config,
+        "_iter_provider_paths",
+        lambda: [
+            _FakePath("other.yaml", other_content),
+            _FakePath("dummy.yaml", content),
+        ],
+    )
+
+    loaded, data = provider_config.load_provider_config_data("dummy")
+
+    assert loaded.provider_id == "dummy"
+    assert data["name"] == "Dummy Provider"
+
+
 def test_list_providers_skips_invalid_yaml(monkeypatch, tmp_path):
     provider_dir = tmp_path / "providers"
     provider_dir.mkdir()

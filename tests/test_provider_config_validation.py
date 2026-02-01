@@ -93,6 +93,46 @@ def test_invalid_txt_required_values_rejected(monkeypatch, tmp_path):
     assert "bad" not in {provider.provider_id for provider in providers}
 
 
+def test_invalid_short_description_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        short_description:
+          - not-a-string
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_long_description_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        long_description:
+          - not-a-string
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
 def test_invalid_enabled_flag_rejected(monkeypatch, tmp_path):
     _write_external_provider(
         tmp_path,

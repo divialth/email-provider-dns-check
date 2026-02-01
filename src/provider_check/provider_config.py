@@ -72,6 +72,8 @@ class ProviderConfig:
     dkim: Optional[DKIMConfig]
     txt: Optional[TXTConfig]
     dmarc: Optional[DMARCConfig]
+    short_description: Optional[str] = None
+    long_description: Optional[str] = None
 
 
 def _normalize_key(value: str) -> str:
@@ -149,6 +151,12 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
     if version is None:
         raise ValueError(f"Provider config {provider_id} is missing version")
     name = data.get("name", provider_id)
+    short_description = data.get("short_description")
+    if short_description is not None and not isinstance(short_description, str):
+        raise ValueError(f"Provider config {provider_id} short_description must be a string")
+    long_description = data.get("long_description")
+    if long_description is not None and not isinstance(long_description, str):
+        raise ValueError(f"Provider config {provider_id} long_description must be a string")
     if "records" in data:
         records = _require_mapping(provider_id, "records", data.get("records"))
     else:
@@ -276,12 +284,27 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         provider_id=provider_id,
         name=str(name),
         version=str(version),
+        short_description=short_description,
+        long_description=long_description,
         mx=mx,
         spf=spf,
         dkim=dkim,
         txt=txt,
         dmarc=dmarc,
     )
+
+
+def load_provider_config_data(selection: str) -> tuple[ProviderConfig, dict]:
+    provider = load_provider_config(selection)
+    for path in _iter_provider_paths():
+        provider_id = Path(path.name).stem
+        if provider_id != provider.provider_id:
+            continue
+        data = _load_yaml(path)
+        if not _is_enabled(data):
+            continue
+        return provider, data
+    raise ValueError(f"Provider config source not found for '{provider.provider_id}'")
 
 
 def list_providers() -> List[ProviderConfig]:
