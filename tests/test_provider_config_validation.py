@@ -150,3 +150,337 @@ def test_invalid_enabled_flag_rejected(monkeypatch, tmp_path):
     )
     providers = list_providers()
     assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_variables_type_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        variables: []
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_variable_required_flag_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        variables:
+          tenant:
+            required: "yes"
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_reserved_variable_name_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        variables:
+          domain:
+            required: true
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_variable_key_type_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        variables:
+          1:
+            required: true
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_empty_variable_key_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        variables:
+          "": {}
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_variable_spec_type_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        variables:
+          token: value
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_variable_default_type_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        variables:
+          token:
+            default: 123
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_variable_description_type_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        variables:
+          token:
+            description:
+              - not-a-string
+        records: {}
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_variable_null_spec_is_accepted(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Valid Provider
+        version: 1
+        variables:
+          token:
+        records: {}
+        """,
+        provider_id="valid",
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "valid" in {provider.provider_id for provider in providers}
+
+
+def test_invalid_cname_records_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          cname:
+            records:
+              - not-a-map
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_cname_value_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          cname:
+            records:
+              sip:
+                target: sipdir.online.lync.com.
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_srv_records_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          srv:
+            records:
+              _sip._tls: invalid
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_srv_entry_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          srv:
+            records:
+              _sip._tls:
+                - target: sipdir.online.lync.com.
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_srv_entry_type_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          srv:
+            records:
+              _sip._tls:
+                - not-a-map
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_dmarc_rua_required_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          dmarc:
+            rua_required: "false"
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_dmarc_ruf_required_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          dmarc:
+            ruf_required: "false"
+        """,
+    )
+    import provider_check.provider_config as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}

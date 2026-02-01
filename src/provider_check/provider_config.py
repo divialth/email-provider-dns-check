@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import copy
 import logging
 from importlib import resources
 from importlib.resources import abc as resources_abc
@@ -18,6 +19,8 @@ TEMPLATE_DIR_NAME = "templates"
 PROVIDER_PACKAGE = "provider_check.providers"
 
 LOGGER = logging.getLogger(__name__)
+
+_RESERVED_VARIABLES = {"selector", "domain"}
 
 SYSTEM_CONFIG_DIRS = [
     Path("/etc") / CONFIG_DIR_NAME,
@@ -49,6 +52,24 @@ class DKIMConfig:
 
 
 @dataclass(frozen=True)
+class CNAMEConfig:
+    records: Dict[str, str]
+
+
+@dataclass(frozen=True)
+class SRVRecord:
+    priority: int
+    weight: int
+    port: int
+    target: str
+
+
+@dataclass(frozen=True)
+class SRVConfig:
+    records: Dict[str, List[SRVRecord]]
+
+
+@dataclass(frozen=True)
 class TXTConfig:
     required: Dict[str, List[str]]
     verification_required: bool = False
@@ -57,9 +78,19 @@ class TXTConfig:
 @dataclass(frozen=True)
 class DMARCConfig:
     default_policy: str
-    default_rua_localpart: str
     required_rua: List[str]
+    required_ruf: List[str]
     required_tags: Dict[str, str]
+    rua_required: bool = False
+    ruf_required: bool = False
+
+
+@dataclass(frozen=True)
+class ProviderVariable:
+    name: str
+    required: bool = False
+    default: Optional[str] = None
+    description: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -70,10 +101,13 @@ class ProviderConfig:
     mx: Optional[MXConfig]
     spf: Optional[SPFConfig]
     dkim: Optional[DKIMConfig]
-    txt: Optional[TXTConfig]
-    dmarc: Optional[DMARCConfig]
+    cname: Optional[CNAMEConfig] = None
+    srv: Optional[SRVConfig] = None
+    txt: Optional[TXTConfig] = None
+    dmarc: Optional[DMARCConfig] = None
     short_description: Optional[str] = None
     long_description: Optional[str] = None
+    variables: Dict[str, ProviderVariable] = field(default_factory=dict)
 
 
 def _normalize_key(value: str) -> str:
@@ -93,6 +127,14 @@ def _require_list(provider_id: str, field: str, value: object | None) -> list:
         raise ValueError(f"Provider config {provider_id} {field} must be a list")
     if not isinstance(value, list):
         raise ValueError(f"Provider config {provider_id} {field} must be a list")
+    return value
+
+
+def _require_variables(provider_id: str, value: object | None) -> dict:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"Provider config {provider_id} variables must be a mapping")
     return value
 
 
@@ -146,17 +188,136 @@ def _is_enabled(data: dict) -> bool:
     raise ValueError("Provider config enabled must be a boolean")
 
 
+def _normalize_extends(provider_id: str, value: object | None) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        items = [value]
+    elif isinstance(value, list):
+        items = value
+    else:
+        raise ValueError(f"Provider config {provider_id} extends must be a string or list")
+    normalized: List[str] = []
+    for item in items:
+        if not isinstance(item, str):
+            raise ValueError(f"Provider config {provider_id} extends entries must be strings")
+        trimmed = item.strip()
+        if not trimmed:
+            raise ValueError(f"Provider config {provider_id} extends entries must be non-empty")
+        normalized.append(trimmed)
+    return normalized
+
+
+def _merge_provider_data(base: dict, override: dict) -> dict:
+    merged = copy.deepcopy(base)
+    for key, value in override.items():
+        if value is None:
+            merged.pop(key, None)
+            continue
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge_provider_data(merged[key], value)
+            continue
+        merged[key] = copy.deepcopy(value)
+    return merged
+
+
+def _load_provider_data_map() -> Dict[str, dict]:
+    providers: Dict[str, dict] = {}
+    for path in _iter_provider_paths():
+        provider_id = Path(path.name).stem
+        if provider_id in providers:
+            continue
+        try:
+            data = _load_yaml(path)
+        except ValueError as exc:
+            LOGGER.warning("Skipping provider config %s: %s", path, exc)
+            continue
+        providers[provider_id] = data
+    return providers
+
+
+def _resolve_provider_data(
+    provider_id: str,
+    data_map: Dict[str, dict],
+    cache: Dict[str, dict],
+    stack: List[str],
+) -> dict:
+    if provider_id in cache:
+        return cache[provider_id]
+    if provider_id in stack:
+        cycle = " -> ".join([*stack, provider_id])
+        raise ValueError(f"Provider config extends cycle detected: {cycle}")
+    if provider_id not in data_map:
+        raise ValueError(f"Provider config extends unknown provider '{provider_id}'")
+
+    raw = data_map[provider_id]
+    extends = _normalize_extends(provider_id, raw.get("extends"))
+    merged: dict = {}
+    stack.append(provider_id)
+    for base_id in extends:
+        base_data = _resolve_provider_data(base_id, data_map, cache, stack)
+        base_payload = {key: value for key, value in base_data.items() if key != "enabled"}
+        merged = _merge_provider_data(merged, base_payload)
+    stack.pop()
+
+    stripped = {key: value for key, value in raw.items() if key not in {"extends"}}
+    merged = _merge_provider_data(merged, stripped)
+    cache[provider_id] = merged
+    return merged
+
+
 def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
     version = data.get("version")
     if version is None:
         raise ValueError(f"Provider config {provider_id} is missing version")
-    name = data.get("name", provider_id)
+    provider_name = data.get("name", provider_id)
     short_description = data.get("short_description")
     if short_description is not None and not isinstance(short_description, str):
         raise ValueError(f"Provider config {provider_id} short_description must be a string")
     long_description = data.get("long_description")
     if long_description is not None and not isinstance(long_description, str):
         raise ValueError(f"Provider config {provider_id} long_description must be a string")
+    variables_section = _require_variables(provider_id, data.get("variables"))
+    variables: Dict[str, ProviderVariable] = {}
+    for key, spec in variables_section.items():
+        if not isinstance(key, str):
+            raise ValueError(
+                f"Provider config {provider_id} variables must use string keys; got {key!r}"
+            )
+        var_name = key.strip()
+        if not var_name:
+            raise ValueError(f"Provider config {provider_id} variables keys must be non-empty")
+        if var_name in _RESERVED_VARIABLES:
+            raise ValueError(
+                f"Provider config {provider_id} variable '{var_name}' is reserved and cannot be used"
+            )
+        if spec is None:
+            spec = {}
+        if not isinstance(spec, dict):
+            raise ValueError(
+                f"Provider config {provider_id} variable '{var_name}' must be a mapping"
+            )
+        required = spec.get("required", False)
+        if not isinstance(required, bool):
+            raise ValueError(
+                f"Provider config {provider_id} variable '{var_name}' required must be a boolean"
+            )
+        default = spec.get("default")
+        if default is not None and not isinstance(default, str):
+            raise ValueError(
+                f"Provider config {provider_id} variable '{var_name}' default must be a string"
+            )
+        description = spec.get("description")
+        if description is not None and not isinstance(description, str):
+            raise ValueError(
+                f"Provider config {provider_id} variable '{var_name}' description must be a string"
+            )
+        variables[var_name] = ProviderVariable(
+            name=var_name,
+            required=required,
+            default=default,
+            description=description,
+        )
     if "records" in data:
         records = _require_mapping(provider_id, "records", data.get("records"))
     else:
@@ -243,6 +404,55 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
             txt_values=txt_values,
         )
 
+    cname = None
+    if "cname" in records:
+        cname_section = _require_mapping(provider_id, "cname", records.get("cname"))
+        cname_records_raw = _require_mapping(
+            provider_id, "cname records", cname_section.get("records", {})
+        )
+        cname_records: Dict[str, str] = {}
+        for name, target in cname_records_raw.items():
+            if target is None or isinstance(target, (dict, list)):
+                raise ValueError(
+                    f"Provider config {provider_id} cname record '{name}' must be a string"
+                )
+            cname_records[str(name)] = str(target)
+        cname = CNAMEConfig(records=cname_records)
+
+    srv = None
+    if "srv" in records:
+        srv_section = _require_mapping(provider_id, "srv", records.get("srv"))
+        srv_records_raw = _require_mapping(
+            provider_id, "srv records", srv_section.get("records", {})
+        )
+        srv_records: Dict[str, List[SRVRecord]] = {}
+        for name, entries in srv_records_raw.items():
+            entries_list = _require_list(provider_id, f"srv records.{name}", entries)
+            parsed_entries: List[SRVRecord] = []
+            for entry in entries_list:
+                if not isinstance(entry, dict):
+                    raise ValueError(
+                        f"Provider config {provider_id} srv records.{name} entries must be mappings"
+                    )
+                priority = entry.get("priority")
+                weight = entry.get("weight")
+                port = entry.get("port")
+                target = entry.get("target")
+                if priority is None or weight is None or port is None or target is None:
+                    raise ValueError(
+                        f"Provider config {provider_id} srv records.{name} entries require priority, weight, port, and target"
+                    )
+                parsed_entries.append(
+                    SRVRecord(
+                        priority=int(priority),
+                        weight=int(weight),
+                        port=int(port),
+                        target=str(target),
+                    )
+                )
+            srv_records[str(name)] = parsed_entries
+        srv = SRVConfig(records=srv_records)
+
     txt = None
     if "txt" in records:
         txt_section = _require_mapping(provider_id, "txt", records.get("txt"))
@@ -265,61 +475,233 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
     if "dmarc" in records:
         dmarc_section = _require_mapping(provider_id, "dmarc", records.get("dmarc"))
         default_policy = dmarc_section.get("default_policy", "reject")
-        default_rua_localpart = dmarc_section.get("default_rua_localpart", "postmaster")
         required_rua = _require_list(
             provider_id, "dmarc required_rua", dmarc_section.get("required_rua", [])
         )
+        required_ruf = _require_list(
+            provider_id, "dmarc required_ruf", dmarc_section.get("required_ruf", [])
+        )
+        rua_required = dmarc_section.get("rua_required", False)
+        if not isinstance(rua_required, bool):
+            raise ValueError(f"Provider config {provider_id} dmarc rua_required must be a boolean")
+        ruf_required = dmarc_section.get("ruf_required", False)
+        if not isinstance(ruf_required, bool):
+            raise ValueError(f"Provider config {provider_id} dmarc ruf_required must be a boolean")
         required_tags_raw = _require_mapping(
             provider_id, "dmarc required_tags", dmarc_section.get("required_tags", {})
         )
         required_tags = {str(key).lower(): str(value) for key, value in required_tags_raw.items()}
         dmarc = DMARCConfig(
             default_policy=str(default_policy),
-            default_rua_localpart=str(default_rua_localpart),
             required_rua=[str(value) for value in required_rua],
+            required_ruf=[str(value) for value in required_ruf],
             required_tags=required_tags,
+            rua_required=rua_required,
+            ruf_required=ruf_required,
         )
 
     return ProviderConfig(
         provider_id=provider_id,
-        name=str(name),
+        name=str(provider_name),
         version=str(version),
         short_description=short_description,
         long_description=long_description,
         mx=mx,
         spf=spf,
         dkim=dkim,
+        cname=cname,
+        srv=srv,
         txt=txt,
         dmarc=dmarc,
+        variables=variables,
+    )
+
+
+class _SafeFormatDict(dict):
+    def __missing__(self, key: str) -> str:  # pragma: no cover - defensive
+        return "{" + key + "}"
+
+
+def _format_string(value: Optional[str], variables: Dict[str, str]) -> Optional[str]:
+    if value is None:
+        return None
+    return value.format_map(_SafeFormatDict(variables))
+
+
+def resolve_provider_config(
+    provider: ProviderConfig, variables: Dict[str, str], *, domain: Optional[str] = None
+) -> ProviderConfig:
+    if not provider.variables:
+        if variables:
+            allowed = ", ".join(sorted(provider.variables)) or "none"
+            raise ValueError(
+                f"Provider '{provider.provider_id}' does not accept variables. "
+                f"Allowed variables: {allowed}"
+            )
+        return provider
+
+    unknown = sorted(set(variables) - set(provider.variables))
+    if unknown:
+        allowed = ", ".join(sorted(provider.variables))
+        unknown_list = ", ".join(unknown)
+        raise ValueError(
+            f"Unknown provider variable(s): {unknown_list}. Allowed variables: {allowed}"
+        )
+
+    resolved: Dict[str, str] = {}
+    missing: List[str] = []
+    for name, spec in provider.variables.items():
+        if name in variables:
+            resolved[name] = variables[name]
+        elif spec.default is not None:
+            resolved[name] = spec.default
+        elif spec.required:
+            missing.append(name)
+    if missing:
+        missing_list = ", ".join(missing)
+        raise ValueError(
+            f"Missing required provider variable(s): {missing_list}. "
+            "Provide with --provider-var name=value."
+        )
+
+    if domain:
+        resolved = dict(resolved)
+        resolved["domain"] = domain
+
+    if not resolved:
+        return provider
+
+    mx = None
+    if provider.mx:
+        mx = MXConfig(
+            hosts=[_format_string(host, resolved) for host in provider.mx.hosts],
+            priorities={
+                _format_string(host, resolved): int(priority)
+                for host, priority in provider.mx.priorities.items()
+            },
+        )
+
+    spf = None
+    if provider.spf:
+        spf = SPFConfig(
+            required_includes=[
+                _format_string(value, resolved) for value in provider.spf.required_includes
+            ],
+            strict_record=_format_string(provider.spf.strict_record, resolved),
+            required_mechanisms=[
+                _format_string(value, resolved) for value in provider.spf.required_mechanisms
+            ],
+            allowed_mechanisms=[
+                _format_string(value, resolved) for value in provider.spf.allowed_mechanisms
+            ],
+            required_modifiers={
+                key: _format_string(value, resolved)
+                for key, value in provider.spf.required_modifiers.items()
+            },
+        )
+
+    dkim = None
+    if provider.dkim:
+        dkim = DKIMConfig(
+            selectors=[_format_string(selector, resolved) for selector in provider.dkim.selectors],
+            record_type=provider.dkim.record_type,
+            target_template=_format_string(provider.dkim.target_template, resolved),
+            txt_values={
+                _format_string(key, resolved): _format_string(value, resolved)
+                for key, value in provider.dkim.txt_values.items()
+            },
+        )
+
+    cname = None
+    if provider.cname:
+        cname = CNAMEConfig(
+            records={
+                _format_string(name, resolved): _format_string(target, resolved)
+                for name, target in provider.cname.records.items()
+            }
+        )
+
+    srv = None
+    if provider.srv:
+        srv_records: Dict[str, List[SRVRecord]] = {}
+        for name, entries in provider.srv.records.items():
+            srv_records[_format_string(name, resolved)] = [
+                SRVRecord(
+                    priority=int(entry.priority),
+                    weight=int(entry.weight),
+                    port=int(entry.port),
+                    target=_format_string(entry.target, resolved),
+                )
+                for entry in entries
+            ]
+        srv = SRVConfig(records=srv_records)
+
+    txt = None
+    if provider.txt:
+        required_txt: Dict[str, List[str]] = {}
+        for name, values in provider.txt.required.items():
+            formatted_name = _format_string(name, resolved)
+            required_txt[formatted_name] = [_format_string(value, resolved) for value in values]
+        txt = TXTConfig(
+            required=required_txt,
+            verification_required=provider.txt.verification_required,
+        )
+
+    dmarc = None
+    if provider.dmarc:
+        dmarc = DMARCConfig(
+            default_policy=_format_string(provider.dmarc.default_policy, resolved),
+            required_rua=[_format_string(value, resolved) for value in provider.dmarc.required_rua],
+            required_ruf=[_format_string(value, resolved) for value in provider.dmarc.required_ruf],
+            required_tags={
+                key: _format_string(value, resolved)
+                for key, value in provider.dmarc.required_tags.items()
+            },
+            rua_required=provider.dmarc.rua_required,
+            ruf_required=provider.dmarc.ruf_required,
+        )
+
+    return ProviderConfig(
+        provider_id=provider.provider_id,
+        name=provider.name,
+        version=provider.version,
+        mx=mx,
+        spf=spf,
+        dkim=dkim,
+        cname=cname,
+        srv=srv,
+        txt=txt,
+        dmarc=dmarc,
+        short_description=provider.short_description,
+        long_description=provider.long_description,
+        variables=provider.variables,
     )
 
 
 def load_provider_config_data(selection: str) -> tuple[ProviderConfig, dict]:
     provider = load_provider_config(selection)
-    for path in _iter_provider_paths():
-        provider_id = Path(path.name).stem
-        if provider_id != provider.provider_id:
-            continue
-        data = _load_yaml(path)
-        if not _is_enabled(data):
-            continue
-        return provider, data
-    raise ValueError(f"Provider config source not found for '{provider.provider_id}'")
+    data_map = _load_provider_data_map()
+    cache: Dict[str, dict] = {}
+    if provider.provider_id not in data_map:
+        raise ValueError(f"Provider config source not found for '{provider.provider_id}'")
+    data = _resolve_provider_data(provider.provider_id, data_map, cache, [])
+    if not _is_enabled(data):
+        raise ValueError(f"Provider config source not found for '{provider.provider_id}'")
+    return provider, data
 
 
 def list_providers() -> List[ProviderConfig]:
     providers: Dict[str, ProviderConfig] = {}
-    for path in _iter_provider_paths():
-        provider_id = Path(path.name).stem
+    data_map = _load_provider_data_map()
+    cache: Dict[str, dict] = {}
+    for provider_id in data_map:
         try:
-            data = _load_yaml(path)
+            data = _resolve_provider_data(provider_id, data_map, cache, [])
             if not _is_enabled(data):
-                continue
-            if provider_id in providers:
                 continue
             providers[provider_id] = _load_provider_from_data(provider_id, data)
         except ValueError as exc:
-            LOGGER.warning("Skipping provider config %s: %s", path, exc)
+            LOGGER.warning("Skipping provider config %s: %s", provider_id, exc)
             continue
     return sorted(providers.values(), key=lambda item: item.provider_id)
 

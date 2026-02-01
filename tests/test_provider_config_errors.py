@@ -191,6 +191,26 @@ def test_load_provider_config_data_missing_source_raises(monkeypatch):
     assert "source not found" in str(exc.value)
 
 
+def test_load_provider_config_data_source_not_present_raises(monkeypatch):
+    provider = ProviderConfig(
+        provider_id="missing",
+        name="Missing Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    monkeypatch.setattr(provider_config, "load_provider_config", lambda _selection: provider)
+    monkeypatch.setattr(provider_config, "_iter_provider_paths", lambda: [])
+
+    with pytest.raises(ValueError) as exc:
+        provider_config.load_provider_config_data("missing")
+
+    assert "source not found" in str(exc.value)
+
+
 def test_load_provider_config_data_returns_source(monkeypatch):
     class _FakePath:
         def __init__(self, name: str, content: str):
@@ -250,3 +270,53 @@ def test_list_providers_skips_invalid_yaml(monkeypatch, tmp_path):
 
     providers = provider_config.list_providers()
     assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_list_providers_skips_non_mapping_yaml(monkeypatch):
+    class _FakePath:
+        def __init__(self, name: str, content: str):
+            self.name = name
+            self._content = content
+
+        def read_text(self, encoding="utf-8"):
+            return self._content
+
+    monkeypatch.setattr(
+        provider_config,
+        "_iter_provider_paths",
+        lambda: [_FakePath("bad.yaml", "- one\n- two\n")],
+    )
+
+    providers = provider_config.list_providers()
+
+    assert providers == []
+
+
+def test_list_providers_skips_unknown_extends(monkeypatch, tmp_path):
+    provider_dir = tmp_path / "providers"
+    provider_dir.mkdir()
+    (provider_dir / "child.yaml").write_text(
+        "name: Child\nversion: 1\nextends: missing\nrecords: {}\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(provider_config, "_external_provider_dirs", lambda: [provider_dir])
+
+    providers = provider_config.list_providers()
+
+    assert "child" not in {provider.provider_id for provider in providers}
+
+
+def test_list_providers_skips_extends_cycle(monkeypatch, tmp_path):
+    provider_dir = tmp_path / "providers"
+    provider_dir.mkdir()
+    (provider_dir / "a.yaml").write_text(
+        "name: A\nversion: 1\nextends: b\nrecords: {}\n", encoding="utf-8"
+    )
+    (provider_dir / "b.yaml").write_text(
+        "name: B\nversion: 1\nextends: a\nrecords: {}\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(provider_config, "_external_provider_dirs", lambda: [provider_dir])
+
+    providers = provider_config.list_providers()
+
+    assert "a" not in {provider.provider_id for provider in providers}
+    assert "b" not in {provider.provider_id for provider in providers}

@@ -113,3 +113,36 @@ def test_get_cname_dns_exception_raises_lookup_error(monkeypatch):
 
     assert exc.value.record_type == "CNAME"
     assert exc.value.name == "selector._domainkey.example.com"
+
+
+def test_get_srv_success(monkeypatch):
+    answers = {
+        ("_sip._tls.example.com", "SRV"): [
+            SimpleNamespace(priority=100, weight=1, port=443, target="sipdir.online.lync.com."),
+            SimpleNamespace(priority=100, weight=1, port=5061, target="sipfed.online.lync.com."),
+        ]
+    }
+    resolver = _make_resolver(monkeypatch, answers)
+
+    assert resolver.get_srv("_sip._tls.example.com") == [
+        (100, 1, 443, "sipdir.online.lync.com."),
+        (100, 1, 5061, "sipfed.online.lync.com."),
+    ]
+
+
+def test_get_srv_no_answer_returns_empty(monkeypatch):
+    answers = {("_sip._tls.example.com", "SRV"): dns.resolver.NoAnswer()}
+    resolver = _make_resolver(monkeypatch, answers)
+
+    assert resolver.get_srv("_sip._tls.example.com") == []
+
+
+def test_get_srv_dns_exception_raises_lookup_error(monkeypatch):
+    answers = {("_sip._tls.example.com", "SRV"): dns.exception.DNSException("boom")}
+    resolver = _make_resolver(monkeypatch, answers)
+
+    with pytest.raises(DnsLookupError) as exc:
+        resolver.get_srv("_sip._tls.example.com")
+
+    assert exc.value.record_type == "SRV"
+    assert exc.value.name == "_sip._tls.example.com"

@@ -1,0 +1,22 @@
+---
+extends: microsoft_365
+name: Microsoft 365 (+ DKIM Legacy)
+version: 1
+short_description: "Microsoft 365 email checks with legacy DKIM targets."
+long_description: |
+  Validates Microsoft 365 MX and SPF records, the user-supplied TXT verification
+  record (MS=...) via --txt-verification, and the legacy DKIM CNAME targets
+  that end in .onmicrosoft.com (no dynamic partition character).
+variables:
+  initial_domain_prefix:
+    required: true
+  dkim_partition:
+    required: false
+    description: "Unused for legacy DKIM format (kept for variable alignment)."
+records:
+  dkim:
+    selectors:
+      - selector1
+      - selector2
+    record_type: cname
+    target_template: "{selector}-{custom_domain_dashes}._domainkey.{initial_domain_prefix}.onmicrosoft.com."

@@ -31,4 +31,6 @@ records:
     verification_required: true
   dmarc:
     default_policy: reject
-    default_rua_localpart: postmaster
+    rua_required: true
+    required_rua:
+      - mailto:postmaster@{domain}

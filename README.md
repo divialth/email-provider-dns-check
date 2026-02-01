@@ -9,7 +9,7 @@ domain, provider name, provider version, and a report timestamp (UTC).
 - Supports multiple providers via YAML config files
 - Validates only the record types present in the provider config
 - Strict mode for exact matches; standard mode warns when extras are present
-- Configurable DMARC policy/RUA address and SPF policy/includes/IP entries
+- Configurable DMARC policy/RUA/RUF destinations and SPF policy/includes/IP entries
 - Human, text, and JSON output; logging with UTC timestamps
 - Tested with Python 3.11+; formatted with `black`
 
@@ -57,7 +57,7 @@ provider-dns-check --providers-list
 provider-dns-check example.com --provider dummy_provider
 provider-dns-check example.com --provider dummy_provider --output json
 provider-dns-check example.com --provider dummy_provider --strict
-provider-dns-check example.com --provider dummy_provider --dmarc-policy quarantine --dmarc-email security@example.com
+provider-dns-check example.com --provider dummy_provider --dmarc-policy quarantine --dmarc-rua-mailto security@example.com
 provider-dns-check example.com --provider dummy_provider --spf-policy softfail --spf-include spf.protection.example
 provider-dns-check example.com --provider dummy_provider --txt-verification _verify=token
 provider-dns-check --provider-show mailbox.org
@@ -73,10 +73,12 @@ provider-dns-check --provider-show mailbox.org
 - `--provider PROVIDER`: provider configuration to use (required unless `--providers-list`)
 - `--providers-list`: list available provider configs and exit
 - `--provider-show PROVIDER`: show provider configuration and exit
+- `--provider-var NAME=VALUE`: provider variables (repeatable)
 - `--version`: show the tool version and exit
 - `--output {text,json,human}`: choose output type (default: human; markdown table)
 - `--strict`: require exact provider configuration
-- `--dmarc-email EMAIL`: rua mailbox (mailto: is added)
+- `--dmarc-rua-mailto URI`: require a DMARC rua mailto URI (repeatable; overrides provider defaults)
+- `--dmarc-ruf-mailto URI`: require a DMARC ruf mailto URI (repeatable; overrides provider defaults)
 - `--dmarc-policy {none,quarantine,reject}`: DMARC p= (defaults to provider config)
 - `--spf-policy {softfail,hardfail}`: SPF terminator (~all or -all)
 - `--spf-include VALUE`: additional SPF include mechanisms (repeatable)
@@ -110,6 +112,42 @@ Provider configs can include optional descriptive metadata:
 - `short_description`: single-line summary (keep under 150 characters)
 - `long_description`: multi-line description of the provider/configuration
 
+### Provider inheritance
+Providers can inherit from other providers using `extends` with a provider ID (or list of IDs).
+The final configuration is a deep merge: mappings are merged recursively, and lists/scalars are
+overridden by the child. Use `null` to remove an inherited key (for example, to drop DKIM):
+```yaml
+extends: base_provider
+records:
+  dkim: null
+```
+The `enabled` flag is not inherited from base providers. Base configs can be hidden with
+`enabled: false` while still being used for inheritance.
+
+### Provider variables
+Providers can define variables and then reference them with `{name}` placeholders in record values.
+Variables are resolved before validation with `--provider-var name=value`. `{domain}` is always
+available and is filled with the target domain. The `selector` placeholder is reserved for DKIM
+target templates.
+
+Example:
+```yaml
+variables:
+  tenant:
+    required: true
+    description: "Tenant-specific prefix from the provider admin console."
+records:
+  mx:
+    hosts:
+      - "{tenant}.mail.protection.outlook.com."
+  dkim:
+    selectors:
+      - selector1
+      - selector2
+    record_type: cname
+    target_template: "{selector}._domainkey.{tenant}.onmicrosoft.com."
+```
+
 ### MX fields
 MX configs can validate hostnames and (optionally) priorities:
 - `hosts`: list of required MX hostnames
@@ -125,11 +163,13 @@ SPF configs can include additional mechanisms and modifiers beyond includes and 
 - `required_modifiers`: mapping of SPF modifiers that must match exact values (e.g., `redirect`, `exp`)
 
 ### DMARC fields
-DMARC configs can optionally enforce more than just `p=` and `rua=`:
+DMARC configs can optionally enforce more than just `p=` and `rua=`/`ruf=`:
 - `default_policy`: default policy if `--dmarc-policy` is not provided
-- `default_rua_localpart`: default rua localpart if `--dmarc-email` is not provided
-- `required_rua`: list of required rua URIs (for providers with fixed aggregate destinations)
+- `required_rua`: list of required rua URIs (for providers with fixed aggregate destinations; `{domain}` is supported)
+- `required_ruf`: list of required ruf URIs (for providers with fixed forensic destinations; `{domain}` is supported)
 - `required_tags`: mapping of additional DMARC tags that must match exact values
+- `rua_required`: require a rua tag in DMARC records (default: false)
+- `ruf_required`: require a ruf tag in DMARC records (default: false)
 
 ### DKIM fields
 DKIM configs can validate either CNAME targets or TXT record values:
@@ -137,6 +177,15 @@ DKIM configs can validate either CNAME targets or TXT record values:
 - `record_type`: `cname` (hosted) or `txt` (self-hosted)
 - `target_template`: CNAME target template (required when `record_type: cname`)
 - `txt_values`: mapping of `selector: value` to enforce when `record_type: txt`
+
+### CNAME fields
+CNAME configs validate arbitrary CNAME records:
+- `records`: mapping of `name: target` for required CNAME values
+
+### SRV fields
+SRV configs validate required SRV records:
+- `records`: mapping of `name: [entries...]`
+- Each entry requires `priority`, `weight`, `port`, and `target`
 
 ### TXT fields
 TXT configs let providers require arbitrary validation records:

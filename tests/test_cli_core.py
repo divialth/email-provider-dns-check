@@ -9,8 +9,18 @@ def test_list_providers_outputs_entries(capsys):
     assert code == 0
     out = capsys.readouterr().out
     assert out.strip()
-    assert "\t" in out
-    assert "(v" in out
+    assert "  v" in out
+
+
+def test_list_providers_handles_empty(capsys, monkeypatch):
+    import provider_check.cli as cli
+
+    monkeypatch.setattr(cli, "list_providers", lambda: [])
+
+    code = main(["--providers-list"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert out == ""
 
 
 def test_provider_show_outputs_yaml(capsys, monkeypatch):

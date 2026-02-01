@@ -1,0 +1,14 @@
+---
+extends:
+  - microsoft_365_dkim
+name: Microsoft 365 (+ DKIM + DMARC)
+version: 1
+short_description: "Microsoft 365 email checks with current DKIM and DMARC."
+long_description: |
+  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM, plus DMARC validation.
+  The DMARC policy defaults to p=reject; rua/ruf are optional unless overridden.
+records:
+  dmarc:
+    default_policy: reject
+    rua_required: false
+    ruf_required: false

@@ -1,0 +1,10 @@
+---
+extends:
+  - microsoft_365_teams
+  - microsoft_365_dkim
+name: Microsoft 365 (+ Teams + DKIM)
+version: 1
+short_description: "Microsoft 365 email + Teams checks with current DKIM targets."
+long_description: |
+  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM, plus Teams/Skype for
+  Business CNAME and SRV records.

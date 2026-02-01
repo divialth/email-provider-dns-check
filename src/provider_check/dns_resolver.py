@@ -74,3 +74,17 @@ class DnsResolver:
         except dns.exception.DNSException as err:
             LOGGER.warning("CNAME lookup failed for %s: %s", name, err)
             raise DnsLookupError("CNAME", name, err) from err
+
+    def get_srv(self, name: str) -> List[tuple[int, int, int, str]]:
+        try:
+            answers = self._resolver.resolve(name, "SRV")
+            records: List[tuple[int, int, int, str]] = []
+            for rdata in answers:
+                target = str(rdata.target).lower().rstrip(".") + "."
+                records.append((int(rdata.priority), int(rdata.weight), int(rdata.port), target))
+            return records
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+            return []
+        except dns.exception.DNSException as err:
+            LOGGER.warning("SRV lookup failed for %s: %s", name, err)
+            raise DnsLookupError("SRV", name, err) from err

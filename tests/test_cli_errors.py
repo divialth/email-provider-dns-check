@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 import pytest
 
 from provider_check.checker import RecordCheck
-from provider_check.cli import _parse_txt_records, _setup_logging, main
-from provider_check.provider_config import ProviderConfig
+from provider_check.cli import _parse_provider_vars, _parse_txt_records, _setup_logging, main
+from provider_check.provider_config import ProviderConfig, ProviderVariable
 
 
 def test_setup_logging_levels(monkeypatch):
@@ -31,6 +31,17 @@ def test_parse_txt_records_rejects_invalid():
         _parse_txt_records(["=value"])
     with pytest.raises(ValueError):
         _parse_txt_records(["name="])
+
+
+def test_parse_provider_vars_rejects_invalid():
+    with pytest.raises(ValueError):
+        _parse_provider_vars(["missing-delimiter"])
+    with pytest.raises(ValueError):
+        _parse_provider_vars(["=value"])
+    with pytest.raises(ValueError):
+        _parse_provider_vars(["name="])
+    with pytest.raises(ValueError):
+        _parse_provider_vars(["dup=1", "dup=2"])
 
 
 def test_domain_required_without_list_providers(capsys):
@@ -75,6 +86,52 @@ def test_invalid_txt_record_reports_error(monkeypatch, capsys):
     assert exc.value.code == 2
     err = capsys.readouterr().err
     assert "must be in name=value form" in err
+
+
+def test_missing_provider_var_reports_error(monkeypatch, capsys):
+    import provider_check.cli as cli
+
+    provider = ProviderConfig(
+        provider_id="dummy",
+        name="Dummy",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+        variables={"tenant": ProviderVariable(name="tenant", required=True)},
+    )
+    monkeypatch.setattr(cli, "load_provider_config", lambda _selection: provider)
+
+    with pytest.raises(SystemExit) as exc:
+        main(["example.com", "--provider", "dummy"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "Missing required provider variable" in err
+
+
+def test_unknown_provider_var_reports_error(monkeypatch, capsys):
+    import provider_check.cli as cli
+
+    provider = ProviderConfig(
+        provider_id="dummy",
+        name="Dummy",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+        variables={"tenant": ProviderVariable(name="tenant", required=False)},
+    )
+    monkeypatch.setattr(cli, "load_provider_config", lambda _selection: provider)
+
+    with pytest.raises(SystemExit) as exc:
+        main(["example.com", "--provider", "dummy", "--provider-var", "unknown=1"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "Unknown provider variable" in err
 
 
 def _patch_fixed_datetime(monkeypatch):

@@ -12,6 +12,16 @@ long_description: |
   Optional long-form description of the provider. Use multiple lines to
   explain what the configuration is intended for and any key assumptions.
 
+variables:
+  # Provider variables can be referenced using {name} placeholders.
+  # Values are provided via --provider-var name=value (repeatable).
+  tenant:
+    required: true
+    description: "Example required variable used in record templates."
+  region:
+    default: us
+    description: "Optional variable with a default."
+
 records:
   mx:
     # List of MX hostnames required for the provider.
@@ -71,6 +81,26 @@ records:
     txt_values:
       EXAMPLE1: "v=DKIM1; k=rsa; p=BASE64KEY"
 
+  cname:
+    # Required CNAME records (name -> expected target).
+    records:
+      lyncdiscover: webdir.example-provider.test.
+      sip: sipdir.example-provider.test.
+
+  srv:
+    # Required SRV records (name -> list of entries).
+    records:
+      _sip._tls:
+        - priority: 100
+          weight: 1
+          port: 443
+          target: sipdir.example-provider.test.
+      _sipfederationtls._tcp:
+        - priority: 100
+          weight: 1
+          port: 5061
+          target: sipfed.example-provider.test.
+
   txt:
     # Required TXT records for validation (name -> list of expected values).
     # Names may be relative (appended to the domain) or fully-qualified.
@@ -87,13 +117,20 @@ records:
   dmarc:
     # Default DMARC policy to apply when --dmarc-policy is not provided.
     default_policy: reject
-    # Default rua localpart when --dmarc-email is not provided.
-    default_rua_localpart: postmaster
+    # Whether the DMARC record must include a rua tag.
+    rua_required: true
+    # Whether the DMARC record must include a ruf tag.
+    ruf_required: false
     # Optional list of rua URIs that must be present in the DMARC record.
-    # Use full mailto: URIs to avoid ambiguity.
+    # Use full mailto: URIs to avoid ambiguity. {domain} is replaced at runtime.
     required_rua:
+      - mailto:postmaster@{domain}
       - mailto:dmarc-aggregate@example-provider.test
       - mailto:dmarc-fallback@example-provider.test
+    # Optional list of ruf URIs that must be present in the DMARC record.
+    # Use full mailto: URIs to avoid ambiguity. {domain} is replaced at runtime.
+    required_ruf:
+      - mailto:dmarc-forensic@example-provider.test
     # Optional additional DMARC tags that must match exact values.
     # These are checked in standard mode and enforced in strict mode output.
     required_tags:

@@ -8,7 +8,7 @@ CODE:
 
 PROJECT GOALS:
 -  Script for checking if the DNS records for a domain are correctly set up.
--  Support for checking MX, SPF, DKIM, TXT, and DMARC records.
+-  Support for checking MX, SPF, DKIM, DMARC, TXT, CNAME, and SRV records.
 -  Support multiple email providers via separate YAML configuration files.
 -  Provider configs must include a version tag and can define any subset of record types.
 -  Validate only the record types present in the selected provider config.
@@ -18,7 +18,7 @@ PROJECT GOALS:
 -  Provide a CLI parameter to select the provider configuration.
 -  Provide a CLI parameter to list available providers.
 -  Provide a CLI parameter to show the tool version.
--  Provide a parameter for specifying an email address for DMARC reports.
+-  Provide parameters for specifying DMARC rua and ruf mailto destinations.
 -  Provide a parameter for specifying the DMARC policy (none, quarantine, reject).
 -  Provide a parameter for specifying the SPF policy (softfail, hardfail).
 -  Provide a parameter for specifying additional SPF includes.
@@ -26,12 +26,15 @@ PROJECT GOALS:
 -  Provide a parameter for specifying required TXT records.
 -  Provide a parameter for specifying required TXT verification records.
 -  Provide a parameter to skip TXT verification checks when desired.
+-  Provide a parameter for specifying provider variables.
+-  Provide a parameter for showing a provider configuration.
 -  Provide a parameter for output type (text, json, human).
 -  Support a strict mode to enforce exact provider config values with no extras.
 -  In the standard mode, provide only a warning if, for example, additional SPF mechanisms are present.
 -  Allow provider configs to be added or overridden via user and system config directories.
 -  Strictly validate provider configs (booleans must be booleans; lists must be lists) and skip invalid configs with warnings.
 -  Allow text and human output templates to be overridden via config directories.
+-  Support provider inheritance via extends and variable substitution in configs.
 -  Provide a lightweight wrapper script for running from the repo without installing the package.
 -  Output must clearly indicate which provider and config version were used.
 -  Provide clear output indicating which records are correctly set up and which need attention.

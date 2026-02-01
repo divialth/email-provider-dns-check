@@ -27,18 +27,20 @@ BASE_PROVIDER = ProviderConfig(
     txt=None,
     dmarc=DMARCConfig(
         default_policy="reject",
-        default_rua_localpart="postmaster",
-        required_rua=[],
+        required_rua=["mailto:postmaster@{domain}"],
+        required_ruf=[],
         required_tags={},
+        rua_required=True,
     ),
 )
 
 
 class FakeResolver:
-    def __init__(self, mx=None, txt=None, cname=None):
+    def __init__(self, mx=None, txt=None, cname=None, srv=None):
         self.mx = mx or {}
         self.txt = txt or {}
         self.cname = cname or {}
+        self.srv = srv or {}
 
     def get_mx(self, domain: str):
         return self.mx.get(domain, [])
@@ -48,3 +50,6 @@ class FakeResolver:
 
     def get_cname(self, name: str):
         return self.cname.get(name)
+
+    def get_srv(self, name: str):
+        return self.srv.get(name, [])

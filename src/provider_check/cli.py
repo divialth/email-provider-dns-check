@@ -14,7 +14,12 @@ import yaml
 from . import __version__
 from .checker import DNSChecker
 from .output import summarize_status, to_human, to_json, to_text
-from .provider_config import list_providers, load_provider_config, load_provider_config_data
+from .provider_config import (
+    list_providers,
+    load_provider_config,
+    load_provider_config_data,
+    resolve_provider_config,
+)
 
 
 class _LiteralString(str):
@@ -63,10 +68,6 @@ def _setup_logging(verbosity: int) -> None:
     )
 
 
-def _format_provider_label(name: str, version: str) -> str:
-    return f"{name} (v{version})"
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Check email provider DNS records for a given domain",
@@ -102,6 +103,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PROVIDER",
         help="Show provider configuration and exit",
     )
+    provider_group.add_argument(
+        "--provider-var",
+        dest="provider_vars",
+        action="append",
+        default=[],
+        help="Provider variables in name=value form (repeatable)",
+    )
     misc_group.add_argument(
         "--version",
         action="version",
@@ -120,9 +128,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Enforce exact provider configuration (no extras allowed)",
     )
     validation_group.add_argument(
-        "--dmarc-email",
-        dest="dmarc_email",
-        help="Email address for DMARC rua reports (mailto: prefix is added automatically)",
+        "--dmarc-rua-mailto",
+        dest="dmarc_rua_mailto",
+        action="append",
+        default=[],
+        help="DMARC rua mailto URI to require (repeatable; mailto: prefix optional)",
+    )
+    validation_group.add_argument(
+        "--dmarc-ruf-mailto",
+        dest="dmarc_ruf_mailto",
+        action="append",
+        default=[],
+        help="DMARC ruf mailto URI to require (repeatable; mailto: prefix optional)",
     )
     validation_group.add_argument(
         "--dmarc-policy",
@@ -202,6 +219,22 @@ def _parse_txt_records(raw_records: List[str]) -> dict[str, list[str]]:
     return required
 
 
+def _parse_provider_vars(raw_vars: List[str]) -> dict[str, str]:
+    parsed: dict[str, str] = {}
+    for item in raw_vars:
+        if "=" not in item:
+            raise ValueError(f"Provider variable '{item}' must be in name=value form")
+        name, value = item.split("=", 1)
+        name = name.strip()
+        value = value.strip()
+        if not name or not value:
+            raise ValueError(f"Provider variable '{item}' must include both name and value")
+        if name in parsed:
+            raise ValueError(f"Provider variable '{name}' was provided more than once")
+        parsed[name] = value
+    return parsed
+
+
 def main(argv: List[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -210,9 +243,23 @@ def main(argv: List[str] | None = None) -> int:
 
     if args.providers_list:
         providers = list_providers()
+        min_id_width = 24
+        min_version_width = 6
+        if providers:
+            id_width = max(min_id_width, max(len(provider.provider_id) for provider in providers))
+            version_width = max(
+                min_version_width,
+                max(len(f"v{provider.version}") for provider in providers),
+            )
+        else:
+            id_width = min_id_width
+            version_width = min_version_width
         for provider in providers:
-            label = _format_provider_label(provider.name, provider.version)
-            print(f"{provider.provider_id}\t{label}")
+            version_label = f"v{provider.version}"
+            print(
+                f"{provider.provider_id.ljust(id_width)}  "
+                f"{version_label.ljust(version_width)}  {provider.name}"
+            )
         return 0
 
     if args.provider_show:
@@ -250,11 +297,18 @@ def main(argv: List[str] | None = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
 
+    try:
+        provider_vars = _parse_provider_vars(args.provider_vars)
+        provider = resolve_provider_config(provider, provider_vars, domain=args.domain)
+    except ValueError as exc:
+        parser.error(str(exc))
+
     checker = DNSChecker(
         args.domain,
         provider,
         strict=args.strict,
-        dmarc_email=args.dmarc_email,
+        dmarc_rua_mailto=args.dmarc_rua_mailto,
+        dmarc_ruf_mailto=args.dmarc_ruf_mailto,
         dmarc_policy=args.dmarc_policy,
         spf_policy=args.spf_policy,
         additional_spf_includes=args.spf_includes,

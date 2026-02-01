@@ -1,0 +1,9 @@
+---
+extends: microsoft_365_shared
+name: Microsoft 365
+version: 1
+short_description: "Microsoft 365 base email checks (MX/SPF/TXT)."
+long_description: |
+  Validates Microsoft 365 MX and SPF records plus the user-supplied TXT
+  verification record (MS=...) via --txt-verification. DKIM is optional in
+  Microsoft 365 and is not validated by this config.

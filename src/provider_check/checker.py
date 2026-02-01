@@ -31,7 +31,8 @@ class DNSChecker:
         resolver: Optional[DnsResolver] = None,
         *,
         strict: bool = False,
-        dmarc_email: Optional[str] = None,
+        dmarc_rua_mailto: Optional[Iterable[str]] = None,
+        dmarc_ruf_mailto: Optional[Iterable[str]] = None,
         dmarc_policy: Optional[str] = None,
         spf_policy: str = "hardfail",
         additional_spf_includes: Optional[Iterable[str]] = None,
@@ -45,16 +46,16 @@ class DNSChecker:
         self.provider = provider
         self.resolver = resolver or DnsResolver()
         self.strict = strict
-        self._dmarc_email_override = dmarc_email is not None
 
         dmarc_default_policy = "reject"
-        dmarc_default_rua_localpart = "postmaster"
         if provider.dmarc:
             dmarc_default_policy = provider.dmarc.default_policy
-            dmarc_default_rua_localpart = provider.dmarc.default_rua_localpart
 
         self.dmarc_policy = (dmarc_policy or dmarc_default_policy).lower()
-        self.dmarc_email = dmarc_email or f"{dmarc_default_rua_localpart}@{self.domain}"
+        self.dmarc_rua_mailto = self._normalize_mailto_list(dmarc_rua_mailto or [])
+        self._dmarc_rua_override = bool(self.dmarc_rua_mailto)
+        self.dmarc_ruf_mailto = self._normalize_mailto_list(dmarc_ruf_mailto or [])
+        self._dmarc_ruf_override = bool(self.dmarc_ruf_mailto)
         self.spf_policy = spf_policy.lower()
         self.additional_spf_includes = list(additional_spf_includes or [])
         self.additional_spf_ip4 = list(additional_spf_ip4 or [])
@@ -77,6 +78,10 @@ class DNSChecker:
             results.append(self.check_spf())
         if self.provider.dkim:
             results.append(self.check_dkim())
+        if self.provider.cname:
+            results.append(self.check_cname())
+        if self.provider.srv:
+            results.append(self.check_srv())
         if self.provider.txt or self.additional_txt or self.additional_txt_verification:
             results.append(self.check_txt())
         if self.provider.dmarc:
@@ -104,6 +109,68 @@ class DNSChecker:
         if "." in trimmed:
             return trimmed
         return f"{trimmed}.{self.domain}"
+
+    def _normalize_record_name(self, name: str) -> str:
+        trimmed = name.strip()
+        if trimmed == "@":
+            return self.domain
+        if "{domain}" in trimmed:
+            trimmed = trimmed.replace("{domain}", self.domain)
+        if trimmed.endswith("."):
+            return trimmed[:-1]
+        if trimmed.endswith(self.domain):
+            return trimmed
+        return f"{trimmed}.{self.domain}"
+
+    def _normalize_mailto(self, value: str) -> str:
+        trimmed = value.strip()
+        if "{domain}" in trimmed:
+            trimmed = trimmed.replace("{domain}", self.domain)
+        if not trimmed:
+            raise ValueError("DMARC mailto value must not be empty")
+        if trimmed.lower().startswith("mailto:"):
+            address = trimmed[len("mailto:") :].strip()
+        else:
+            address = trimmed
+        if not address:
+            raise ValueError("DMARC mailto value must include an address")
+        return f"mailto:{address}".lower()
+
+    def _normalize_mailto_list(self, values: Iterable[str]) -> List[str]:
+        normalized: List[str] = []
+        for value in values:
+            normalized_value = self._normalize_mailto(str(value))
+            if normalized_value not in normalized:
+                normalized.append(normalized_value)
+        return normalized
+
+    def _effective_required_rua(self) -> List[str]:
+        if not self.provider.dmarc:
+            return []
+        if self._dmarc_rua_override:
+            return list(self.dmarc_rua_mailto)
+        return self._normalize_mailto_list(self.provider.dmarc.required_rua)
+
+    def _effective_required_ruf(self) -> List[str]:
+        if not self.provider.dmarc:
+            return []
+        if self._dmarc_ruf_override:
+            return list(self.dmarc_ruf_mailto)
+        return self._normalize_mailto_list(self.provider.dmarc.required_ruf)
+
+    def _rua_required(self, required_rua: List[str]) -> bool:
+        if not self.provider.dmarc:
+            return False
+        if self._dmarc_rua_override:
+            return True
+        return self.provider.dmarc.rua_required or bool(required_rua)
+
+    def _ruf_required(self, required_ruf: List[str]) -> bool:
+        if not self.provider.dmarc:
+            return False
+        if self._dmarc_ruf_override:
+            return True
+        return self.provider.dmarc.ruf_required or bool(required_ruf)
 
     def check_mx(self) -> RecordCheck:
         if not self.provider.mx:
@@ -446,6 +513,112 @@ class DNSChecker:
             {"selectors": selectors_map},
         )
 
+    def check_cname(self) -> RecordCheck:
+        if not self.provider.cname:
+            raise ValueError("CNAME configuration not available for provider")
+
+        missing: List[str] = []
+        mismatched: Dict[str, str] = {}
+        expected_targets: Dict[str, str] = {}
+        found_targets: Dict[str, str] = {}
+
+        for name, target in self.provider.cname.records.items():
+            lookup_name = self._normalize_record_name(name)
+            expected_target = self._normalize_host(target)
+            expected_targets[lookup_name] = expected_target
+            try:
+                found_target = self.resolver.get_cname(lookup_name)
+            except DnsLookupError as err:
+                return RecordCheck("CNAME", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+            if found_target is None:
+                missing.append(lookup_name)
+                continue
+            found_targets[lookup_name] = found_target
+            if self._normalize_host(found_target) != expected_target:
+                mismatched[lookup_name] = found_target
+
+        if missing or mismatched:
+            return RecordCheck(
+                "CNAME",
+                "FAIL",
+                "CNAME records do not match required configuration",
+                {
+                    "missing": missing,
+                    "mismatched": mismatched,
+                    "expected": expected_targets,
+                    "found": found_targets,
+                },
+            )
+
+        return RecordCheck(
+            "CNAME",
+            "PASS",
+            "Required CNAME records present",
+            {"records": expected_targets},
+        )
+
+    def check_srv(self) -> RecordCheck:
+        if not self.provider.srv:
+            raise ValueError("SRV configuration not available for provider")
+
+        missing: Dict[str, List[tuple[int, int, int, str]]] = {}
+        extra: Dict[str, List[tuple[int, int, int, str]]] = {}
+        expected: Dict[str, List[tuple[int, int, int, str]]] = {}
+        found: Dict[str, List[tuple[int, int, int, str]]] = {}
+
+        for name, entries in self.provider.srv.records.items():
+            lookup_name = self._normalize_record_name(name)
+            expected_entries = [
+                (
+                    int(entry.priority),
+                    int(entry.weight),
+                    int(entry.port),
+                    self._normalize_host(entry.target),
+                )
+                for entry in entries
+            ]
+            expected[lookup_name] = expected_entries
+            try:
+                found_entries = self.resolver.get_srv(lookup_name)
+            except DnsLookupError as err:
+                return RecordCheck("SRV", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+            normalized_found = [
+                (int(priority), int(weight), int(port), self._normalize_host(target))
+                for priority, weight, port, target in found_entries
+            ]
+            found[lookup_name] = normalized_found
+            expected_set = set(expected_entries)
+            found_set = set(normalized_found)
+            missing_entries = sorted(expected_set - found_set)
+            extra_entries = sorted(found_set - expected_set)
+            if missing_entries:
+                missing[lookup_name] = missing_entries
+            if extra_entries:
+                extra[lookup_name] = extra_entries
+
+        if missing:
+            return RecordCheck(
+                "SRV",
+                "FAIL",
+                "Missing required SRV records",
+                {"missing": missing, "found": found, "expected": expected},
+            )
+        if extra:
+            status = "FAIL" if self.strict else "WARN"
+            return RecordCheck(
+                "SRV",
+                status,
+                "Additional SRV records present; required records found",
+                {"extra": extra, "found": found},
+            )
+
+        return RecordCheck(
+            "SRV",
+            "PASS",
+            "Required SRV records present",
+            {"records": expected},
+        )
+
     def check_txt(self) -> RecordCheck:
         required: Dict[str, List[str]] = {}
         user_required = False
@@ -514,17 +687,34 @@ class DNSChecker:
 
         return RecordCheck("TXT", "PASS", "TXT records present", {"required": required})
 
-    def _expected_dmarc_value(self) -> str:
+    def _expected_dmarc_value(
+        self,
+        required_rua: List[str],
+        rua_required: bool,
+        required_ruf: List[str],
+        ruf_required: bool,
+    ) -> str:
         policy = self.dmarc_policy
-        if self.provider.dmarc and self.provider.dmarc.required_rua:
-            rua_value = ",".join(self.provider.dmarc.required_rua)
-        else:
-            rua_value = f"mailto:{self.dmarc_email}"
-        parts = [f"v=DMARC1", f"p={policy}", f"rua={rua_value}"]
+        parts = [f"v=DMARC1", f"p={policy}"]
+        if rua_required:
+            rua_value = ",".join(required_rua) if required_rua else "<required>"
+            parts.append(f"rua={rua_value}")
+        if ruf_required:
+            ruf_value = ",".join(required_ruf) if required_ruf else "<required>"
+            parts.append(f"ruf={ruf_value}")
         if self.provider.dmarc and self.provider.dmarc.required_tags:
             for key in sorted(self.provider.dmarc.required_tags.keys()):
                 parts.append(f"{key}={self.provider.dmarc.required_tags[key]}")
         return ";".join(parts)
+
+    @staticmethod
+    def _parse_dmarc_tokens(record: str) -> Dict[str, str]:
+        parts = [part for part in record.replace(" ", "").split(";") if "=" in part]
+        return {part.split("=", 1)[0].lower(): part.split("=", 1)[1] for part in parts}
+
+    @staticmethod
+    def _parse_mailto_entries(raw_value: str) -> List[str]:
+        return [entry.strip().lower() for entry in raw_value.split(",") if entry.strip()]
 
     def check_dmarc(self) -> RecordCheck:
         if not self.provider.dmarc:
@@ -535,46 +725,86 @@ class DNSChecker:
             txt_records = self.resolver.get_txt(name)
         except DnsLookupError as err:
             return RecordCheck("DMARC", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+
+        required_rua = self._effective_required_rua()
+        rua_required = self._rua_required(required_rua)
+        required_ruf = self._effective_required_ruf()
+        ruf_required = self._ruf_required(required_ruf)
+        expected = self._expected_dmarc_value(
+            required_rua, rua_required, required_ruf, ruf_required
+        )
         if not txt_records:
             return RecordCheck(
                 "DMARC",
                 "FAIL",
                 "No DMARC record found",
-                {"expected": self._expected_dmarc_value()},
+                {"expected": expected},
             )
-
-        expected = self._expected_dmarc_value()
-        required_rua = [addr.lower() for addr in self.provider.dmarc.required_rua]
         required_tags = {
             key.lower(): value.lower() for key, value in self.provider.dmarc.required_tags.items()
         }
 
         for record in txt_records:
-            normalized = "".join(record.split())
             if self.strict:
-                if normalized.lower() == expected.lower():
-                    return RecordCheck(
-                        "DMARC",
-                        "PASS",
-                        "DMARC record matches strict configuration",
-                        {"record": record},
-                    )
+                tokens = self._parse_dmarc_tokens(record)
+                if tokens.get("v", "").upper() != "DMARC1":
+                    continue
+                if tokens.get("p", "").lower() != self.dmarc_policy:
+                    continue
+                rua_entries = self._parse_mailto_entries(tokens.get("rua", ""))
+                ruf_entries = self._parse_mailto_entries(tokens.get("ruf", ""))
+                if rua_required:
+                    if not rua_entries:
+                        continue
+                    if required_rua and set(rua_entries) != set(required_rua):
+                        continue
+                if ruf_required:
+                    if not ruf_entries:
+                        continue
+                    if required_ruf and set(ruf_entries) != set(required_ruf):
+                        continue
+                missing_tags = {
+                    key: value
+                    for key, value in required_tags.items()
+                    if tokens.get(key, "").lower() != value
+                }
+                if missing_tags:
+                    continue
+                allowed_tags = {"v", "p"}
+                if rua_required:
+                    allowed_tags.add("rua")
+                if ruf_required:
+                    allowed_tags.add("ruf")
+                allowed_tags.update(required_tags.keys())
+                if set(tokens.keys()) != allowed_tags:
+                    continue
+                return RecordCheck(
+                    "DMARC",
+                    "PASS",
+                    "DMARC record matches strict configuration",
+                    {"record": record},
+                )
                 continue
 
-            parts = [part for part in record.replace(" ", "").split(";") if "=" in part]
-            tokens = {part.split("=", 1)[0].lower(): part.split("=", 1)[1] for part in parts}
+            tokens = self._parse_dmarc_tokens(record)
             policy = tokens.get("p", "").lower()
-            rua_raw = tokens.get("rua", "")
-            rua_entries = [entry.strip().lower() for entry in rua_raw.split(",") if entry.strip()]
+            rua_entries = self._parse_mailto_entries(tokens.get("rua", ""))
+            ruf_entries = self._parse_mailto_entries(tokens.get("ruf", ""))
 
             if tokens.get("v", "").upper() != "DMARC1":
                 continue
             if policy != self.dmarc_policy:
                 continue
-            if not rua_entries:
-                continue
-            if required_rua and not all(addr in rua_entries for addr in required_rua):
-                continue
+            if rua_required:
+                if not rua_entries:
+                    continue
+                if required_rua and not all(addr in rua_entries for addr in required_rua):
+                    continue
+            if ruf_required:
+                if not ruf_entries:
+                    continue
+                if required_ruf and not all(addr in ruf_entries for addr in required_ruf):
+                    continue
 
             missing_tags = {
                 key: value
@@ -585,14 +815,12 @@ class DNSChecker:
                 continue
 
             status = "PASS"
-            message = "DMARC policy and rua present"
+            message = (
+                "DMARC policy present"
+                if not rua_entries and not ruf_entries
+                else "DMARC policy and reporting tags present"
+            )
             details = {"record": record}
-            expected_rua = f"mailto:{self.dmarc_email}".lower()
-            warn_on_rua = self._dmarc_email_override or not required_rua
-            if warn_on_rua and expected_rua not in rua_entries:
-                status = "WARN"
-                message = "DMARC rua differs from expected"
-                details["expected_rua"] = expected_rua
             return RecordCheck("DMARC", status, message, details)
 
         return RecordCheck(

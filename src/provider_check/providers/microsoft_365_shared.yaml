@@ -1,0 +1,32 @@
+---
+enabled: false
+name: Microsoft 365 (Shared Base)
+version: 1
+short_description: "Shared Microsoft 365 provider settings (not directly selectable)."
+long_description: |
+  Shared Microsoft 365 provider settings. This config is disabled and intended for
+  inheritance only. It defines common MX/SPF/TXT requirements and shared
+  variables for Microsoft 365 variants.
+variables:
+  custom_domain_dashes:
+    required: true
+    description: "Custom domain with dots replaced by dashes (e.g., contoso-com)."
+  initial_domain_prefix:
+    required: false
+    description: "Prefix from your tenant onmicrosoft.com (e.g., contoso)."
+  dkim_partition:
+    required: false
+    description: "Dynamic DKIM partition character from Microsoft (e.g., n or r)."
+records:
+  mx:
+    hosts:
+      - "{custom_domain_dashes}.mail.protection.outlook.com."
+  spf:
+    required_includes:
+      - spf.protection.outlook.com
+    strict_record: "v=spf1 include:spf.protection.outlook.com -all"
+  txt:
+    # Provider requires a user-supplied TXT record for domain verification.
+    # Users must provide the name/value via --txt-verification.
+    # Example: --txt-verification @=MS=ms...
+    verification_required: true
