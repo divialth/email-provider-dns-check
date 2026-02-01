@@ -1,0 +1,43 @@
+# Byte-compiled / cached files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Type checkers / tooling
+.mypy_cache/
+.dmypy.json
+.pyre/
+ruff_cache/
+.cache/
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Project metadata
+.python-version

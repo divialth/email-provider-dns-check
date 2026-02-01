@@ -1,0 +1,301 @@
+from provider_check.checker import DNSChecker
+from provider_check.dns_resolver import DnsLookupError
+from provider_check.provider_config import ProviderConfig, SPFConfig
+
+from tests.support import BASE_PROVIDER, FakeResolver
+
+
+def test_spf_warn_on_extra_include_standard_mode():
+    domain = "example.org"
+    resolver = FakeResolver(
+        mx={domain: ["mx1.dummy.test.", "mx2.dummy.test."]},
+        txt={
+            domain: ["v=spf1 include:dummy.test include:example.net -all"],
+            f"_dmarc.{domain}": ["v=DMARC1;p=reject;rua=mailto:postmaster@example.org"],
+        },
+        cname={
+            f"DUMMY1._domainkey.{domain}": "DUMMY1._domainkey.dummy.test.",
+            f"DUMMY2._domainkey.{domain}": "DUMMY2._domainkey.dummy.test.",
+            f"DUMMY3._domainkey.{domain}": "DUMMY3._domainkey.dummy.test.",
+            f"DUMMY4._domainkey.{domain}": "DUMMY4._domainkey.dummy.test.",
+        },
+    )
+
+    checker = DNSChecker(domain, BASE_PROVIDER, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "WARN"
+    assert "extras" in spf_result.details
+
+
+def test_spf_policy_softfail():
+    domain = "soft.example"
+    resolver = FakeResolver(
+        mx={domain: ["mx1.dummy.test.", "mx2.dummy.test."]},
+        txt={
+            domain: ["v=spf1 include:dummy.test ~all"],
+            f"_dmarc.{domain}": ["v=DMARC1;p=quarantine;rua=mailto:postmaster@soft.example"],
+        },
+        cname={
+            f"DUMMY1._domainkey.{domain}": "DUMMY1._domainkey.dummy.test.",
+            f"DUMMY2._domainkey.{domain}": "DUMMY2._domainkey.dummy.test.",
+            f"DUMMY3._domainkey.{domain}": "DUMMY3._domainkey.dummy.test.",
+            f"DUMMY4._domainkey.{domain}": "DUMMY4._domainkey.dummy.test.",
+        },
+    )
+
+    checker = DNSChecker(
+        domain,
+        BASE_PROVIDER,
+        resolver=resolver,
+        strict=False,
+        spf_policy="softfail",
+        dmarc_policy="quarantine",
+    )
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"
+
+
+def test_spf_policy_not_last_passes():
+    domain = "soft.example"
+    resolver = FakeResolver(
+        txt={
+            domain: ["v=spf1 ~all include:dummy.test"],
+        }
+    )
+
+    checker = DNSChecker(
+        domain,
+        BASE_PROVIDER,
+        resolver=resolver,
+        strict=False,
+        spf_policy="softfail",
+    )
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"
+
+
+def test_spf_strict_uses_strict_record():
+    provider = ProviderConfig(
+        provider_id="spf_strict",
+        name="Strict SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=["strict.example"],
+            strict_record="v=spf1 include:strict.example -all",
+            required_mechanisms=[],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "strict.example"
+    resolver = FakeResolver(
+        txt={
+            domain: ["v=spf1 include:strict.example -all"],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=True, spf_policy="softfail")
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"
+
+
+def test_spf_strict_mismatch_fails():
+    provider = ProviderConfig(
+        provider_id="spf_strict",
+        name="Strict SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=["strict.example"],
+            strict_record="v=spf1 include:strict.example -all",
+            required_mechanisms=[],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "strict.example"
+    resolver = FakeResolver(
+        txt={
+            domain: ["v=spf1 include:strict.example ~all"],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=True)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "FAIL"
+
+
+def test_spf_multiple_records_fail():
+    provider = ProviderConfig(
+        provider_id="spf_multi",
+        name="Multiple SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=["multi.example"],
+            strict_record="v=spf1 include:multi.example -all",
+            required_mechanisms=[],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "multi.example"
+    resolver = FakeResolver(
+        txt={
+            domain: [
+                "v=spf1 include:multi.example -all",
+                "v=spf1 include:extra.example -all",
+            ],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "FAIL"
+
+
+def test_spf_dns_failure_returns_unknown():
+    class FailingResolver(FakeResolver):
+        def get_txt(self, domain: str):
+            raise DnsLookupError("TXT", domain, RuntimeError("timeout"))
+
+    provider = ProviderConfig(
+        provider_id="spf_fail",
+        name="SPF Fail Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=["dummy.test"],
+            strict_record="v=spf1 include:dummy.test -all",
+            required_mechanisms=[],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "fail.example"
+    resolver = FailingResolver()
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "UNKNOWN"
+
+
+def test_spf_allowed_mechanisms_pass():
+    provider = ProviderConfig(
+        provider_id="spf_allowed",
+        name="Allowed SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=[],
+            strict_record=None,
+            required_mechanisms=[],
+            allowed_mechanisms=["a", "mx"],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "allowed.example"
+    resolver = FakeResolver(
+        txt={
+            domain: ["v=spf1 a mx -all"],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "PASS"
+
+
+def test_spf_unexpected_mechanism_warns_when_configured():
+    provider = ProviderConfig(
+        provider_id="spf_warn",
+        name="Warn SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=[],
+            strict_record=None,
+            required_mechanisms=["a"],
+            allowed_mechanisms=[],
+            required_modifiers={},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "warn.example"
+    resolver = FakeResolver(
+        txt={
+            domain: ["v=spf1 a ptr -all"],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "WARN"
+    assert "ptr" in spf_result.details.get("extras", [])
+
+
+def test_spf_required_modifiers_missing_fails():
+    provider = ProviderConfig(
+        provider_id="spf_mod",
+        name="Modifier SPF Provider",
+        version="1",
+        mx=None,
+        spf=SPFConfig(
+            required_includes=[],
+            strict_record=None,
+            required_mechanisms=[],
+            allowed_mechanisms=[],
+            required_modifiers={"redirect": "_spf.example.test"},
+        ),
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "mod.example"
+    resolver = FakeResolver(
+        txt={
+            domain: ["v=spf1 a -all"],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status == "FAIL"

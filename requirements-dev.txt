@@ -1,0 +1,8 @@
+# Auto-generated from pyproject.toml via scripts/update_requirements.py
+
+dnspython>=2.6
+Jinja2>=3.1
+PyYAML>=6.0
+pytest>=7.4
+black>=24.0
+yamllint>=1.35.1

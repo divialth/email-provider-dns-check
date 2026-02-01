@@ -1,0 +1,27 @@
+---
+name: mailbox.org
+version: 1
+records:
+  mx:
+    hosts:
+      - mxext1.mailbox.org.
+      - mxext2.mailbox.org.
+      - mxext3.mailbox.org.
+  spf:
+    required_includes:
+      - mailbox.org
+    strict_record: "v=spf1 include:mailbox.org -all"
+  dkim:
+    selectors:
+      - MBO0001
+      - MBO0002
+      - MBO0003
+      - MBO0004
+    target_template: "{selector}._domainkey.mailbox.org."
+  txt:
+    # Provider requires a user-supplied TXT record for domain verification.
+    # Users must provide the name/value via --txt-verification.
+    verification_required: true
+  dmarc:
+    default_policy: reject
+    default_rua_localpart: postmaster

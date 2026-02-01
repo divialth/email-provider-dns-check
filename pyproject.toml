@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "email-provider-dns-check"
+version = "0.2.0"
+description = "CLI to validate custom domain DNS records for email providers"
+readme = "README.md"
+authors = [{name = "divialthe", email = "65872926+divialth@users.noreply.github.com"}]
+requires-python = ">=3.11"
+license = {text = "GPL-3.0-or-later"}
+keywords = ["dns", "email", "spf", "dkim", "dmarc", "mailbox", "domain"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Internet :: Name Service (DNS)",
+  "Topic :: System :: Systems Administration",
+]
+dependencies = [
+  "dnspython>=2.6",
+  "Jinja2>=3.1",
+  "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/divialth/email-provider-dns-check"
+Repository = "https://github.com/divialth/email-provider-dns-check"
+Issues = "https://github.com/divialth/email-provider-dns-check/issues"
+
+[project.optional-dependencies]
+test = ["pytest>=7.4", "black>=24.0", "yamllint>=1.35.1"]
+
+[project.scripts]
+provider-dns-check = "provider_check.cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.setuptools.package-data]
+"provider_check.providers" = ["*.yaml", "*.yml"]
+"provider_check.templates" = ["*.j2"]
+
+[tool.setuptools]
+license-files = ["LICENSE"]

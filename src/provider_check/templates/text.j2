@@ -1,0 +1,16 @@
+{{ summary }} - report for domain {{ domain }} ({{ report_time }}) / provider: {{ provider_label }}
+
+{% for result in results %}
+{%   if not loop.first %}
+
+{%   endif %}
+{{   result.record_type }}: {{   result.status }} - {{   result.message }}
+{%   if result.record_type == "DKIM" and result.selector_rows %}
+{%     for selector in result.selector_rows %}
+  {{     selector.name }} -> {{     selector.value }}
+{%     endfor %}
+{%   endif %}
+{%   for key, value in result.details.items() %}
+  {{     key }}: {{     value }}
+{%   endfor %}
+{% endfor %}

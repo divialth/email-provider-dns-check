@@ -1,0 +1,51 @@
+CODE:
+-  programming language: Python
+-  code formatting: Black
+-  documentation style: Google
+-  use argparse for command-line argument parsing
+-  use logging for output messages
+-  use UTC timezone for timestamps
+
+PROJECT GOALS:
+-  Script for checking if the DNS records for a domain are correctly set up.
+-  Support for checking MX, SPF, DKIM, TXT, and DMARC records.
+-  Support multiple email providers via separate YAML configuration files.
+-  Provider configs must include a version tag and can define any subset of record types.
+-  Validate only the record types present in the selected provider config.
+-  Allow users to specify the domain to check via command-line arguments.
+-  Allow users to specify verbosity level for logging output.
+-  Provide a help message for command-line usage.
+-  Provide a CLI parameter to select the provider configuration.
+-  Provide a CLI parameter to list available providers.
+-  Provide a CLI parameter to show the tool version.
+-  Provide a parameter for specifying an email address for DMARC reports.
+-  Provide a parameter for specifying the DMARC policy (none, quarantine, reject).
+-  Provide a parameter for specifying the SPF policy (softfail, hardfail).
+-  Provide a parameter for specifying additional SPF includes.
+-  Provide a parameter for specifying additional SPF IPv4 or IPv6 entries.
+-  Provide a parameter for specifying required TXT records.
+-  Provide a parameter for specifying required TXT verification records.
+-  Provide a parameter to skip TXT verification checks when desired.
+-  Provide a parameter for output type (text, json, human).
+-  Support a strict mode to enforce exact provider config values with no extras.
+-  In the standard mode, provide only a warning if, for example, additional SPF mechanisms are present.
+-  Allow provider configs to be added or overridden via user and system config directories.
+-  Strictly validate provider configs (booleans must be booleans; lists must be lists) and skip invalid configs with warnings.
+-  Allow text and human output templates to be overridden via config directories.
+-  Provide a lightweight wrapper script for running from the repo without installing the package.
+-  Output must clearly indicate which provider and config version were used.
+-  Provide clear output indicating which records are correctly set up and which need attention.
+-  Output the text results in a clear and user-friendly format.
+-  Output the JSON results in a structured format suitable for further processing.
+-  Output the human results in a clear, user-friendly table.
+-  Output defaults to human format.
+-  Output should clearly indicate the status of each DNS record checked.
+-  Output should give a clear summary in the report.
+-  Modular code structure to facilitate future enhancements and maintenance.
+-  Comprehensive README file with usage instructions and examples.
+-  Create a correct .gitignore file for the repository.
+-  License the project under GPL-3.0-or-later.
+-  Host the project on GitHub for version control and collaboration.
+-  Include error handling for common DNS lookup issues.
+-  Write unit tests to ensure the correctness of the DNS checking functions.
+-  Ensure compatibility with Python 3.11 and above.

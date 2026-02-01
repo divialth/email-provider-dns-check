@@ -1,0 +1,27 @@
+{{ summary }} - report for domain {{ domain }} ({{ report_time }}) / provider: {{ provider_label }}
+
+{% set ns = namespace(rows=[], last_record_type=None) %}
+{% for result in results %}
+{%   if ns.last_record_type and result.record_type != ns.last_record_type %}
+{%     set ns.rows = ns.rows + [["", "", "", ""]] %}
+{%   endif %}
+{%   set details = stringify_details(result.details) if result.details else "" %}
+{%   if result.record_type == "DKIM" and result.selector_rows %}
+{%     set details = "" %}
+{%   endif %}
+{%   set ns.rows = ns.rows + [[result.record_type, result.status, result.message, details]] %}
+{%   if result.record_type == "DKIM" and result.selector_rows %}
+{%     for selector in result.selector_rows %}
+{%       set selector_details = stringify_details(selector.details) if selector.details else "" %}
+{%       set ns.rows = ns.rows + [[result.record_type, selector.status, selector.message, selector_details]] %}
+{%     endfor %}
+{%   endif %}
+{%   set ns.last_record_type = result.record_type %}
+{% endfor %}
+{% set rows = ns.rows %}
+{% set widths = build_table_widths(table_headers, rows) %}
+{{ format_row(table_headers, widths) }}
+{{ build_table_separator(widths) }}
+{% for row in rows %}
+{{   format_row(row, widths) }}
+{% endfor %}
