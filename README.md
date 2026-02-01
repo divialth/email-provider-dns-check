@@ -19,14 +19,31 @@ domain, provider name, provider version, and a report timestamp (UTC).
 - `requirements.txt` and `requirements-dev.txt` are auto-generated from `pyproject.toml`.
 
 ## Installation
+Never run `pip install` as root. Use a virtualenv or `--user` instead.
+
+### Install in a virtualenv
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Install directly from the Git repo with pip
+Alternate install directly from the Git repo:
+```bash
+pip install --user "git+https://github.com/divialth/email-provider-dns-check.git"
+# optional pin:
+pip install --user "git+https://github.com/divialth/email-provider-dns-check.git@v0.2.0"
+```
+
+### Run from a checkout without installing
 If you already have the dependencies installed and want to run without installing the package,
-use the wrapper script from the repo root:
+clone the repo and use the wrapper script from the repo root:
+```bash
+git clone https://github.com/divialth/email-provider-dns-check.git
+cd email-provider-dns-check
+```
+Then run:
 ```bash
 ./provider-dns-check --list-providers
 ./provider-dns-check example.com --provider dummy_provider
