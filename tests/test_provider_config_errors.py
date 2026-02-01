@@ -33,6 +33,15 @@ def test_load_provider_missing_version_raises():
         provider_config._load_provider_from_data("bad", {"name": "Bad", "records": {}})
 
 
+def test_external_config_dirs_falls_back_to_home(monkeypatch):
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+
+    dirs = provider_config.external_config_dirs()
+
+    expected = provider_config.Path.home() / ".config" / provider_config.CONFIG_DIR_NAME
+    assert dirs[0] == expected
+
+
 def test_load_provider_records_optional():
     data = {"version": "1", "name": "Optional Records"}
 
