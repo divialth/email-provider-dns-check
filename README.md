@@ -80,6 +80,10 @@ provider-dns-check --provider-show mailbox.org
 - `--dmarc-rua-mailto URI`: require a DMARC rua mailto URI (repeatable; overrides provider defaults)
 - `--dmarc-ruf-mailto URI`: require a DMARC ruf mailto URI (repeatable; overrides provider defaults)
 - `--dmarc-policy {none,quarantine,reject}`: DMARC p= (defaults to provider config)
+- `--dmarc-subdomain-policy {none,quarantine,reject}`: DMARC sp= (overrides provider defaults)
+- `--dmarc-adkim {r,s}`: DMARC adkim= alignment (overrides provider defaults)
+- `--dmarc-aspf {r,s}`: DMARC aspf= alignment (overrides provider defaults)
+- `--dmarc-pct 0-100`: DMARC pct= enforcement (overrides provider defaults)
 - `--spf-policy {softfail,hardfail}`: SPF terminator (~all or -all)
 - `--spf-include VALUE`: additional SPF include mechanisms (repeatable)
 - `--spf-ip4 VALUE` / `--spf-ip6 VALUE`: additional SPF ip mechanisms

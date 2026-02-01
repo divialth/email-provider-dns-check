@@ -1,3 +1,4 @@
+from argparse import ArgumentTypeError
 import json
 import logging
 from datetime import datetime, timezone
@@ -5,7 +6,13 @@ from datetime import datetime, timezone
 import pytest
 
 from provider_check.checker import RecordCheck
-from provider_check.cli import _parse_provider_vars, _parse_txt_records, _setup_logging, main
+from provider_check.cli import (
+    _parse_dmarc_pct,
+    _parse_provider_vars,
+    _parse_txt_records,
+    _setup_logging,
+    main,
+)
 from provider_check.provider_config import ProviderConfig, ProviderVariable
 
 
@@ -42,6 +49,16 @@ def test_parse_provider_vars_rejects_invalid():
         _parse_provider_vars(["name="])
     with pytest.raises(ValueError):
         _parse_provider_vars(["dup=1", "dup=2"])
+
+
+def test_parse_dmarc_pct_rejects_non_integer():
+    with pytest.raises(ArgumentTypeError):
+        _parse_dmarc_pct("n/a")
+
+
+def test_parse_dmarc_pct_rejects_out_of_range():
+    with pytest.raises(ArgumentTypeError):
+        _parse_dmarc_pct("101")
 
 
 def test_domain_required_without_list_providers(capsys):

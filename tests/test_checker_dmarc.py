@@ -91,6 +91,176 @@ def test_dmarc_missing_required_rua_fails():
     assert dmarc_result.status == "FAIL"
 
 
+def test_dmarc_required_tag_overrides_merge():
+    provider = ProviderConfig(
+        provider_id="dmarc_override_tags",
+        name="DMARC Override Tags Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            required_rua=[],
+            required_ruf=[],
+            required_tags={"adkim": "s", "aspf": "s"},
+        ),
+    )
+    resolver = FakeResolver(
+        txt={"_dmarc.example.test": ["v=DMARC1;p=reject;adkim=r;aspf=s;pct=50;sp=reject"]}
+    )
+
+    checker = DNSChecker(
+        "example.test",
+        provider,
+        resolver=resolver,
+        strict=False,
+        dmarc_required_tags={"adkim": "r", "pct": "50", "sp": "reject"},
+    )
+    result = checker.check_dmarc()
+
+    assert result.status == "PASS"
+
+
+def test_dmarc_override_required_tag_missing_fails():
+    provider = ProviderConfig(
+        provider_id="dmarc_override_tag_missing",
+        name="DMARC Override Tag Missing Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            required_rua=[],
+            required_ruf=[],
+            required_tags={},
+        ),
+    )
+    resolver = FakeResolver(txt={"_dmarc.example.test": ["v=DMARC1;p=reject"]})
+
+    checker = DNSChecker(
+        "example.test",
+        provider,
+        resolver=resolver,
+        strict=False,
+        dmarc_required_tags={"sp": "reject"},
+    )
+    result = checker.check_dmarc()
+
+    assert result.status == "FAIL"
+
+
+def test_dmarc_rua_size_suffix_matches_required():
+    provider = ProviderConfig(
+        provider_id="dmarc_rua_size",
+        name="DMARC RUA Size Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            required_rua=["mailto:agg@example.test"],
+            required_ruf=[],
+            required_tags={},
+        ),
+    )
+    resolver = FakeResolver(
+        txt={"_dmarc.example.test": ["v=DMARC1;p=reject;rua=mailto:agg@example.test!10m"]}
+    )
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
+    result = checker.check_dmarc()
+
+    assert result.status == "PASS"
+
+
+def test_dmarc_rua_size_suffix_required_rejects_missing():
+    provider = ProviderConfig(
+        provider_id="dmarc_rua_size_required",
+        name="DMARC RUA Size Required Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            required_rua=["mailto:agg@example.test!10m"],
+            required_ruf=[],
+            required_tags={},
+        ),
+    )
+    resolver = FakeResolver(
+        txt={"_dmarc.example.test": ["v=DMARC1;p=reject;rua=mailto:agg@example.test"]}
+    )
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    result = checker.check_dmarc()
+
+    assert result.status == "FAIL"
+
+
+def test_dmarc_rua_non_mailto_fails_when_required():
+    provider = ProviderConfig(
+        provider_id="dmarc_rua_non_mailto",
+        name="DMARC RUA Non-Mailto Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            required_rua=["mailto:agg@example.test"],
+            required_ruf=[],
+            required_tags={},
+        ),
+    )
+    resolver = FakeResolver(
+        txt={"_dmarc.example.test": ["v=DMARC1;p=reject;rua=https://example.test"]}
+    )
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
+    result = checker.check_dmarc()
+
+    assert result.status == "FAIL"
+
+
+def test_dmarc_strict_rua_extra_entry_fails():
+    provider = ProviderConfig(
+        provider_id="dmarc_strict_rua_extra",
+        name="DMARC Strict RUA Extra Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=DMARCConfig(
+            default_policy="reject",
+            required_rua=["mailto:agg@example.test"],
+            required_ruf=[],
+            required_tags={},
+        ),
+    )
+    resolver = FakeResolver(
+        txt={
+            "_dmarc.example.test": [
+                "v=DMARC1;p=reject;rua=mailto:agg@example.test,mailto:extra@example.test"
+            ]
+        }
+    )
+
+    checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
+    result = checker.check_dmarc()
+
+    assert result.status == "FAIL"
+
+
 def test_dmarc_required_ruf_passes():
     provider = ProviderConfig(
         provider_id="dmarc_required_ruf",

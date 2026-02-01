@@ -34,6 +34,7 @@ class DNSChecker:
         dmarc_rua_mailto: Optional[Iterable[str]] = None,
         dmarc_ruf_mailto: Optional[Iterable[str]] = None,
         dmarc_policy: Optional[str] = None,
+        dmarc_required_tags: Optional[Dict[str, str]] = None,
         spf_policy: str = "hardfail",
         additional_spf_includes: Optional[Iterable[str]] = None,
         additional_spf_ip4: Optional[Iterable[str]] = None,
@@ -56,6 +57,14 @@ class DNSChecker:
         self._dmarc_rua_override = bool(self.dmarc_rua_mailto)
         self.dmarc_ruf_mailto = self._normalize_mailto_list(dmarc_ruf_mailto or [])
         self._dmarc_ruf_override = bool(self.dmarc_ruf_mailto)
+        self.dmarc_required_tags: Dict[str, str] = {}
+        if provider.dmarc:
+            self.dmarc_required_tags = {
+                str(key).lower(): str(value) for key, value in provider.dmarc.required_tags.items()
+            }
+        if dmarc_required_tags:
+            for key, value in dmarc_required_tags.items():
+                self.dmarc_required_tags[str(key).lower()] = str(value)
         self.spf_policy = spf_policy.lower()
         self.additional_spf_includes = list(additional_spf_includes or [])
         self.additional_spf_ip4 = list(additional_spf_ip4 or [])
@@ -702,9 +711,9 @@ class DNSChecker:
         if ruf_required:
             ruf_value = ",".join(required_ruf) if required_ruf else "<required>"
             parts.append(f"ruf={ruf_value}")
-        if self.provider.dmarc and self.provider.dmarc.required_tags:
-            for key in sorted(self.provider.dmarc.required_tags.keys()):
-                parts.append(f"{key}={self.provider.dmarc.required_tags[key]}")
+        if self.dmarc_required_tags:
+            for key in sorted(self.dmarc_required_tags.keys()):
+                parts.append(f"{key}={self.dmarc_required_tags[key]}")
         return ";".join(parts)
 
     @staticmethod
@@ -715,6 +724,36 @@ class DNSChecker:
     @staticmethod
     def _parse_mailto_entries(raw_value: str) -> List[str]:
         return [entry.strip().lower() for entry in raw_value.split(",") if entry.strip()]
+
+    @staticmethod
+    def _matches_dmarc_uri(required: str, found: str) -> bool:
+        if required == found:
+            return True
+        if not required.startswith("mailto:") or not found.startswith("mailto:"):
+            return False
+        if "!" in required or "?" in required:
+            return False
+        if not found.startswith(required):
+            return False
+        suffix = found[len(required) :]
+        return not suffix or suffix[0] in {"!", "?"}
+
+    def _required_dmarc_uris_present(self, required: List[str], found: List[str]) -> bool:
+        return all(
+            any(self._matches_dmarc_uri(required_value, entry) for entry in found)
+            for required_value in required
+        )
+
+    def _strict_dmarc_uris_match(self, required: List[str], found: List[str]) -> bool:
+        for required_value in required:
+            if not any(self._matches_dmarc_uri(required_value, entry) for entry in found):
+                return False
+        for entry in found:
+            if not any(
+                self._matches_dmarc_uri(required_value, entry) for required_value in required
+            ):
+                return False
+        return True
 
     def check_dmarc(self) -> RecordCheck:
         if not self.provider.dmarc:
@@ -740,9 +779,7 @@ class DNSChecker:
                 "No DMARC record found",
                 {"expected": expected},
             )
-        required_tags = {
-            key.lower(): value.lower() for key, value in self.provider.dmarc.required_tags.items()
-        }
+        required_tags = {key: value.lower() for key, value in self.dmarc_required_tags.items()}
 
         for record in txt_records:
             if self.strict:
@@ -756,12 +793,16 @@ class DNSChecker:
                 if rua_required:
                     if not rua_entries:
                         continue
-                    if required_rua and set(rua_entries) != set(required_rua):
+                    if required_rua and not self._strict_dmarc_uris_match(
+                        required_rua, rua_entries
+                    ):
                         continue
                 if ruf_required:
                     if not ruf_entries:
                         continue
-                    if required_ruf and set(ruf_entries) != set(required_ruf):
+                    if required_ruf and not self._strict_dmarc_uris_match(
+                        required_ruf, ruf_entries
+                    ):
                         continue
                 missing_tags = {
                     key: value
@@ -798,12 +839,16 @@ class DNSChecker:
             if rua_required:
                 if not rua_entries:
                     continue
-                if required_rua and not all(addr in rua_entries for addr in required_rua):
+                if required_rua and not self._required_dmarc_uris_present(
+                    required_rua, rua_entries
+                ):
                     continue
             if ruf_required:
                 if not ruf_entries:
                     continue
-                if required_ruf and not all(addr in ruf_entries for addr in required_ruf):
+                if required_ruf and not self._required_dmarc_uris_present(
+                    required_ruf, ruf_entries
+                ):
                     continue
 
             missing_tags = {

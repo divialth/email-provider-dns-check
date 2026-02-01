@@ -1,0 +1,13 @@
+---
+extends: microsoft_365
+name: Microsoft 365 (+ DMARC)
+version: 1
+short_description: "Microsoft 365 email checks with DMARC."
+long_description: |
+  Same MX/SPF/TXT checks as Microsoft 365 base, plus DMARC validation.
+  The DMARC policy defaults to p=reject; rua/ruf are optional unless overridden.
+records:
+  dmarc:
+    default_policy: reject
+    rua_required: false
+    ruf_required: false

@@ -77,6 +77,9 @@ def build_parser() -> argparse.ArgumentParser:
     provider_group = parser.add_argument_group("Provider selection")
     output_group = parser.add_argument_group("Output")
     validation_group = parser.add_argument_group("Validation options")
+    dmarc_group = parser.add_argument_group("Validation options DMARC")
+    spf_group = parser.add_argument_group("SPF options")
+    txt_group = parser.add_argument_group("TXT options")
     logging_group = parser.add_argument_group("Logging")
     misc_group = parser.add_argument_group("Misc")
 
@@ -127,70 +130,98 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enforce exact provider configuration (no extras allowed)",
     )
-    validation_group.add_argument(
+    dmarc_group.add_argument(
         "--dmarc-rua-mailto",
         dest="dmarc_rua_mailto",
         action="append",
         default=[],
         help="DMARC rua mailto URI to require (repeatable; mailto: prefix optional)",
     )
-    validation_group.add_argument(
+    dmarc_group.add_argument(
         "--dmarc-ruf-mailto",
         dest="dmarc_ruf_mailto",
         action="append",
         default=[],
         help="DMARC ruf mailto URI to require (repeatable; mailto: prefix optional)",
     )
-    validation_group.add_argument(
+    dmarc_group.add_argument(
         "--dmarc-policy",
         dest="dmarc_policy",
         choices=["none", "quarantine", "reject"],
         default=None,
         help="DMARC policy (p=). Defaults to provider config.",
     )
-    validation_group.add_argument(
+    dmarc_group.add_argument(
+        "--dmarc-subdomain-policy",
+        dest="dmarc_subdomain_policy",
+        choices=["none", "quarantine", "reject"],
+        default=None,
+        help="DMARC subdomain policy (sp=). Overrides provider defaults.",
+    )
+    dmarc_group.add_argument(
+        "--dmarc-adkim",
+        dest="dmarc_adkim",
+        choices=["r", "s"],
+        default=None,
+        help="DMARC DKIM alignment mode (adkim=). Overrides provider defaults.",
+    )
+    dmarc_group.add_argument(
+        "--dmarc-aspf",
+        dest="dmarc_aspf",
+        choices=["r", "s"],
+        default=None,
+        help="DMARC SPF alignment mode (aspf=). Overrides provider defaults.",
+    )
+    dmarc_group.add_argument(
+        "--dmarc-pct",
+        dest="dmarc_pct",
+        type=_parse_dmarc_pct,
+        default=None,
+        help="DMARC enforcement percentage (pct=). Overrides provider defaults.",
+    )
+    spf_group.add_argument(
         "--spf-policy",
         dest="spf_policy",
         choices=["softfail", "hardfail"],
         default="hardfail",
         help="SPF policy: softfail (~all) or hardfail (-all)",
     )
-    validation_group.add_argument(
+    spf_group.add_argument(
         "--spf-include",
         dest="spf_includes",
         action="append",
         default=[],
         help="Additional SPF include mechanisms",
     )
-    validation_group.add_argument(
+    spf_group.add_argument(
         "--spf-ip4",
         dest="spf_ip4",
         action="append",
         default=[],
         help="Additional SPF ip4 mechanisms",
     )
-    validation_group.add_argument(
+    spf_group.add_argument(
         "--spf-ip6",
         dest="spf_ip6",
         action="append",
         default=[],
         help="Additional SPF ip6 mechanisms",
     )
-    validation_group.add_argument(
+    txt_group.add_argument(
         "--txt",
         dest="txt_records",
         action="append",
         default=[],
         help="Require TXT record in the form name=value (repeatable)",
     )
-    validation_group.add_argument(
+    txt_group.add_argument(
         "--txt-verification",
         dest="txt_verification_records",
         action="append",
         default=[],
         help="Require TXT verification record in the form name=value (repeatable)",
     )
-    validation_group.add_argument(
+    txt_group.add_argument(
         "--skip-txt-verification",
         action="store_true",
         help="Skip provider-required TXT verification checks",
@@ -217,6 +248,16 @@ def _parse_txt_records(raw_records: List[str]) -> dict[str, list[str]]:
             raise ValueError(f"TXT record '{item}' must include both name and value")
         required.setdefault(name, []).append(value)
     return required
+
+
+def _parse_dmarc_pct(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("DMARC pct must be an integer between 0 and 100") from exc
+    if parsed < 0 or parsed > 100:
+        raise argparse.ArgumentTypeError("DMARC pct must be between 0 and 100")
+    return parsed
 
 
 def _parse_provider_vars(raw_vars: List[str]) -> dict[str, str]:
@@ -303,6 +344,16 @@ def main(argv: List[str] | None = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
 
+    dmarc_required_tags = {}
+    if args.dmarc_subdomain_policy:
+        dmarc_required_tags["sp"] = args.dmarc_subdomain_policy
+    if args.dmarc_adkim:
+        dmarc_required_tags["adkim"] = args.dmarc_adkim
+    if args.dmarc_aspf:
+        dmarc_required_tags["aspf"] = args.dmarc_aspf
+    if args.dmarc_pct is not None:
+        dmarc_required_tags["pct"] = str(args.dmarc_pct)
+
     checker = DNSChecker(
         args.domain,
         provider,
@@ -310,6 +361,7 @@ def main(argv: List[str] | None = None) -> int:
         dmarc_rua_mailto=args.dmarc_rua_mailto,
         dmarc_ruf_mailto=args.dmarc_ruf_mailto,
         dmarc_policy=args.dmarc_policy,
+        dmarc_required_tags=dmarc_required_tags,
         spf_policy=args.spf_policy,
         additional_spf_includes=args.spf_includes,
         additional_spf_ip4=args.spf_ip4,
