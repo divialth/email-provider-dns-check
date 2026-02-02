@@ -1,7 +1,7 @@
 ---
 name: mailbox.org
 version: 1
-short_description: "Recommended DNS records for mailbox.org custom domain email hosting"
+short_description: "DNS records for mailbox.org custom domain email hosting"
 long_description: |
   Check for mailbox.org custom-domain DNS records for MX, SPF, DKIM
   and DMARC as defined in the official mailbox.org setup guidelines.
@@ -25,6 +25,21 @@ records:
       - MBO0003
       - MBO0004
     target_template: "{selector}._domainkey.mailbox.org."
+  cname:
+    records_optional:
+      autoconfig: auto.mailbox.org.
+  srv:
+    records_optional:
+      _autodiscover._tcp:
+        - priority: 0
+          weight: 0
+          port: 443
+          target: auto.mailbox.org.
+      _hkps._tcp:
+        - priority: 1
+          weight: 1
+          port: 443
+          target: pgp.mailbox.org.
   txt:
     # Provider requires a user-supplied TXT record for domain verification.
     # Users must provide the name/value via --txt-verification.

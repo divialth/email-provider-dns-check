@@ -89,6 +89,26 @@ def test_format_detection_report_includes_vars_and_na_score():
     assert "vars: tenant=acme" in output
 
 
+def test_format_detection_report_includes_optional_bonus():
+    candidate = DetectionCandidate(
+        provider_id="dummy",
+        provider_name="Dummy Provider",
+        provider_version="1",
+        inferred_variables={},
+        score=10,
+        max_score=10,
+        score_ratio=1.0,
+        status_counts={"PASS": 1, "WARN": 0, "FAIL": 0, "UNKNOWN": 0},
+        record_statuses={"MX": "PASS"},
+        core_pass_records=["MX"],
+        optional_bonus=3,
+    )
+    report = _report(candidate, status="PASS", ambiguous=False, selected=True)
+    output = _format_detection_report(report, "2026-02-02 12:00")
+
+    assert "optional bonus: 3" in output
+
+
 def test_build_detection_payload_without_selected_provider():
     report = _report(None, status="UNKNOWN", ambiguous=False, selected=False)
     payload = _build_detection_payload(report, "2026-02-02 12:00")

@@ -83,9 +83,11 @@ class CNAMEConfig:
 
     Attributes:
         records (Dict[str, str]): Mapping of record name to expected target.
+        records_optional (Dict[str, str]): Optional record mapping.
     """
 
     records: Dict[str, str]
+    records_optional: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -111,9 +113,11 @@ class SRVConfig:
 
     Attributes:
         records (Dict[str, List[SRVRecord]]): SRV records keyed by name.
+        records_optional (Dict[str, List[SRVRecord]]): Optional SRV records keyed by name.
     """
 
     records: Dict[str, List[SRVRecord]]
+    records_optional: Dict[str, List[SRVRecord]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -650,6 +654,9 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         cname_records_raw = _require_mapping(
             provider_id, "cname records", cname_section.get("records", {})
         )
+        cname_optional_raw = _require_mapping(
+            provider_id, "cname records_optional", cname_section.get("records_optional", {})
+        )
         cname_records: Dict[str, str] = {}
         for name, target in cname_records_raw.items():
             if target is None or isinstance(target, (dict, list)):
@@ -657,13 +664,23 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
                     f"Provider config {provider_id} cname record '{name}' must be a string"
                 )
             cname_records[str(name)] = str(target)
-        cname = CNAMEConfig(records=cname_records)
+        cname_optional_records: Dict[str, str] = {}
+        for name, target in cname_optional_raw.items():
+            if target is None or isinstance(target, (dict, list)):
+                raise ValueError(
+                    f"Provider config {provider_id} cname records_optional '{name}' must be a string"
+                )
+            cname_optional_records[str(name)] = str(target)
+        cname = CNAMEConfig(records=cname_records, records_optional=cname_optional_records)
 
     srv = None
     if "srv" in records:
         srv_section = _require_mapping(provider_id, "srv", records.get("srv"))
         srv_records_raw = _require_mapping(
             provider_id, "srv records", srv_section.get("records", {})
+        )
+        srv_optional_raw = _require_mapping(
+            provider_id, "srv records_optional", srv_section.get("records_optional", {})
         )
         srv_records: Dict[str, List[SRVRecord]] = {}
         for name, entries in srv_records_raw.items():
@@ -691,7 +708,33 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
                     )
                 )
             srv_records[str(name)] = parsed_entries
-        srv = SRVConfig(records=srv_records)
+        srv_optional_records: Dict[str, List[SRVRecord]] = {}
+        for name, entries in srv_optional_raw.items():
+            entries_list = _require_list(provider_id, f"srv records_optional.{name}", entries)
+            parsed_entries: List[SRVRecord] = []
+            for entry in entries_list:
+                if not isinstance(entry, dict):
+                    raise ValueError(
+                        f"Provider config {provider_id} srv records_optional.{name} entries must be mappings"
+                    )
+                priority = entry.get("priority")
+                weight = entry.get("weight")
+                port = entry.get("port")
+                target = entry.get("target")
+                if priority is None or weight is None or port is None or target is None:
+                    raise ValueError(
+                        f"Provider config {provider_id} srv records_optional.{name} entries require priority, weight, port, and target"
+                    )
+                parsed_entries.append(
+                    SRVRecord(
+                        priority=int(priority),
+                        weight=int(weight),
+                        port=int(port),
+                        target=str(target),
+                    )
+                )
+            srv_optional_records[str(name)] = parsed_entries
+        srv = SRVConfig(records=srv_records, records_optional=srv_optional_records)
 
     txt = None
     if "txt" in records:
@@ -890,7 +933,11 @@ def resolve_provider_config(
             records={
                 _format_string(name, resolved): _format_string(target, resolved)
                 for name, target in provider.cname.records.items()
-            }
+            },
+            records_optional={
+                _format_string(name, resolved): _format_string(target, resolved)
+                for name, target in provider.cname.records_optional.items()
+            },
         )
 
     srv = None
@@ -906,7 +953,18 @@ def resolve_provider_config(
                 )
                 for entry in entries
             ]
-        srv = SRVConfig(records=srv_records)
+        srv_optional_records: Dict[str, List[SRVRecord]] = {}
+        for name, entries in provider.srv.records_optional.items():
+            srv_optional_records[_format_string(name, resolved)] = [
+                SRVRecord(
+                    priority=int(entry.priority),
+                    weight=int(entry.weight),
+                    port=int(entry.port),
+                    target=_format_string(entry.target, resolved),
+                )
+                for entry in entries
+            ]
+        srv = SRVConfig(records=srv_records, records_optional=srv_optional_records)
 
     txt = None
     if provider.txt:

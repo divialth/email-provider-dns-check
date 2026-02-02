@@ -99,6 +99,7 @@ def _build_detection_payload(report: DetectionReport, report_time: str) -> dict:
                 "score": candidate.score,
                 "max_score": candidate.max_score,
                 "score_ratio": round(candidate.score_ratio, 4),
+                "optional_bonus": candidate.optional_bonus,
                 "status_counts": dict(candidate.status_counts),
                 "record_statuses": dict(candidate.record_statuses),
                 "core_pass_records": list(candidate.core_pass_records),
@@ -168,6 +169,8 @@ def _format_detection_report(report: DetectionReport, report_time: str) -> str:
                     f"{key}={value}" for key, value in sorted(candidate.record_statuses.items())
                 )
                 details.append(f"records: {record_summary}")
+            if candidate.optional_bonus:
+                details.append(f"optional bonus: {candidate.optional_bonus}")
             if candidate.inferred_variables:
                 vars_summary = ", ".join(
                     f"{key}={value}" for key, value in sorted(candidate.inferred_variables.items())

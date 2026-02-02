@@ -128,6 +128,7 @@ def _serialize_results(results: List[RecordCheck]) -> List[dict]:
                 "status": result.status,
                 "message": result.message,
                 "details": details,
+                "optional": result.optional,
                 "selectors": selectors,
                 "selector_rows": selector_rows,
             }
@@ -296,6 +297,7 @@ def build_json_payload(
                 "status": result.status,
                 "message": result.message,
                 "details": result.details,
+                "optional": result.optional,
             }
             for result in results
         ],

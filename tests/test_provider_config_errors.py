@@ -110,6 +110,38 @@ def test_load_provider_dkim_cname_requires_target_template():
         provider_config._load_provider_from_data("bad", data)
 
 
+def test_load_provider_cname_optional_requires_string():
+    data = {
+        "version": "1",
+        "records": {"cname": {"records_optional": {"autoconfig": {"bad": "value"}}}},
+    }
+
+    with pytest.raises(ValueError, match="cname records_optional"):
+        provider_config._load_provider_from_data("bad", data)
+
+
+def test_load_provider_srv_optional_requires_mapping_entries():
+    data = {
+        "version": "1",
+        "records": {"srv": {"records_optional": {"_autodiscover._tcp": ["not-a-map"]}}},
+    }
+
+    with pytest.raises(ValueError, match="srv records_optional._autodiscover._tcp entries"):
+        provider_config._load_provider_from_data("bad", data)
+
+
+def test_load_provider_srv_optional_requires_priority_fields():
+    data = {
+        "version": "1",
+        "records": {
+            "srv": {"records_optional": {"_autodiscover._tcp": [{"priority": 0, "weight": 0}]}}
+        },
+    }
+
+    with pytest.raises(ValueError, match="srv records_optional._autodiscover._tcp entries require"):
+        provider_config._load_provider_from_data("bad", data)
+
+
 def test_load_provider_txt_required_values_loaded():
     data = {
         "version": "1",

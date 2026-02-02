@@ -1,6 +1,12 @@
 import provider_check.detection as detection
 from provider_check.detection import detect_providers
-from provider_check.provider_config import MXConfig, ProviderConfig, ProviderVariable, SPFConfig
+from provider_check.provider_config import (
+    CNAMEConfig,
+    MXConfig,
+    ProviderConfig,
+    ProviderVariable,
+    SPFConfig,
+)
 from tests.support import FakeResolver
 
 
@@ -77,6 +83,47 @@ def test_detect_providers_breaks_ratio_ties_by_score(monkeypatch):
     assert report.ambiguous is False
     assert report.selected is not None
     assert report.selected.provider_id == "beta"
+
+
+def test_detect_providers_breaks_ties_with_optional_bonus(monkeypatch):
+    provider_alpha = ProviderConfig(
+        provider_id="alpha",
+        name="alpha Provider",
+        version="1",
+        mx=MXConfig(hosts=["mx.shared.test."], priorities={}),
+        spf=None,
+        dkim=None,
+        cname=CNAMEConfig(records={}, records_optional={"autoconfig": "auto.alpha.test."}),
+        srv=None,
+        txt=None,
+        dmarc=None,
+        variables={},
+    )
+    provider_beta = ProviderConfig(
+        provider_id="beta",
+        name="beta Provider",
+        version="1",
+        mx=MXConfig(hosts=["mx.shared.test."], priorities={}),
+        spf=None,
+        dkim=None,
+        cname=CNAMEConfig(records={}, records_optional={"autoconfig": "auto.beta.test."}),
+        srv=None,
+        txt=None,
+        dmarc=None,
+        variables={},
+    )
+    monkeypatch.setattr(detection, "list_providers", lambda: [provider_alpha, provider_beta])
+    resolver = FakeResolver(
+        mx={"example.com": [("mx.shared.test.", 10)]},
+        cname={"autoconfig.example.com": "auto.alpha.test."},
+    )
+
+    report = detect_providers("example.com", resolver=resolver, top_n=3)
+
+    assert report.status == "PASS"
+    assert report.selected is not None
+    assert report.selected.provider_id == "alpha"
+    assert report.ambiguous is False
 
 
 def test_detect_providers_infers_variables(monkeypatch):

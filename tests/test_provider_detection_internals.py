@@ -9,6 +9,7 @@ from provider_check.provider_config import (
     SRVConfig,
     SRVRecord,
 )
+from provider_check.checker import RecordCheck
 
 
 class _FailingResolver:
@@ -248,3 +249,34 @@ def test_detect_providers_skips_empty_results(monkeypatch):
     monkeypatch.setattr(detection, "list_providers", lambda: [provider])
     report = detection.detect_providers("example.com", resolver=_Resolver())
     assert report.candidates == []
+
+
+def test_detect_providers_ignores_optional_results(monkeypatch):
+    provider = _provider(
+        provider_id="optional",
+        name="Optional Provider",
+        mx=MXConfig(hosts=["mx.optional.test."], priorities={}),
+    )
+
+    class _Checker:
+        def run_checks(self):
+            return [
+                RecordCheck("MX", "PASS", "ok", {"found": ["mx.optional.test."]}),
+                RecordCheck(
+                    "CNAME",
+                    "WARN",
+                    "CNAME optional records missing",
+                    {"missing": ["autoconfig.example.com"]},
+                    optional=True,
+                ),
+            ]
+
+    monkeypatch.setattr(detection, "list_providers", lambda: [provider])
+    monkeypatch.setattr(detection, "DNSChecker", lambda *_args, **_kwargs: _Checker())
+
+    report = detection.detect_providers("example.com", resolver=_Resolver())
+
+    assert report.candidates
+    candidate = report.candidates[0]
+    assert candidate.status_counts["WARN"] == 1
+    assert candidate.record_statuses == {"CNAME_OPT": "WARN", "MX": "PASS"}

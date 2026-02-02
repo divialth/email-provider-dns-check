@@ -43,6 +43,7 @@ class DetectionCandidate:
         status_counts (Dict[str, int]): Counts of PASS/WARN/FAIL/UNKNOWN statuses.
         record_statuses (Dict[str, str]): Status per record type.
         core_pass_records (List[str]): Core record types that passed.
+        optional_bonus (int): Optional record bonus used as a tie-breaker.
     """
 
     provider_id: str
@@ -55,6 +56,7 @@ class DetectionCandidate:
     status_counts: Dict[str, int]
     record_statuses: Dict[str, str]
     core_pass_records: List[str]
+    optional_bonus: int = 0
 
 
 @dataclasses.dataclass(frozen=True)
@@ -394,6 +396,20 @@ def _score_results(results: List[RecordCheck]) -> tuple[int, int, float, List[st
     return score, max_score, ratio, core_pass_records, status_counts
 
 
+def _optional_bonus(results: List[RecordCheck]) -> int:
+    """Calculate a tie-breaker bonus from optional PASS results.
+
+    Args:
+        results (List[RecordCheck]): Optional DNS check results.
+
+    Returns:
+        int: Bonus score to apply as a tie-breaker.
+    """
+    return sum(
+        TYPE_WEIGHTS.get(result.record_type, 1) for result in results if result.status == "PASS"
+    )
+
+
 def _same_ratio(left: DetectionCandidate, right: DetectionCandidate) -> bool:
     """Compare candidates by score ratio without floating point drift.
 
@@ -418,6 +434,19 @@ def _same_score(left: DetectionCandidate, right: DetectionCandidate) -> bool:
         bool: True if both score and max score match.
     """
     return left.score == right.score and left.max_score == right.max_score
+
+
+def _same_optional_bonus(left: DetectionCandidate, right: DetectionCandidate) -> bool:
+    """Check whether two candidates have identical optional bonuses.
+
+    Args:
+        left (DetectionCandidate): First candidate.
+        right (DetectionCandidate): Second candidate.
+
+    Returns:
+        bool: True if both optional bonuses match.
+    """
+    return left.optional_bonus == right.optional_bonus
 
 
 def detect_providers(
@@ -450,12 +479,18 @@ def detect_providers(
             continue
         checker = DNSChecker(normalized_domain, resolved_provider, resolver=resolver, strict=False)
         results = checker.run_checks()
-        if not results:
+        required_results = [result for result in results if not result.optional]
+        optional_results = [result for result in results if result.optional]
+        if not required_results:
             continue
-        score, max_score, ratio, core_pass_records, status_counts = _score_results(results)
+        score, max_score, ratio, core_pass_records, status_counts = _score_results(required_results)
         if not core_pass_records:
             continue
-        record_statuses = {result.record_type: result.status for result in results}
+        optional_bonus = _optional_bonus(optional_results)
+        record_statuses = {result.record_type: result.status for result in required_results}
+        for result in optional_results:
+            record_statuses[f"{result.record_type}_OPT"] = result.status
+            status_counts[result.status] = status_counts.get(result.status, 0) + 1
         candidates.append(
             DetectionCandidate(
                 provider_id=provider.provider_id,
@@ -465,13 +500,17 @@ def detect_providers(
                 score=score,
                 max_score=max_score,
                 score_ratio=ratio,
+                optional_bonus=optional_bonus,
                 status_counts=status_counts,
                 record_statuses=record_statuses,
                 core_pass_records=sorted(core_pass_records),
             )
         )
 
-    candidates.sort(key=lambda item: (item.score_ratio, item.score, item.provider_id), reverse=True)
+    candidates.sort(
+        key=lambda item: (item.score_ratio, item.score, item.optional_bonus, item.provider_id),
+        reverse=True,
+    )
     top_candidates = candidates[: max(top_n, 0)]
     selected: Optional[DetectionCandidate] = None
     ambiguous = False
@@ -481,6 +520,7 @@ def detect_providers(
             len(top_candidates) > 1
             and _same_ratio(top_candidates[0], top_candidates[1])
             and _same_score(top_candidates[0], top_candidates[1])
+            and _same_optional_bonus(top_candidates[0], top_candidates[1])
         ):
             ambiguous = True
             selected = None

@@ -1,9 +1,9 @@
 # Email provider custom domain DNS checker
 
-CLI tool to verify that a domain's DNS records match a selected email provider's recommended
-configuration (MX, SPF, DKIM, DMARC). Provider rules are stored as YAML files, so adding a new
-provider is as easy as dropping in another config file. All output formats include the validated
-domain, provider name, provider version, and a report timestamp (UTC).
+CLI tool to verify that a domain's DNS records match a selected email provider's configuration
+(MX, SPF, DKIM, DMARC). Provider rules are stored as YAML files, so adding a new provider is as
+easy as dropping in another config file. All output formats include the validated domain, provider
+name, provider version, and a report timestamp (UTC).
 
 ## Features
 - Supports multiple providers via YAML config files
@@ -219,54 +219,100 @@ records:
 
 ### MX fields
 MX configs can validate hostnames and (optionally) priorities:
-- `hosts`: list of required MX hostnames
-- `records`: list of `{host, priority}` entries to enforce priorities
-- `priorities`: mapping of `host: priority` (alternate form)
+
+| Field        | Description                                               |
+| ------------ | --------------------------------------------------------- |
+| `hosts`      | List of required MX hostnames.                            |
+| `records`    | List of `{host, priority}` entries to enforce priorities. |
+| `priorities` | Mapping of `host: priority` (alternate form).             |
 
 ### SPF fields
 SPF configs can include additional mechanisms and modifiers beyond includes and IP ranges:
-- `required_includes`: list of required include values (without the `include:` prefix)
-- `strict_record`: exact SPF string to enforce in strict mode
-- `required_mechanisms`: list of required SPF mechanism tokens (e.g., `a`, `mx:mail.example`, `exists:%{i}.spf.example`)
-- `allowed_mechanisms`: list of additional mechanism tokens allowed in standard mode
-- `required_modifiers`: mapping of SPF modifiers that must match exact values (e.g., `redirect`, `exp`)
+
+| Field                 | Description                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| `required_includes`   | List of required include values (without the `include:` prefix).                         |
+| `strict_record`       | Exact SPF string to enforce in strict mode.                                              |
+| `required_mechanisms` | Required SPF mechanism tokens (e.g., `a`, `mx:mail.example`, `exists:%{i}.spf.example`). |
+| `allowed_mechanisms`  | Additional mechanism tokens allowed in standard mode.                                    |
+| `required_modifiers`  | Mapping of SPF modifiers that must match exact values (e.g., `redirect`, `exp`).         |
 
 ### DMARC fields
 DMARC configs can optionally enforce more than just `p=` and `rua=`/`ruf=`:
-- `default_policy`: default policy if `--dmarc-policy` is not provided
-- `required_rua`: list of required rua URIs (for providers with fixed aggregate destinations; `{domain}` is supported)
-- `required_ruf`: list of required ruf URIs (for providers with fixed forensic destinations; `{domain}` is supported)
-- `required_tags`: mapping of additional DMARC tags that must match exact values
-- `rua_required`: require a rua tag in DMARC records (default: false)
-- `ruf_required`: require a ruf tag in DMARC records (default: false)
+
+| Field            | Description                                                             |
+| ---------------- | ----------------------------------------------------------------------- |
+| `default_policy` | Default policy if `--dmarc-policy` is not provided.                     |
+| `required_rua`   | Required rua URIs (fixed aggregate destinations; `{domain}` supported). |
+| `required_ruf`   | Required ruf URIs (fixed forensic destinations; `{domain}` supported).  |
+| `required_tags`  | Mapping of additional DMARC tags that must match exact values.          |
+| `rua_required`   | Require a rua tag in DMARC records (default: false).                    |
+| `ruf_required`   | Require a ruf tag in DMARC records (default: false).                    |
 
 ### DKIM fields
 DKIM configs can validate either CNAME targets or TXT record values:
-- `selectors`: list of DKIM selectors to validate
-- `record_type`: `cname` (hosted) or `txt` (self-hosted)
-- `target_template`: CNAME target template (required when `record_type: cname`)
-- `txt_values`: mapping of `selector: value` to enforce when `record_type: txt`
+
+| Field             | Description                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| `selectors`       | List of DKIM selectors to validate.                              |
+| `record_type`     | `cname` (hosted) or `txt` (self-hosted).                         |
+| `target_template` | CNAME target template (required when `record_type: cname`).      |
+| `txt_values`      | Mapping of `selector: value` to enforce when `record_type: txt`. |
 
 ### CNAME fields
 CNAME configs validate arbitrary CNAME records:
-- `records`: mapping of `name: target` for required CNAME values
+
+| Field              | Description                                                                 |
+| ------------------ | --------------------------------------------------------------------------- |
+| `records`          | Mapping of `name: target` for required CNAME values.                        |
+| `records_optional` | Mapping of `name: target` for optional CNAME values (missing entries WARN; mismatches FAIL). |
 
 ### SRV fields
 SRV configs validate required SRV records:
-- `records`: mapping of `name: [entries...]`
-- Each entry requires `priority`, `weight`, `port`, and `target`
+
+| Field              | Description                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| `records`          | Mapping of `name: [entries...]` (each entry requires `priority`, `weight`, `port`, `target`). |
+| `records_optional` | Mapping of `name: [entries...]` for optional SRV values (missing entries WARN; mismatches FAIL). |
 
 ### TXT fields
 TXT configs let providers require arbitrary validation records:
-- `required`: mapping of `name: [values...]` for required TXT values
-- `verification_required`: whether a user-supplied TXT verification record is required (warns if missing unless `--skip-txt-verification`)
+
+| Field                   | Description                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `required`              | Mapping of `name: [values...]` for required TXT values.                                                          |
+| `verification_required` | Whether a user-supplied TXT verification record is required (warns if missing unless `--skip-txt-verification`). |
 
 ## Provider detection
 - `--provider-detect` inspects DNS and ranks the top 3 matching providers; it does not run checks.
 - `--provider-autoselect` runs detection and then validates DNS with the single best match.
 - Detection infers provider variables from DNS templates when possible (for example, MX/DKIM/CNAME/SRV targets).
+- Optional records (`records_optional`) add a small tie-breaker bonus when present and appear as `*_OPT`
+  entries in detection record summaries.
 - If no match is found or the top candidates are tied, detection returns `UNKNOWN` (exit code 3).
 - JSON output includes a detection payload with candidates and scores; autoselect JSON also embeds the normal report.
+
+Detection score details:
+- Required records only contribute to the core score and ratio.
+- Each record type has a weight (`MX=5`, `SPF=4`, `DKIM=4`, `CNAME=3`, `SRV=2`, `TXT=1`, `DMARC=1`).
+- Status scores are `PASS=2`, `WARN=1`, `FAIL=0`, `UNKNOWN=0`.
+- Optional records do not increase `max_score`; they add a small `optional_bonus` when present.
+
+Formula (per provider):
+```
+score = sum(weight(record_type) * status_score(status)) for required results
+max_score = sum(weight(record_type) * status_score(PASS)) for required results
+score_ratio = score / max_score (or 0 if max_score is 0)
+optional_bonus = sum(weight(record_type)) for optional PASS results
+```
+
+Ranking order:
+1) `score_ratio` (highest wins)
+2) `score` (highest wins)
+3) `optional_bonus` (highest wins)
+4) provider id (stable sort)
+
+If the top two candidates are tied on ratio, score, and optional bonus, detection is `UNKNOWN`.
 
 ## Templates
 Text and human outputs are rendered with Jinja2 templates. Packaged templates live in

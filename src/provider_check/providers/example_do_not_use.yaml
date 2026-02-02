@@ -25,7 +25,7 @@ variables:
 records:
   mx:
     # List of MX hostnames required for the provider.
-    # Trailing dots are recommended to keep names fully-qualified.
+    # Trailing dots are preferred to keep names fully-qualified.
     hosts:
       - mx1.example-provider.test.
       - mx2.example-provider.test.
@@ -86,6 +86,9 @@ records:
     records:
       lyncdiscover: webdir.example-provider.test.
       sip: sipdir.example-provider.test.
+    # Optional CNAME records (name -> expected target).
+    records_optional:
+      autoconfig: autoconfig.example-provider.test.
 
   srv:
     # Required SRV records (name -> list of entries).
@@ -100,6 +103,13 @@ records:
           weight: 1
           port: 5061
           target: sipfed.example-provider.test.
+    # Optional SRV records (name -> list of entries).
+    records_optional:
+      _autodiscover._tcp:
+        - priority: 0
+          weight: 0
+          port: 443
+          target: auto.example-provider.test.
 
   txt:
     # Required TXT records for validation (name -> list of expected values).

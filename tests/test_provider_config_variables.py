@@ -35,7 +35,8 @@ def test_resolve_provider_config_applies_variables_and_domain():
             txt_values={},
         ),
         cname=CNAMEConfig(
-            records={"sip": "sip.{tenant}.example.test.", "lyncdiscover": "webdir.{tenant}."}
+            records={"sip": "sip.{tenant}.example.test.", "lyncdiscover": "webdir.{tenant}."},
+            records_optional={"autoconfig": "auto.{tenant}.example.test."},
         ),
         srv=SRVConfig(
             records={
@@ -47,7 +48,17 @@ def test_resolve_provider_config_applies_variables_and_domain():
                         target="sipdir.{tenant}.example.test.",
                     )
                 ]
-            }
+            },
+            records_optional={
+                "_autodiscover._tcp": [
+                    SRVRecord(
+                        priority=10,
+                        weight=5,
+                        port=443,
+                        target="auto.{tenant}.example.test.",
+                    )
+                ]
+            },
         ),
         txt=TXTConfig(
             required={"_verify.{domain}": ["token-{tenant}"]},
@@ -81,7 +92,12 @@ def test_resolve_provider_config_applies_variables_and_domain():
         "sip": "sip.contoso.example.test.",
         "lyncdiscover": "webdir.contoso.",
     }
+    assert resolved.cname.records_optional == {"autoconfig": "auto.contoso.example.test."}
     assert resolved.srv.records["_sip._tls"][0].target == "sipdir.contoso.example.test."
+    assert (
+        resolved.srv.records_optional["_autodiscover._tcp"][0].target
+        == "auto.contoso.example.test."
+    )
     assert resolved.txt.required == {"_verify.example.test": ["token-contoso"]}
     assert resolved.dmarc.required_rua == ["mailto:dmarc@example.test"]
     assert resolved.dmarc.required_ruf == ["mailto:forensic@example.test"]
