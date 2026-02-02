@@ -13,3 +13,6 @@
 - Avoid provider-specific names (e.g., mailbox.org) in tests unless validating real provider configs is required.
 - For Jinja2 templates, visually indent output expressions inside control blocks using spaces inside `{{ ... }}` so nesting is obvious without changing rendered output.
 - Ensure `yamllint -c .yamllint src` reports no errors before handoff.
+- Git commit messages must use this format:
+  `chore/fix/feat/...(topic): short description`
+  `long description`
