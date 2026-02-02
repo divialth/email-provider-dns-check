@@ -13,6 +13,15 @@ domain, provider name, provider version, and a report timestamp (UTC).
 - Human, text, and JSON output; logging with UTC timestamps
 - Tested with Python 3.11+; formatted with `black`
 
+## Quick start
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+provider-dns-check --providers-list
+provider-dns-check example.com --provider dummy_provider
+```
+
 ## Dependencies
 - Runtime: `dnspython`, `PyYAML`, `Jinja2`
 - Development/test (optional): `pytest`, `coverage`, `black`, `yamllint`
@@ -29,7 +38,6 @@ pip install -r requirements.txt
 ```
 
 ### Install directly from the Git repo with pip
-Alternate install directly from the Git repo:
 ```bash
 pip install --user "git+https://github.com/divialth/email-provider-dns-check.git"
 # optional pin:
@@ -52,60 +60,109 @@ The wrapper uses `python3` from your `PATH`, so ensure the runtime dependencies 
 installed in that environment.
 
 ## Usage
+
+List providers:
 ```bash
 provider-dns-check --providers-list
+```
+
+Run checks:
+```bash
 provider-dns-check example.com --provider dummy_provider
-provider-dns-check example.com --provider dummy_provider --output json
 provider-dns-check example.com --provider dummy_provider --strict
+```
+
+Change output format:
+```bash
+provider-dns-check example.com --provider dummy_provider --output json
+```
+
+Detect providers:
+```bash
 provider-dns-check example.com --provider-detect
 provider-dns-check example.com --provider-autoselect
+```
+
+Override policies and records:
+```bash
 provider-dns-check example.com --provider dummy_provider --dmarc-policy quarantine --dmarc-rua-mailto security@example.com
 provider-dns-check example.com --provider dummy_provider --spf-policy softfail --spf-include spf.protection.example
 provider-dns-check example.com --provider dummy_provider --txt-verification _verify=token
+```
+
+Show a provider config:
+```bash
 provider-dns-check --provider-show mailbox.org
 ```
 
-### Exit codes
-- `0` OK
-- `1` WARNING
-- `2` CRITICAL
-- `3` UNKNOWN
+## Exit codes
+
+| Code | Meaning  | Notes                                    |
+| ---- | -------- | ---------------------------------------- |
+| `0`  | OK       | Successful check.                        |
+| `1`  | WARNING  | Non-fatal issues detected.               |
+| `2`  | CRITICAL | Required records missing or invalid.     |
+| `3`  | UNKNOWN  | DNS lookup failed or provider not found. |
+
 These are compatible with Nagios/Icinga plugin exit codes.
 
-### Options (summary)
-- `--provider PROVIDER`: provider configuration to use (required unless `--providers-list`)
-- `--provider-detect`: detect the closest matching provider and exit
-- `--provider-autoselect`: detect the closest matching provider and run checks
-- `--providers-list`: list available provider configs and exit
-- `--provider-show PROVIDER`: show provider configuration and exit
-- `--provider-var NAME=VALUE`: provider variables (repeatable)
-- `--version`: show the tool version and exit
-- `--output {text,json,human}`: choose output type (default: human; markdown table)
-- `--strict`: require exact provider configuration
-- `--dmarc-rua-mailto URI`: require a DMARC rua mailto URI (repeatable; overrides provider defaults)
-- `--dmarc-ruf-mailto URI`: require a DMARC ruf mailto URI (repeatable; overrides provider defaults)
-- `--dmarc-policy {none,quarantine,reject}`: DMARC p= (defaults to provider config)
-- `--dmarc-subdomain-policy {none,quarantine,reject}`: DMARC sp= (overrides provider defaults)
-- `--dmarc-adkim {r,s}`: DMARC adkim= alignment (overrides provider defaults)
-- `--dmarc-aspf {r,s}`: DMARC aspf= alignment (overrides provider defaults)
-- `--dmarc-pct 0-100`: DMARC pct= enforcement (overrides provider defaults)
-- `--spf-policy {softfail,hardfail}`: SPF terminator (~all or -all)
-- `--spf-include VALUE`: additional SPF include mechanisms (repeatable)
-- `--spf-ip4 VALUE` / `--spf-ip6 VALUE`: additional SPF ip mechanisms
-- `--txt NAME=VALUE`: require TXT record values (repeatable)
-- `--txt-verification NAME=VALUE`: require TXT verification record values (repeatable)
-- `--skip-txt-verification`: skip provider-required TXT verification checks
-- `-v` / `-vv`: increase logging verbosity
+### Options
+
+#### Provider selection
+```text
+--provider PROVIDER      provider configuration to use (required unless --providers-list)
+--providers-list         list available provider configs and exit
+--provider-show PROVIDER show provider configuration and exit
+--provider-var NAME=VALUE provider variables (repeatable)
+--provider-detect        detect the closest matching provider and exit
+--provider-autoselect    detect the closest matching provider and run checks
+```
+
+#### Output and strictness
+```text
+--output {text,json,human} choose output type (default: human; markdown table)
+--strict                  require exact provider configuration
+```
+
+#### DMARC overrides
+```text
+--dmarc-rua-mailto URI               require a DMARC rua mailto URI (repeatable; overrides provider defaults)
+--dmarc-ruf-mailto URI               require a DMARC ruf mailto URI (repeatable; overrides provider defaults)
+--dmarc-policy {none,quarantine,reject}           DMARC p= (defaults to provider config)
+--dmarc-subdomain-policy {none,quarantine,reject} DMARC sp= (overrides provider defaults)
+--dmarc-adkim {r,s}                  DMARC adkim= alignment (overrides provider defaults)
+--dmarc-aspf {r,s}                   DMARC aspf= alignment (overrides provider defaults)
+--dmarc-pct 0-100                    DMARC pct= enforcement (overrides provider defaults)
+```
+
+#### SPF overrides
+```text
+--spf-policy {softfail,hardfail} SPF terminator (~all or -all)
+--spf-include VALUE              additional SPF include mechanisms (repeatable)
+--spf-ip4 VALUE                  additional SPF ip mechanisms
+--spf-ip6 VALUE                  additional SPF ip mechanisms
+```
+
+#### TXT overrides
+```text
+--txt NAME=VALUE              require TXT record values (repeatable)
+--txt-verification NAME=VALUE require TXT verification record values (repeatable)
+--skip-txt-verification       skip provider-required TXT verification checks
+```
+
+#### Misc
+```text
+--version show the tool version and exit
+-v / -vv  increase logging verbosity
+```
 
 ## Provider configs
 Provider definitions are YAML files. Packaged providers live in
 `src/provider_check/providers/*.yaml`. Each file must include a version and can define any
 subset of MX/SPF/DKIM/TXT/DMARC. For a fully documented example, see
 `src/provider_check/providers/example_do_not_use.yaml`.
-Use `enabled: false` at the top level to disable a provider (it will not appear in
-`--providers-list`). Boolean fields must be YAML booleans, and list fields must be YAML lists;
-scalars are treated as invalid.
 
+### Locations
 Add or override providers by dropping files into one of these locations (first match wins if
 provider IDs overlap):
 - `${XDG_CONFIG_HOME:-$HOME/.config}/provider-dns-check/providers`
@@ -113,8 +170,11 @@ provider IDs overlap):
 - `/usr/local/etc/provider-dns-check/providers`
 
 Drop a `*.yaml` or `*.yml` file into one of these locations and it will appear in
-`--providers-list`.
-Invalid provider configs are skipped with a warning.
+`--providers-list`. Invalid provider configs are skipped with a warning.
+
+Use `enabled: false` at the top level to disable a provider (it will not appear in
+`--providers-list`). Boolean fields must be YAML booleans, and list fields must be YAML lists;
+scalars are treated as invalid.
 
 ### Provider metadata fields
 Provider configs can include optional descriptive metadata:
@@ -201,7 +261,7 @@ TXT configs let providers require arbitrary validation records:
 - `required`: mapping of `name: [values...]` for required TXT values
 - `verification_required`: whether a user-supplied TXT verification record is required (warns if missing unless `--skip-txt-verification`)
 
-## Provider detection (rough overview)
+## Provider detection
 - `--provider-detect` inspects DNS and ranks the top 3 matching providers; it does not run checks.
 - `--provider-autoselect` runs detection and then validates DNS with the single best match.
 - Detection infers provider variables from DNS templates when possible (for example, MX/DKIM/CNAME/SRV targets).
@@ -245,8 +305,7 @@ pip install '.[test]'
 - Standard mode requires the provider essentials and warns when extra mechanisms are present.
 - DNS lookup failures report as `UNKNOWN`.
 
-## Vibe-coded notice
-Some parts of this project were vibe coded. That means not every code path is perfectly intentional or fully reasoned about. If you depend on this tool, review the logic and add tests for your use case.
+> Some parts of this project were vibe coded. That means not every code path is perfectly intentional or fully reasoned about. If you depend on this tool, review the logic and add tests for your use case.
 
 ## License
 GPL-3.0-or-later (see `LICENSE`).
