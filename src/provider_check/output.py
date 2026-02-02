@@ -183,14 +183,14 @@ def _template_context(
     return context
 
 
-def to_json(
+def build_json_payload(
     results: List[RecordCheck],
     domain: str,
     report_time: str,
     provider_name: str,
     provider_version: str,
-) -> str:
-    payload = {
+) -> dict:
+    return {
         "domain": domain,
         "provider": provider_name,
         "provider_config_version": provider_version,
@@ -205,6 +205,16 @@ def to_json(
             for result in results
         ],
     }
+
+
+def to_json(
+    results: List[RecordCheck],
+    domain: str,
+    report_time: str,
+    provider_name: str,
+    provider_version: str,
+) -> str:
+    payload = build_json_payload(results, domain, report_time, provider_name, provider_version)
     return json.dumps(payload, indent=2)
 
 

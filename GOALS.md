@@ -18,6 +18,7 @@ PROJECT GOALS:
 -  Provide a CLI parameter to select the provider configuration.
 -  Provide a CLI parameter to list available providers.
 -  Provide a CLI parameter to show the tool version.
+-  Provide a CLI mode to detect the closest matching provider and optionally auto-select it.
 -  Provide parameters for specifying DMARC rua and ruf mailto destinations.
 -  Provide a parameter for specifying the DMARC policy (none, quarantine, reject).
 -  Provide a parameter for specifying the SPF policy (softfail, hardfail).

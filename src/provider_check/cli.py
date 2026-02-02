@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 import time
@@ -13,7 +14,8 @@ import yaml
 
 from . import __version__
 from .checker import DNSChecker
-from .output import summarize_status, to_human, to_json, to_text
+from .detection import DEFAULT_TOP_N, DetectionReport, detect_providers
+from .output import build_json_payload, summarize_status, to_human, to_json, to_text
 from .provider_config import (
     list_providers,
     load_provider_config,
@@ -56,6 +58,87 @@ def _strip_long_description_indicator(rendered: str) -> str:
     return "\n".join(lines) + suffix
 
 
+def _build_detection_payload(report: DetectionReport, report_time: str) -> dict:
+    candidates = []
+    for candidate in report.candidates:
+        candidates.append(
+            {
+                "provider_id": candidate.provider_id,
+                "provider_name": candidate.provider_name,
+                "provider_version": candidate.provider_version,
+                "score": candidate.score,
+                "max_score": candidate.max_score,
+                "score_ratio": round(candidate.score_ratio, 4),
+                "status_counts": dict(candidate.status_counts),
+                "record_statuses": dict(candidate.record_statuses),
+                "core_pass_records": list(candidate.core_pass_records),
+                "inferred_variables": dict(candidate.inferred_variables),
+            }
+        )
+    selected_provider = None
+    if report.selected:
+        selected_provider = {
+            "provider_id": report.selected.provider_id,
+            "provider_name": report.selected.provider_name,
+            "provider_version": report.selected.provider_version,
+        }
+    return {
+        "domain": report.domain,
+        "report_time_utc": report_time,
+        "status": report.status,
+        "top_n": report.top_n,
+        "ambiguous": report.ambiguous,
+        "selected_provider": selected_provider,
+        "candidates": candidates,
+    }
+
+
+def _format_detection_report(report: DetectionReport, report_time: str) -> str:
+    lines = [
+        f"{report.status} - provider detection report for domain {report.domain} ({report_time})"
+    ]
+    if report.selected:
+        lines.append(
+            "Selected provider: "
+            f"{report.selected.provider_id} ({report.selected.provider_name} "
+            f"v{report.selected.provider_version})"
+        )
+    elif report.ambiguous:
+        lines.append("Top candidates are tied; unable to select provider.")
+    else:
+        lines.append("No matching providers detected.")
+
+    if report.candidates:
+        lines.append(f"Top {len(report.candidates)} candidates:")
+        for idx, candidate in enumerate(report.candidates, start=1):
+            if candidate.max_score:
+                score_label = (
+                    f"{candidate.score}/{candidate.max_score} ({candidate.score_ratio:.0%})"
+                )
+            else:
+                score_label = "n/a"
+            lines.append(
+                f"{idx}. {candidate.provider_id} - {candidate.provider_name} "
+                f"(v{candidate.provider_version}) score {score_label}"
+            )
+            details: List[str] = []
+            if candidate.core_pass_records:
+                details.append(f"core: {', '.join(candidate.core_pass_records)}")
+            if candidate.record_statuses:
+                record_summary = " ".join(
+                    f"{key}={value}" for key, value in sorted(candidate.record_statuses.items())
+                )
+                details.append(f"records: {record_summary}")
+            if candidate.inferred_variables:
+                vars_summary = ", ".join(
+                    f"{key}={value}" for key, value in sorted(candidate.inferred_variables.items())
+                )
+                details.append(f"vars: {vars_summary}")
+            if details:
+                lines.append(f"  {' | '.join(details)}")
+    return "\n".join(lines)
+
+
 def _setup_logging(verbosity: int) -> None:
     level = logging.WARNING
     if verbosity == 1:
@@ -89,6 +172,18 @@ def build_parser() -> argparse.ArgumentParser:
     provider_group.add_argument(
         "--provider",
         help="Provider configuration to use (see --providers-list)",
+    )
+    provider_group.add_argument(
+        "--provider-detect",
+        dest="provider_detect",
+        action="store_true",
+        help="Detect the closest matching provider and exit",
+    )
+    provider_group.add_argument(
+        "--provider-autoselect",
+        dest="provider_autoselect",
+        action="store_true",
+        help="Detect the closest matching provider and run checks",
     )
     provider_group.add_argument(
         "--providers-list",
@@ -329,6 +424,138 @@ def main(argv: List[str] | None = None) -> int:
     if not args.domain:
         parser.error("domain is required unless --providers-list or --provider-show is used")
 
+    if args.provider_detect and args.provider_autoselect:
+        parser.error("--provider-detect and --provider-autoselect are mutually exclusive")
+
+    if args.provider and (args.provider_detect or args.provider_autoselect):
+        parser.error("--provider cannot be used with --provider-detect or --provider-autoselect")
+
+    if args.provider_vars and (args.provider_detect or args.provider_autoselect):
+        parser.error(
+            "--provider-var is not supported with --provider-detect or --provider-autoselect"
+        )
+
+    report_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+    if args.provider_detect or args.provider_autoselect:
+        report = detect_providers(args.domain, top_n=DEFAULT_TOP_N)
+        detection_output = _format_detection_report(report, report_time)
+        if args.output == "json":
+            detection_payload = _build_detection_payload(report, report_time)
+            if args.provider_autoselect and report.selected and not report.ambiguous:
+                try:
+                    provider = load_provider_config(report.selected.provider_id)
+                except ValueError as exc:
+                    parser.error(str(exc))
+                provider = resolve_provider_config(
+                    provider, report.selected.inferred_variables, domain=args.domain
+                )
+                try:
+                    txt_records = _parse_txt_records(args.txt_records)
+                    txt_verification_records = _parse_txt_records(args.txt_verification_records)
+                except ValueError as exc:
+                    parser.error(str(exc))
+                dmarc_required_tags = {}
+                if args.dmarc_subdomain_policy:
+                    dmarc_required_tags["sp"] = args.dmarc_subdomain_policy
+                if args.dmarc_adkim:
+                    dmarc_required_tags["adkim"] = args.dmarc_adkim
+                if args.dmarc_aspf:
+                    dmarc_required_tags["aspf"] = args.dmarc_aspf
+                if args.dmarc_pct is not None:
+                    dmarc_required_tags["pct"] = str(args.dmarc_pct)
+                checker = DNSChecker(
+                    args.domain,
+                    provider,
+                    strict=args.strict,
+                    dmarc_rua_mailto=args.dmarc_rua_mailto,
+                    dmarc_ruf_mailto=args.dmarc_ruf_mailto,
+                    dmarc_policy=args.dmarc_policy,
+                    dmarc_required_tags=dmarc_required_tags,
+                    spf_policy=args.spf_policy,
+                    additional_spf_includes=args.spf_includes,
+                    additional_spf_ip4=args.spf_ip4,
+                    additional_spf_ip6=args.spf_ip6,
+                    additional_txt=txt_records,
+                    additional_txt_verification=txt_verification_records,
+                    skip_txt_verification=args.skip_txt_verification,
+                )
+                results = checker.run_checks()
+                detection_payload["report"] = build_json_payload(
+                    results, args.domain, report_time, provider.name, provider.version
+                )
+                print(json.dumps(detection_payload, indent=2))
+                status = summarize_status(results)
+                if status == "PASS":
+                    return 0
+                if status == "WARN":
+                    return 1
+                if status == "FAIL":
+                    return 2
+                return 3
+            print(json.dumps(detection_payload, indent=2))
+            return 0 if report.status == "PASS" and not report.ambiguous else 3
+
+        print(detection_output)
+        if args.provider_autoselect and report.selected and not report.ambiguous:
+            try:
+                provider = load_provider_config(report.selected.provider_id)
+            except ValueError as exc:
+                parser.error(str(exc))
+            provider = resolve_provider_config(
+                provider, report.selected.inferred_variables, domain=args.domain
+            )
+            try:
+                txt_records = _parse_txt_records(args.txt_records)
+                txt_verification_records = _parse_txt_records(args.txt_verification_records)
+            except ValueError as exc:
+                parser.error(str(exc))
+
+            dmarc_required_tags = {}
+            if args.dmarc_subdomain_policy:
+                dmarc_required_tags["sp"] = args.dmarc_subdomain_policy
+            if args.dmarc_adkim:
+                dmarc_required_tags["adkim"] = args.dmarc_adkim
+            if args.dmarc_aspf:
+                dmarc_required_tags["aspf"] = args.dmarc_aspf
+            if args.dmarc_pct is not None:
+                dmarc_required_tags["pct"] = str(args.dmarc_pct)
+
+            checker = DNSChecker(
+                args.domain,
+                provider,
+                strict=args.strict,
+                dmarc_rua_mailto=args.dmarc_rua_mailto,
+                dmarc_ruf_mailto=args.dmarc_ruf_mailto,
+                dmarc_policy=args.dmarc_policy,
+                dmarc_required_tags=dmarc_required_tags,
+                spf_policy=args.spf_policy,
+                additional_spf_includes=args.spf_includes,
+                additional_spf_ip4=args.spf_ip4,
+                additional_spf_ip6=args.spf_ip6,
+                additional_txt=txt_records,
+                additional_txt_verification=txt_verification_records,
+                skip_txt_verification=args.skip_txt_verification,
+            )
+            results = checker.run_checks()
+            if args.output == "human":
+                print()
+                print(to_human(results, args.domain, report_time, provider.name, provider.version))
+            else:
+                print()
+                print(to_text(results, args.domain, report_time, provider.name, provider.version))
+
+            status = summarize_status(results)
+            if status == "PASS":
+                return 0
+            if status == "WARN":
+                return 1
+            if status == "FAIL":
+                return 2
+            return 3
+
+        return 0 if report.status == "PASS" and not report.ambiguous else 3
+
     if not args.provider:
         parser.error("--provider is required unless --providers-list or --provider-show is used")
 
@@ -391,7 +618,6 @@ def main(argv: List[str] | None = None) -> int:
     )
 
     results = checker.run_checks()
-    report_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     if args.output == "json":
         print(to_json(results, args.domain, report_time, provider.name, provider.version))
     elif args.output == "human":

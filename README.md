@@ -57,6 +57,8 @@ provider-dns-check --providers-list
 provider-dns-check example.com --provider dummy_provider
 provider-dns-check example.com --provider dummy_provider --output json
 provider-dns-check example.com --provider dummy_provider --strict
+provider-dns-check example.com --provider-detect
+provider-dns-check example.com --provider-autoselect
 provider-dns-check example.com --provider dummy_provider --dmarc-policy quarantine --dmarc-rua-mailto security@example.com
 provider-dns-check example.com --provider dummy_provider --spf-policy softfail --spf-include spf.protection.example
 provider-dns-check example.com --provider dummy_provider --txt-verification _verify=token
@@ -68,9 +70,12 @@ provider-dns-check --provider-show mailbox.org
 - `1` WARNING
 - `2` CRITICAL
 - `3` UNKNOWN
+These are compatible with Nagios/Icinga plugin exit codes.
 
 ### Options (summary)
 - `--provider PROVIDER`: provider configuration to use (required unless `--providers-list`)
+- `--provider-detect`: detect the closest matching provider and exit
+- `--provider-autoselect`: detect the closest matching provider and run checks
 - `--providers-list`: list available provider configs and exit
 - `--provider-show PROVIDER`: show provider configuration and exit
 - `--provider-var NAME=VALUE`: provider variables (repeatable)
@@ -196,6 +201,13 @@ TXT configs let providers require arbitrary validation records:
 - `required`: mapping of `name: [values...]` for required TXT values
 - `verification_required`: whether a user-supplied TXT verification record is required (warns if missing unless `--skip-txt-verification`)
 
+## Provider detection (rough overview)
+- `--provider-detect` inspects DNS and ranks the top 3 matching providers; it does not run checks.
+- `--provider-autoselect` runs detection and then validates DNS with the single best match.
+- Detection infers provider variables from DNS templates when possible (for example, MX/DKIM/CNAME/SRV targets).
+- If no match is found or the top candidates are tied, detection returns `UNKNOWN` (exit code 3).
+- JSON output includes a detection payload with candidates and scores; autoselect JSON also embeds the normal report.
+
 ## Templates
 Text and human outputs are rendered with Jinja2 templates. Packaged templates live in
 `src/provider_check/templates/`.
@@ -230,6 +242,9 @@ pip install '.[test]'
 - Strict mode enforces the exact DNS strings from the provider config (no extras).
 - Standard mode requires the provider essentials and warns when extra mechanisms are present.
 - DNS lookup failures report as `UNKNOWN`.
+
+## Vibe-coded notice
+Some parts of this project were vibe coded. That means not every code path is perfectly intentional or fully reasoned about. If you depend on this tool, review the logic and add tests for your use case.
 
 ## License
 GPL-3.0-or-later (see `LICENSE`).
