@@ -51,7 +51,7 @@ def test_cname_missing_records_fail():
     result = checker.check_cname()
 
     assert result.status == "FAIL"
-    assert "sip.example.com" in result.details["missing"]
+    assert result.details["missing"] == ["sip.example.com"]
 
 
 def test_cname_mismatch_records_fail():
@@ -62,7 +62,7 @@ def test_cname_mismatch_records_fail():
     result = checker.check_cname()
 
     assert result.status == "FAIL"
-    assert "sip.example.com" in result.details["mismatched"]
+    assert result.details["mismatched"] == {"sip.example.com": "wrong.example."}
 
 
 def test_cname_lookup_error_returns_unknown():

@@ -55,7 +55,9 @@ def test_srv_missing_records_fail():
     result = checker.check_srv()
 
     assert result.status == "FAIL"
-    assert "_sip._tls.example.com" in result.details["missing"]
+    assert result.details["missing"] == {
+        "_sip._tls.example.com": [(100, 1, 443, "sipdir.online.lync.com.")]
+    }
 
 
 def test_srv_extra_records_warn_in_non_strict():
@@ -79,7 +81,9 @@ def test_srv_extra_records_warn_in_non_strict():
     result = checker.check_srv()
 
     assert result.status == "WARN"
-    assert "_sip._tls.example.com" in result.details["extra"]
+    assert result.details["extra"] == {
+        "_sip._tls.example.com": [(100, 1, 5061, "sipfed.online.lync.com.")]
+    }
 
 
 def test_srv_extra_records_fail_in_strict():
