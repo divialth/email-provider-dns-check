@@ -27,14 +27,27 @@ LOGGER = logging.getLogger(__name__)
 
 
 class _LiteralString(str):
+    """Marker type for YAML literal block rendering."""
+
     pass
 
 
 class _ProviderShowDumper(yaml.SafeDumper):
+    """YAML dumper configured for provider show output."""
+
     pass
 
 
 def _literal_string_representer(dumper: yaml.Dumper, value: _LiteralString) -> yaml.ScalarNode:
+    """Represent a string using YAML literal block style.
+
+    Args:
+        dumper (yaml.Dumper): YAML dumper instance.
+        value (_LiteralString): Value to represent.
+
+    Returns:
+        yaml.ScalarNode: YAML scalar node with literal style.
+    """
     return dumper.represent_scalar("tag:yaml.org,2002:str", value, style="|")
 
 
@@ -42,6 +55,14 @@ _ProviderShowDumper.add_representer(_LiteralString, _literal_string_representer)
 
 
 def _strip_long_description_indicator(rendered: str) -> str:
+    """Normalize long_description formatting for YAML output.
+
+    Args:
+        rendered (str): YAML content rendered by PyYAML.
+
+    Returns:
+        str: Updated YAML with a clean long_description indicator.
+    """
     lines = rendered.splitlines()
     updated = False
     for idx, line in enumerate(lines):
@@ -59,6 +80,15 @@ def _strip_long_description_indicator(rendered: str) -> str:
 
 
 def _build_detection_payload(report: DetectionReport, report_time: str) -> dict:
+    """Build a JSON-serializable payload from a detection report.
+
+    Args:
+        report (DetectionReport): Detection report data.
+        report_time (str): UTC report timestamp string.
+
+    Returns:
+        dict: JSON-serializable payload.
+    """
     candidates = []
     for candidate in report.candidates:
         candidates.append(
@@ -94,6 +124,15 @@ def _build_detection_payload(report: DetectionReport, report_time: str) -> dict:
 
 
 def _format_detection_report(report: DetectionReport, report_time: str) -> str:
+    """Format a detection report as human-readable text.
+
+    Args:
+        report (DetectionReport): Detection report data.
+        report_time (str): UTC report timestamp string.
+
+    Returns:
+        str: Formatted detection report.
+    """
     lines = [
         f"{report.status} - provider detection report for domain {report.domain} ({report_time})"
     ]
@@ -140,6 +179,11 @@ def _format_detection_report(report: DetectionReport, report_time: str) -> str:
 
 
 def _setup_logging(verbosity: int) -> None:
+    """Configure logging based on verbosity level.
+
+    Args:
+        verbosity (int): Verbosity count from CLI flags.
+    """
     level = logging.WARNING
     if verbosity == 1:
         level = logging.INFO
@@ -154,6 +198,11 @@ def _setup_logging(verbosity: int) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser.
+
+    Returns:
+        argparse.ArgumentParser: Configured parser instance.
+    """
     parser = argparse.ArgumentParser(
         description="Check email provider DNS records for a given domain",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -334,6 +383,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _parse_txt_records(raw_records: List[str]) -> dict[str, list[str]]:
+    """Parse TXT record requirements from CLI values.
+
+    Args:
+        raw_records (List[str]): Values in name=value form.
+
+    Returns:
+        dict[str, list[str]]: Parsed TXT values by name.
+
+    Raises:
+        ValueError: If any value is missing a name or value.
+    """
     required: dict[str, list[str]] = {}
     for item in raw_records:
         if "=" not in item:
@@ -348,6 +408,17 @@ def _parse_txt_records(raw_records: List[str]) -> dict[str, list[str]]:
 
 
 def _parse_dmarc_pct(value: str) -> int:
+    """Parse a DMARC pct value from CLI input.
+
+    Args:
+        value (str): String value to parse.
+
+    Returns:
+        int: Parsed percentage between 0 and 100.
+
+    Raises:
+        argparse.ArgumentTypeError: If the value is invalid or out of range.
+    """
     try:
         parsed = int(value)
     except ValueError as exc:
@@ -358,6 +429,17 @@ def _parse_dmarc_pct(value: str) -> int:
 
 
 def _parse_provider_vars(raw_vars: List[str]) -> dict[str, str]:
+    """Parse provider variables from CLI values.
+
+    Args:
+        raw_vars (List[str]): Values in name=value form.
+
+    Returns:
+        dict[str, str]: Parsed variables mapping.
+
+    Raises:
+        ValueError: If any variable is malformed or duplicated.
+    """
     parsed: dict[str, str] = {}
     for item in raw_vars:
         if "=" not in item:
@@ -374,6 +456,14 @@ def _parse_provider_vars(raw_vars: List[str]) -> dict[str, str]:
 
 
 def main(argv: List[str] | None = None) -> int:
+    """Run the CLI entrypoint.
+
+    Args:
+        argv (List[str] | None): Optional argument list for parsing.
+
+    Returns:
+        int: Exit code (0=PASS, 1=WARN, 2=FAIL, 3=UNKNOWN/ambiguous).
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
 

@@ -1,7 +1,8 @@
 CODE:
 -  programming language: Python
 -  code formatting: Black
--  documentation style: Google
+-  documentation style: Google (full Google-style docstrings)
+-  docstrings required for all classes/functions (enforced by tests)
 -  use argparse for command-line argument parsing
 -  use logging for output messages
 -  use UTC timezone for timestamps

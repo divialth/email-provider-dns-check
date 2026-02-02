@@ -17,10 +17,27 @@ _HUMAN_TABLE_HEADERS = ["Record type", "Status", "Message", "Details"]
 
 
 def _provider_label(provider_name: str, provider_version: str) -> str:
+    """Build a display label for a provider.
+
+    Args:
+        provider_name (str): Provider display name.
+        provider_version (str): Provider configuration version.
+
+    Returns:
+        str: Label including provider name and version.
+    """
     return f"{provider_name} (v{provider_version})"
 
 
 def _find_template_path(template_name: str) -> Optional[Path]:
+    """Find an external template override path.
+
+    Args:
+        template_name (str): Template filename to locate.
+
+    Returns:
+        Optional[Path]: Path to override template if found.
+    """
     for base_dir in external_config_dirs():
         candidate = base_dir / TEMPLATE_DIR_NAME / template_name
         if candidate.is_file():
@@ -29,6 +46,15 @@ def _find_template_path(template_name: str) -> Optional[Path]:
 
 
 def _render_template(template_name: str, context: dict) -> str:
+    """Render a template with the provided context.
+
+    Args:
+        template_name (str): Template filename to render.
+        context (dict): Render context.
+
+    Returns:
+        str: Rendered template output.
+    """
     override_path = _find_template_path(template_name)
     if override_path:
         source = override_path.read_text(encoding="utf-8")
@@ -42,6 +68,14 @@ def _render_template(template_name: str, context: dict) -> str:
 
 
 def _serialize_results(results: List[RecordCheck]) -> List[dict]:
+    """Serialize RecordCheck results for output templates.
+
+    Args:
+        results (List[RecordCheck]): Raw check results.
+
+    Returns:
+        List[dict]: Serialized results with selector rows for DKIM.
+    """
     serialized: List[dict] = []
     for result in results:
         details = dict(result.details)
@@ -102,11 +136,28 @@ def _serialize_results(results: List[RecordCheck]) -> List[dict]:
 
 
 def _format_row(row: List[str], widths: List[int]) -> str:
+    """Format a markdown table row with padded cells.
+
+    Args:
+        row (List[str]): Row values.
+        widths (List[int]): Column widths.
+
+    Returns:
+        str: Formatted markdown table row.
+    """
     padded = [f"{cell:<{widths[i]}}" for i, cell in enumerate(row)]
     return "| " + " | ".join(padded) + " |"
 
 
 def _build_table_rows(results: List[dict]) -> List[List[str]]:
+    """Build markdown table rows for serialized results.
+
+    Args:
+        results (List[dict]): Serialized results.
+
+    Returns:
+        List[List[str]]: Table rows.
+    """
     rows: List[List[str]] = []
     last_record_type: str | None = None
     for result in results:
@@ -140,6 +191,15 @@ def _build_table_rows(results: List[dict]) -> List[List[str]]:
 
 
 def _build_table_widths(headers: List[str], rows: List[List[str]]) -> List[int]:
+    """Compute column widths for a markdown table.
+
+    Args:
+        headers (List[str]): Table headers.
+        rows (List[List[str]]): Table rows.
+
+    Returns:
+        List[int]: Widths for each column.
+    """
     widths = [len(header) for header in headers]
     for row in rows:
         for i, cell in enumerate(row):
@@ -148,6 +208,14 @@ def _build_table_widths(headers: List[str], rows: List[List[str]]) -> List[int]:
 
 
 def _build_table_separator(widths: List[int]) -> str:
+    """Build a markdown table separator row.
+
+    Args:
+        widths (List[int]): Column widths.
+
+    Returns:
+        str: Markdown separator row.
+    """
     return "| " + " | ".join("-" * max(3, width) for width in widths) + " |"
 
 
@@ -162,6 +230,21 @@ def _template_context(
     lines: List[str],
     table_headers: Optional[List[str]] = None,
 ) -> dict:
+    """Build a template context for output rendering.
+
+    Args:
+        domain (str): Domain being reported.
+        report_time (str): UTC report timestamp string.
+        provider_name (str): Provider display name.
+        provider_version (str): Provider configuration version.
+        summary (str): Summary status string.
+        results (List[dict]): Serialized results.
+        lines (List[str]): Pre-rendered text lines.
+        table_headers (Optional[List[str]]): Optional table headers.
+
+    Returns:
+        dict: Template context mapping.
+    """
     provider_label = _provider_label(provider_name, provider_version)
     context = {
         "domain": domain,
@@ -190,6 +273,18 @@ def build_json_payload(
     provider_name: str,
     provider_version: str,
 ) -> dict:
+    """Build a JSON-serializable payload for results.
+
+    Args:
+        results (List[RecordCheck]): DNS check results.
+        domain (str): Domain being reported.
+        report_time (str): UTC report timestamp string.
+        provider_name (str): Provider display name.
+        provider_version (str): Provider configuration version.
+
+    Returns:
+        dict: JSON-serializable payload.
+    """
     return {
         "domain": domain,
         "provider": provider_name,
@@ -214,6 +309,18 @@ def to_json(
     provider_name: str,
     provider_version: str,
 ) -> str:
+    """Render results as formatted JSON.
+
+    Args:
+        results (List[RecordCheck]): DNS check results.
+        domain (str): Domain being reported.
+        report_time (str): UTC report timestamp string.
+        provider_name (str): Provider display name.
+        provider_version (str): Provider configuration version.
+
+    Returns:
+        str: JSON string.
+    """
     payload = build_json_payload(results, domain, report_time, provider_name, provider_version)
     return json.dumps(payload, indent=2)
 
@@ -225,6 +332,18 @@ def to_text(
     provider_name: str,
     provider_version: str,
 ) -> str:
+    """Render results as plain text output.
+
+    Args:
+        results (List[RecordCheck]): DNS check results.
+        domain (str): Domain being reported.
+        report_time (str): UTC report timestamp string.
+        provider_name (str): Provider display name.
+        provider_version (str): Provider configuration version.
+
+    Returns:
+        str: Rendered text output.
+    """
     serialized = _serialize_results(results)
     header = f"report for domain {domain} ({report_time})"
     lines = [header, f"provider: {_provider_label(provider_name, provider_version)}", "----"]
@@ -256,6 +375,14 @@ def to_text(
 
 
 def _stringify_details(details: dict) -> str:
+    """Serialize details for output.
+
+    Args:
+        details (dict): Details mapping.
+
+    Returns:
+        str: Compact JSON string or "-" when empty.
+    """
     if not details:
         return "-"
     return json.dumps(details, separators=(",", ":"))
@@ -268,7 +395,18 @@ def to_human(
     provider_name: str,
     provider_version: str,
 ) -> str:
-    """Render results as a markdown table for human-friendly output."""
+    """Render results as a markdown table for human-friendly output.
+
+    Args:
+        results (List[RecordCheck]): DNS check results.
+        domain (str): Domain being reported.
+        report_time (str): UTC report timestamp string.
+        provider_name (str): Provider display name.
+        provider_version (str): Provider configuration version.
+
+    Returns:
+        str: Rendered markdown output.
+    """
     serialized = _serialize_results(results)
     headline = f"report for domain {domain} ({report_time})"
     provider_line = f"provider: {_provider_label(provider_name, provider_version)}"
@@ -286,6 +424,14 @@ def to_human(
 
 
 def summarize_status(results: List[RecordCheck]) -> str:
+    """Summarize results into a single status string.
+
+    Args:
+        results (List[RecordCheck]): DNS check results.
+
+    Returns:
+        str: Summary status (FAIL, WARN, UNKNOWN, or PASS).
+    """
     fail = any(r.status == "FAIL" for r in results)
     warn = any(r.status == "WARN" for r in results)
     unknown = any(r.status == "UNKNOWN" for r in results)

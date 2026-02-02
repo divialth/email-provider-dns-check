@@ -7,6 +7,7 @@
 - Always run formatting (black), coverage (`coverage run -m pytest` + `coverage report -m --fail-under=100`), and the full test suite locally (`pytest`) before handing off changes.
 - If tests fail (e.g., pytest not found), fix the environment and rerun; do not skip test execution.
 - Always add or update tests for any new or changed behavior; include both success and failure paths where applicable.
+- Use full Google-style docstrings (summary + Args/Returns/Raises/Attributes where applicable).
 - Keep tests organized by feature area; avoid growing monolithic test files.
 - Prefer coverage for all output formats and CLI flags when modifying output or CLI behavior.
 - Prefer provider-agnostic fixtures in tests (dummy providers) unless validating a real provider config is essential.

@@ -30,12 +30,29 @@ SYSTEM_CONFIG_DIRS = [
 
 @dataclass(frozen=True)
 class MXConfig:
+    """Define MX record requirements for a provider.
+
+    Attributes:
+        hosts (List[str]): Required MX hostnames.
+        priorities (Dict[str, int]): Expected MX priorities by host.
+    """
+
     hosts: List[str]
     priorities: Dict[str, int]
 
 
 @dataclass(frozen=True)
 class SPFConfig:
+    """Define SPF record requirements for a provider.
+
+    Attributes:
+        required_includes (List[str]): Required include mechanisms.
+        strict_record (Optional[str]): Exact SPF record when strict mode is enabled.
+        required_mechanisms (List[str]): Required SPF mechanisms.
+        allowed_mechanisms (List[str]): Allowed SPF mechanisms beyond required ones.
+        required_modifiers (Dict[str, str]): Required SPF modifiers (e.g., redirect).
+    """
+
     required_includes: List[str]
     strict_record: Optional[str]
     required_mechanisms: List[str]
@@ -45,6 +62,15 @@ class SPFConfig:
 
 @dataclass(frozen=True)
 class DKIMConfig:
+    """Define DKIM selector requirements for a provider.
+
+    Attributes:
+        selectors (List[str]): DKIM selector names to validate.
+        record_type (str): DKIM record type ("cname" or "txt").
+        target_template (Optional[str]): Target template for CNAME records.
+        txt_values (Dict[str, str]): Expected TXT values keyed by selector.
+    """
+
     selectors: List[str]
     record_type: str
     target_template: Optional[str]
@@ -53,11 +79,26 @@ class DKIMConfig:
 
 @dataclass(frozen=True)
 class CNAMEConfig:
+    """Define CNAME record requirements for a provider.
+
+    Attributes:
+        records (Dict[str, str]): Mapping of record name to expected target.
+    """
+
     records: Dict[str, str]
 
 
 @dataclass(frozen=True)
 class SRVRecord:
+    """Define a single SRV record entry.
+
+    Attributes:
+        priority (int): SRV priority value.
+        weight (int): SRV weight value.
+        port (int): SRV port value.
+        target (str): SRV target hostname.
+    """
+
     priority: int
     weight: int
     port: int
@@ -66,17 +107,41 @@ class SRVRecord:
 
 @dataclass(frozen=True)
 class SRVConfig:
+    """Define SRV record requirements for a provider.
+
+    Attributes:
+        records (Dict[str, List[SRVRecord]]): SRV records keyed by name.
+    """
+
     records: Dict[str, List[SRVRecord]]
 
 
 @dataclass(frozen=True)
 class TXTConfig:
+    """Define TXT record requirements for a provider.
+
+    Attributes:
+        required (Dict[str, List[str]]): Required TXT values keyed by record name.
+        verification_required (bool): Whether user verification TXT is required.
+    """
+
     required: Dict[str, List[str]]
     verification_required: bool = False
 
 
 @dataclass(frozen=True)
 class DMARCConfig:
+    """Define DMARC record requirements for a provider.
+
+    Attributes:
+        default_policy (str): Default DMARC policy (p=).
+        required_rua (List[str]): Required rua mailto URIs.
+        required_ruf (List[str]): Required ruf mailto URIs.
+        required_tags (Dict[str, str]): Required DMARC tags and values.
+        rua_required (bool): Whether rua is required at all.
+        ruf_required (bool): Whether ruf is required at all.
+    """
+
     default_policy: str
     required_rua: List[str]
     required_ruf: List[str]
@@ -87,6 +152,15 @@ class DMARCConfig:
 
 @dataclass(frozen=True)
 class ProviderVariable:
+    """Describe a provider-specific variable used in templates.
+
+    Attributes:
+        name (str): Variable name.
+        required (bool): Whether the variable is required.
+        default (Optional[str]): Default value when not required.
+        description (Optional[str]): Human-readable description.
+    """
+
     name: str
     required: bool = False
     default: Optional[str] = None
@@ -95,6 +169,24 @@ class ProviderVariable:
 
 @dataclass(frozen=True)
 class ProviderConfig:
+    """Store a fully parsed provider configuration.
+
+    Attributes:
+        provider_id (str): Provider identifier.
+        name (str): Provider display name.
+        version (str): Provider configuration version.
+        mx (Optional[MXConfig]): MX requirements.
+        spf (Optional[SPFConfig]): SPF requirements.
+        dkim (Optional[DKIMConfig]): DKIM requirements.
+        cname (Optional[CNAMEConfig]): CNAME requirements.
+        srv (Optional[SRVConfig]): SRV requirements.
+        txt (Optional[TXTConfig]): TXT requirements.
+        dmarc (Optional[DMARCConfig]): DMARC requirements.
+        short_description (Optional[str]): Short provider description.
+        long_description (Optional[str]): Long provider description.
+        variables (Dict[str, ProviderVariable]): Provider variable definitions.
+    """
+
     provider_id: str
     name: str
     version: str
@@ -111,10 +203,31 @@ class ProviderConfig:
 
 
 def _normalize_key(value: str) -> str:
+    """Normalize provider identifiers for matching.
+
+    Args:
+        value (str): Input string to normalize.
+
+    Returns:
+        str: Normalized identifier.
+    """
     return value.strip().lower().replace(" ", "_").replace(".", "_")
 
 
 def _require_mapping(provider_id: str, field: str, value: object | None) -> dict:
+    """Ensure a configuration field is a mapping.
+
+    Args:
+        provider_id (str): Provider identifier for error messages.
+        field (str): Field name being validated.
+        value (object | None): Value to validate.
+
+    Returns:
+        dict: Validated mapping.
+
+    Raises:
+        ValueError: If the value is missing or not a mapping.
+    """
     if value is None:
         raise ValueError(f"Provider config {provider_id} {field} must be a mapping")
     if not isinstance(value, dict):
@@ -123,6 +236,19 @@ def _require_mapping(provider_id: str, field: str, value: object | None) -> dict
 
 
 def _require_list(provider_id: str, field: str, value: object | None) -> list:
+    """Ensure a configuration field is a list.
+
+    Args:
+        provider_id (str): Provider identifier for error messages.
+        field (str): Field name being validated.
+        value (object | None): Value to validate.
+
+    Returns:
+        list: Validated list.
+
+    Raises:
+        ValueError: If the value is missing or not a list.
+    """
     if value is None:
         raise ValueError(f"Provider config {provider_id} {field} must be a list")
     if not isinstance(value, list):
@@ -131,6 +257,18 @@ def _require_list(provider_id: str, field: str, value: object | None) -> list:
 
 
 def _require_variables(provider_id: str, value: object | None) -> dict:
+    """Ensure provider variables are a mapping.
+
+    Args:
+        provider_id (str): Provider identifier for error messages.
+        value (object | None): Variables section value.
+
+    Returns:
+        dict: Variables mapping or empty dict.
+
+    Raises:
+        ValueError: If the variables value is not a mapping.
+    """
     if value is None:
         return {}
     if not isinstance(value, dict):
@@ -139,6 +277,11 @@ def _require_variables(provider_id: str, value: object | None) -> dict:
 
 
 def external_config_dirs() -> List[Path]:
+    """Return directories that may contain external provider configs.
+
+    Returns:
+        List[Path]: Ordered list of user and system config directories.
+    """
     xdg_home = os.environ.get("XDG_CONFIG_HOME")
     if xdg_home:
         user_dir = Path(xdg_home) / CONFIG_DIR_NAME
@@ -148,10 +291,23 @@ def external_config_dirs() -> List[Path]:
 
 
 def _external_provider_dirs() -> List[Path]:
+    """Return directories to search for provider config files.
+
+    Returns:
+        List[Path]: Provider directories derived from config roots.
+    """
     return [path / PROVIDER_DIR_NAME for path in external_config_dirs()]
 
 
 def _iter_provider_paths_in_dir(path: Path) -> Iterable[Path]:
+    """Iterate YAML provider files in a directory.
+
+    Args:
+        path (Path): Directory to search.
+
+    Yields:
+        Path: Provider config file paths.
+    """
     if not path.is_dir():
         return
     for entry in sorted(path.iterdir(), key=lambda item: item.name):
@@ -160,6 +316,11 @@ def _iter_provider_paths_in_dir(path: Path) -> Iterable[Path]:
 
 
 def _iter_packaged_paths() -> Iterable[resources_abc.Traversable]:
+    """Iterate packaged provider config files.
+
+    Yields:
+        resources_abc.Traversable: Packaged provider config file paths.
+    """
     base = resources.files(PROVIDER_PACKAGE)
     entries = [entry for entry in base.iterdir() if entry.is_file()]
     for entry in sorted(entries, key=lambda item: item.name):
@@ -168,12 +329,28 @@ def _iter_packaged_paths() -> Iterable[resources_abc.Traversable]:
 
 
 def _iter_provider_paths() -> Iterable[object]:
+    """Iterate all provider config file paths.
+
+    Yields:
+        object: Provider config file paths from external and packaged sources.
+    """
     for directory in _external_provider_dirs():
         yield from _iter_provider_paths_in_dir(directory)
     yield from _iter_packaged_paths()
 
 
 def _load_yaml(path: object) -> dict:
+    """Load a provider config YAML file.
+
+    Args:
+        path (object): Path-like object with read_text() and name.
+
+    Returns:
+        dict: Parsed YAML mapping.
+
+    Raises:
+        ValueError: If the YAML file does not contain a mapping.
+    """
     raw = path.read_text(encoding="utf-8")
     data = yaml.safe_load(raw)
     if not isinstance(data, dict):
@@ -182,6 +359,17 @@ def _load_yaml(path: object) -> dict:
 
 
 def _is_enabled(data: dict) -> bool:
+    """Check if a provider config is enabled.
+
+    Args:
+        data (dict): Provider config mapping.
+
+    Returns:
+        bool: True if enabled.
+
+    Raises:
+        ValueError: If enabled is present but not a boolean.
+    """
     enabled = data.get("enabled", True)
     if isinstance(enabled, bool):
         return enabled
@@ -189,6 +377,18 @@ def _is_enabled(data: dict) -> bool:
 
 
 def _normalize_extends(provider_id: str, value: object | None) -> List[str]:
+    """Normalize the extends field into a list of provider IDs.
+
+    Args:
+        provider_id (str): Provider identifier for error messages.
+        value (object | None): Extends value to normalize.
+
+    Returns:
+        List[str]: Normalized list of provider IDs.
+
+    Raises:
+        ValueError: If the extends value has invalid types or entries.
+    """
     if value is None:
         return []
     if isinstance(value, str):
@@ -209,6 +409,15 @@ def _normalize_extends(provider_id: str, value: object | None) -> List[str]:
 
 
 def _merge_provider_data(base: dict, override: dict) -> dict:
+    """Merge two provider config mappings.
+
+    Args:
+        base (dict): Base mapping.
+        override (dict): Override mapping.
+
+    Returns:
+        dict: Deep-merged mapping with overrides applied.
+    """
     merged = copy.deepcopy(base)
     for key, value in override.items():
         if value is None:
@@ -222,6 +431,11 @@ def _merge_provider_data(base: dict, override: dict) -> dict:
 
 
 def _load_provider_data_map() -> Dict[str, dict]:
+    """Load provider configuration data from available sources.
+
+    Returns:
+        Dict[str, dict]: Mapping of provider ID to raw config data.
+    """
     providers: Dict[str, dict] = {}
     for path in _iter_provider_paths():
         provider_id = Path(path.name).stem
@@ -242,6 +456,20 @@ def _resolve_provider_data(
     cache: Dict[str, dict],
     stack: List[str],
 ) -> dict:
+    """Resolve provider config data with inheritance.
+
+    Args:
+        provider_id (str): Provider ID to resolve.
+        data_map (Dict[str, dict]): Raw provider data by ID.
+        cache (Dict[str, dict]): Cache of resolved provider data.
+        stack (List[str]): Stack of provider IDs for cycle detection.
+
+    Returns:
+        dict: Fully resolved provider data.
+
+    Raises:
+        ValueError: If an extends cycle or unknown provider is detected.
+    """
     if provider_id in cache:
         return cache[provider_id]
     if provider_id in stack:
@@ -267,6 +495,18 @@ def _resolve_provider_data(
 
 
 def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
+    """Load a ProviderConfig from resolved data.
+
+    Args:
+        provider_id (str): Provider identifier.
+        data (dict): Resolved provider configuration mapping.
+
+    Returns:
+        ProviderConfig: Parsed provider configuration.
+
+    Raises:
+        ValueError: If the data is missing required fields or has invalid types.
+    """
     version = data.get("version")
     if version is None:
         raise ValueError(f"Provider config {provider_id} is missing version")
@@ -518,11 +758,30 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
 
 
 class _SafeFormatDict(dict):
+    """Dictionary that preserves unknown format keys."""
+
     def __missing__(self, key: str) -> str:  # pragma: no cover - defensive
+        """Return a placeholder for missing format keys.
+
+        Args:
+            key (str): Missing format key.
+
+        Returns:
+            str: Placeholder string with the missing key.
+        """
         return "{" + key + "}"
 
 
 def _format_string(value: Optional[str], variables: Dict[str, str]) -> Optional[str]:
+    """Format a string using provider variables.
+
+    Args:
+        value (Optional[str]): Template string to format.
+        variables (Dict[str, str]): Variables for template formatting.
+
+    Returns:
+        Optional[str]: Formatted string or None if value is None.
+    """
     if value is None:
         return None
     return value.format_map(_SafeFormatDict(variables))
@@ -531,6 +790,19 @@ def _format_string(value: Optional[str], variables: Dict[str, str]) -> Optional[
 def resolve_provider_config(
     provider: ProviderConfig, variables: Dict[str, str], *, domain: Optional[str] = None
 ) -> ProviderConfig:
+    """Resolve provider variables into a concrete ProviderConfig.
+
+    Args:
+        provider (ProviderConfig): Base provider configuration.
+        variables (Dict[str, str]): Provider variables supplied by the user.
+        domain (Optional[str]): Domain to inject into template variables.
+
+    Returns:
+        ProviderConfig: Provider configuration with variables applied.
+
+    Raises:
+        ValueError: If unknown or required variables are missing.
+    """
     if not provider.variables:
         if variables:
             allowed = ", ".join(sorted(provider.variables)) or "none"
@@ -679,6 +951,17 @@ def resolve_provider_config(
 
 
 def load_provider_config_data(selection: str) -> tuple[ProviderConfig, dict]:
+    """Load a provider config and its resolved data mapping.
+
+    Args:
+        selection (str): Provider ID or name.
+
+    Returns:
+        tuple[ProviderConfig, dict]: Provider config and resolved data mapping.
+
+    Raises:
+        ValueError: If the provider is unknown or disabled.
+    """
     provider = load_provider_config(selection)
     data_map = _load_provider_data_map()
     cache: Dict[str, dict] = {}
@@ -691,6 +974,11 @@ def load_provider_config_data(selection: str) -> tuple[ProviderConfig, dict]:
 
 
 def list_providers() -> List[ProviderConfig]:
+    """List all available provider configurations.
+
+    Returns:
+        List[ProviderConfig]: Sorted provider configurations.
+    """
     providers: Dict[str, ProviderConfig] = {}
     data_map = _load_provider_data_map()
     cache: Dict[str, dict] = {}
@@ -707,6 +995,17 @@ def list_providers() -> List[ProviderConfig]:
 
 
 def load_provider_config(selection: str) -> ProviderConfig:
+    """Load a single provider configuration by ID or name.
+
+    Args:
+        selection (str): Provider ID or name.
+
+    Returns:
+        ProviderConfig: Matching provider configuration.
+
+    Raises:
+        ValueError: If selection is empty or no provider matches.
+    """
     if not selection:
         raise ValueError("Provider selection is required")
 

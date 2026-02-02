@@ -30,6 +30,21 @@ _TEMPLATE_RE = re.compile(r"\{([a-zA-Z0-9_]+)\}")
 
 @dataclasses.dataclass(frozen=True)
 class DetectionCandidate:
+    """Represent a provider match candidate during detection.
+
+    Attributes:
+        provider_id (str): Provider identifier.
+        provider_name (str): Provider display name.
+        provider_version (str): Provider configuration version.
+        inferred_variables (Dict[str, str]): Variables inferred from DNS records.
+        score (int): Weighted score achieved by the candidate.
+        max_score (int): Maximum possible score for the candidate.
+        score_ratio (float): Score divided by maximum score.
+        status_counts (Dict[str, int]): Counts of PASS/WARN/FAIL/UNKNOWN statuses.
+        record_statuses (Dict[str, str]): Status per record type.
+        core_pass_records (List[str]): Core record types that passed.
+    """
+
     provider_id: str
     provider_name: str
     provider_version: str
@@ -44,6 +59,17 @@ class DetectionCandidate:
 
 @dataclasses.dataclass(frozen=True)
 class DetectionReport:
+    """Summarize provider detection results for a domain.
+
+    Attributes:
+        domain (str): Domain that was checked.
+        candidates (List[DetectionCandidate]): Top candidate matches.
+        selected (Optional[DetectionCandidate]): Selected provider if unambiguous.
+        ambiguous (bool): Whether the top candidates are tied.
+        status (str): Overall detection status.
+        top_n (int): Number of candidates requested.
+    """
+
     domain: str
     candidates: List[DetectionCandidate]
     selected: Optional[DetectionCandidate]
@@ -53,10 +79,26 @@ class DetectionReport:
 
 
 def _normalize_host(host: str) -> str:
+    """Normalize a hostname to lowercase and ensure a trailing dot.
+
+    Args:
+        host (str): Hostname to normalize.
+
+    Returns:
+        str: Normalized hostname ending in a dot.
+    """
     return host.rstrip(".").lower() + "."
 
 
 def _normalize_host_template(template: str) -> str:
+    """Normalize a hostname template to include a trailing dot.
+
+    Args:
+        template (str): Host template string.
+
+    Returns:
+        str: Normalized template with a trailing dot.
+    """
     trimmed = template.strip()
     if not trimmed.endswith("."):
         trimmed = trimmed + "."
@@ -64,6 +106,15 @@ def _normalize_host_template(template: str) -> str:
 
 
 def _normalize_record_name(name: str, domain: str) -> str:
+    """Normalize a record name relative to a domain.
+
+    Args:
+        name (str): Record name or template.
+        domain (str): Domain to append when needed.
+
+    Returns:
+        str: Fully qualified record name in lowercase without trailing dot.
+    """
     trimmed = name.strip()
     if trimmed == "@":
         return domain.lower()
@@ -83,6 +134,16 @@ def _normalize_record_name(name: str, domain: str) -> str:
 def _template_regex(
     template: str, known_vars: Dict[str, str], capture_vars: Iterable[str]
 ) -> re.Pattern:
+    """Build a regex for matching a template with variables.
+
+    Args:
+        template (str): Template string with {var} placeholders.
+        known_vars (Dict[str, str]): Variables with fixed values.
+        capture_vars (Iterable[str]): Variables to capture from the sample.
+
+    Returns:
+        re.Pattern: Compiled regex for matching samples.
+    """
     capture_set = set(capture_vars)
     pattern = ""
     idx = 0
@@ -107,6 +168,15 @@ def _match_and_infer(
     inferred_vars: Dict[str, str],
     capture_vars: Iterable[str],
 ) -> None:
+    """Match samples against a template and infer variables.
+
+    Args:
+        template (str): Template to match against.
+        samples (Sequence[str]): Sample values to test.
+        known_vars (Dict[str, str]): Variables with fixed values.
+        inferred_vars (Dict[str, str]): Output mapping to update in place.
+        capture_vars (Iterable[str]): Variables that can be inferred.
+    """
     if not samples:
         return
     regex = _template_regex(template, known_vars, capture_vars)
@@ -131,6 +201,15 @@ def _infer_from_mx(
     known_vars: Dict[str, str],
     inferred_vars: Dict[str, str],
 ) -> None:
+    """Infer provider variables from MX records.
+
+    Args:
+        provider (ProviderConfig): Provider configuration.
+        domain (str): Domain to inspect.
+        resolver (DnsResolver): DNS resolver for lookups.
+        known_vars (Dict[str, str]): Variables with fixed values.
+        inferred_vars (Dict[str, str]): Output mapping to update in place.
+    """
     if not provider.mx:
         return
     try:
@@ -151,6 +230,15 @@ def _infer_from_dkim(
     known_vars: Dict[str, str],
     inferred_vars: Dict[str, str],
 ) -> None:
+    """Infer provider variables from DKIM CNAME records.
+
+    Args:
+        provider (ProviderConfig): Provider configuration.
+        domain (str): Domain to inspect.
+        resolver (DnsResolver): DNS resolver for lookups.
+        known_vars (Dict[str, str]): Variables with fixed values.
+        inferred_vars (Dict[str, str]): Output mapping to update in place.
+    """
     if not provider.dkim or provider.dkim.record_type != "cname":
         return
     template = provider.dkim.target_template
@@ -185,6 +273,15 @@ def _infer_from_cname(
     known_vars: Dict[str, str],
     inferred_vars: Dict[str, str],
 ) -> None:
+    """Infer provider variables from CNAME records.
+
+    Args:
+        provider (ProviderConfig): Provider configuration.
+        domain (str): Domain to inspect.
+        resolver (DnsResolver): DNS resolver for lookups.
+        known_vars (Dict[str, str]): Variables with fixed values.
+        inferred_vars (Dict[str, str]): Output mapping to update in place.
+    """
     if not provider.cname:
         return
     for name, target_template in provider.cname.records.items():
@@ -216,6 +313,15 @@ def _infer_from_srv(
     known_vars: Dict[str, str],
     inferred_vars: Dict[str, str],
 ) -> None:
+    """Infer provider variables from SRV records.
+
+    Args:
+        provider (ProviderConfig): Provider configuration.
+        domain (str): Domain to inspect.
+        resolver (DnsResolver): DNS resolver for lookups.
+        known_vars (Dict[str, str]): Variables with fixed values.
+        inferred_vars (Dict[str, str]): Output mapping to update in place.
+    """
     if not provider.srv:
         return
     for name, entries in provider.srv.records.items():
@@ -242,6 +348,16 @@ def _infer_from_srv(
 def infer_provider_variables(
     provider: ProviderConfig, domain: str, resolver: DnsResolver
 ) -> Dict[str, str]:
+    """Infer provider variables from DNS records.
+
+    Args:
+        provider (ProviderConfig): Provider configuration.
+        domain (str): Domain to inspect.
+        resolver (DnsResolver): DNS resolver for lookups.
+
+    Returns:
+        Dict[str, str]: Inferred variable mapping.
+    """
     if not provider.variables:
         return {}
     known_vars = {"domain": domain.lower().strip()}
@@ -254,6 +370,15 @@ def infer_provider_variables(
 
 
 def _score_results(results: List[RecordCheck]) -> tuple[int, int, float, List[str], Dict[str, int]]:
+    """Score check results for provider detection.
+
+    Args:
+        results (List[RecordCheck]): DNS check results.
+
+    Returns:
+        tuple[int, int, float, List[str], Dict[str, int]]: Score, max score, ratio,
+            list of core PASS records, and status counts.
+    """
     score = 0
     max_score = 0
     core_pass_records: List[str] = []
@@ -270,10 +395,28 @@ def _score_results(results: List[RecordCheck]) -> tuple[int, int, float, List[st
 
 
 def _same_ratio(left: DetectionCandidate, right: DetectionCandidate) -> bool:
+    """Compare candidates by score ratio without floating point drift.
+
+    Args:
+        left (DetectionCandidate): First candidate.
+        right (DetectionCandidate): Second candidate.
+
+    Returns:
+        bool: True if ratios are equal.
+    """
     return left.score * right.max_score == right.score * left.max_score
 
 
 def _same_score(left: DetectionCandidate, right: DetectionCandidate) -> bool:
+    """Check whether two candidates have identical scores.
+
+    Args:
+        left (DetectionCandidate): First candidate.
+        right (DetectionCandidate): Second candidate.
+
+    Returns:
+        bool: True if both score and max score match.
+    """
     return left.score == right.score and left.max_score == right.max_score
 
 
@@ -283,6 +426,16 @@ def detect_providers(
     resolver: Optional[DnsResolver] = None,
     top_n: int = DEFAULT_TOP_N,
 ) -> DetectionReport:
+    """Detect provider candidates by running DNS checks.
+
+    Args:
+        domain (str): Domain to inspect.
+        resolver (Optional[DnsResolver]): DNS resolver to use.
+        top_n (int): Number of top candidates to return.
+
+    Returns:
+        DetectionReport: Detection report containing candidates and selection.
+    """
     normalized_domain = domain.lower().strip()
     resolver = resolver or DnsResolver()
     candidates: List[DetectionCandidate] = []

@@ -237,6 +237,8 @@ pip install '.[test]'
 - Run coverage: `./.venv/bin/coverage run -m pytest` then `./.venv/bin/coverage report -m --fail-under=100`
 - Format code: `./.venv/bin/black src tests`
 - Lint YAML: `./.venv/bin/yamllint -c .yamllint src`
+- Docstrings must use full Google style (summary + sections like Args/Returns/Raises/Attributes when applicable).
+- Docstrings are required for all classes/functions in `src` (enforced by `tests/test_docstring_coverage.py`).
 
 ## Notes
 - Strict mode enforces the exact DNS strings from the provider config (no extras).

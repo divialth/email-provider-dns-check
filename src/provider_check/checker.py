@@ -15,6 +15,15 @@ _SPF_QUALIFIERS = {"-", "~", "?"}
 
 @dataclasses.dataclass
 class RecordCheck:
+    """Represent the outcome of a DNS record validation.
+
+    Attributes:
+        record_type (str): DNS record type being validated (e.g., MX, SPF, DKIM).
+        status (str): Result status (PASS, WARN, FAIL, or UNKNOWN).
+        message (str): Human-readable summary of the outcome.
+        details (Dict[str, object]): Structured details for debugging or output.
+    """
+
     record_type: str
     status: str  # PASS | WARN | FAIL
     message: str
@@ -22,7 +31,25 @@ class RecordCheck:
 
 
 class DNSChecker:
-    """Validate provider-specific DNS records for a domain."""
+    """Validate provider-specific DNS records for a domain.
+
+    Attributes:
+        domain (str): Normalized domain being checked.
+        provider (ProviderConfig): Provider configuration used for validation.
+        resolver (DnsResolver): DNS resolver used for lookups.
+        strict (bool): Whether to enforce exact matches with no extras.
+        dmarc_policy (str): DMARC policy to require (p=).
+        dmarc_rua_mailto (List[str]): Required rua mailto URIs.
+        dmarc_ruf_mailto (List[str]): Required ruf mailto URIs.
+        dmarc_required_tags (Dict[str, str]): Required DMARC tag overrides.
+        spf_policy (str): SPF policy enforcement ("hardfail" or "softfail").
+        additional_spf_includes (List[str]): Additional SPF include mechanisms.
+        additional_spf_ip4 (List[str]): Additional SPF ip4 mechanisms.
+        additional_spf_ip6 (List[str]): Additional SPF ip6 mechanisms.
+        additional_txt (Dict[str, Iterable[str]]): Additional required TXT records.
+        additional_txt_verification (Dict[str, Iterable[str]]): Extra TXT verification records.
+        skip_txt_verification (bool): Skip provider-required TXT verification checks.
+    """
 
     def __init__(
         self,
@@ -43,6 +70,28 @@ class DNSChecker:
         additional_txt_verification: Optional[Dict[str, Iterable[str]]] = None,
         skip_txt_verification: bool = False,
     ) -> None:
+        """Initialize a DNSChecker for a domain and provider.
+
+        Args:
+            domain (str): Domain to validate.
+            provider (ProviderConfig): Provider configuration to enforce.
+            resolver (Optional[DnsResolver]): DNS resolver to use.
+            strict (bool): If True, require exact matches and no extras.
+            dmarc_rua_mailto (Optional[Iterable[str]]): Required DMARC rua mailto URIs.
+            dmarc_ruf_mailto (Optional[Iterable[str]]): Required DMARC ruf mailto URIs.
+            dmarc_policy (Optional[str]): Override DMARC policy (p=).
+            dmarc_required_tags (Optional[Dict[str, str]]): DMARC tag overrides to require.
+            spf_policy (str): SPF policy ("hardfail" -> -all, "softfail" -> ~all).
+            additional_spf_includes (Optional[Iterable[str]]): Additional SPF include entries.
+            additional_spf_ip4 (Optional[Iterable[str]]): Additional SPF ip4 entries.
+            additional_spf_ip6 (Optional[Iterable[str]]): Additional SPF ip6 entries.
+            additional_txt (Optional[Dict[str, Iterable[str]]]): Additional required TXT values.
+            additional_txt_verification (Optional[Dict[str, Iterable[str]]]): TXT verification values.
+            skip_txt_verification (bool): Skip provider-required TXT verification checks.
+
+        Raises:
+            ValueError: If a DMARC mailto value is empty after normalization.
+        """
         self.domain = domain.lower().strip()
         self.provider = provider
         self.resolver = resolver or DnsResolver()
@@ -80,6 +129,11 @@ class DNSChecker:
         self.skip_txt_verification = skip_txt_verification
 
     def run_checks(self) -> List[RecordCheck]:
+        """Run all enabled DNS checks for the configured provider.
+
+        Returns:
+            List[RecordCheck]: Ordered list of check results.
+        """
         LOGGER.info(
             "Running DNS checks for %s with provider %s (v%s)",
             self.domain,
@@ -119,15 +173,39 @@ class DNSChecker:
 
     @staticmethod
     def _normalize_host(host: str) -> str:
+        """Normalize a hostname to lowercase and ensure a trailing dot.
+
+        Args:
+            host (str): Hostname to normalize.
+
+        Returns:
+            str: Normalized hostname ending in a dot.
+        """
         return host.rstrip(".").lower() + "."
 
     @staticmethod
     def _strip_spf_qualifier(token: str) -> tuple[str, str]:
+        """Split an SPF token into base value and qualifier.
+
+        Args:
+            token (str): SPF token (e.g., "-all", "~ip4:1.2.3.4").
+
+        Returns:
+            tuple[str, str]: (base, qualifier) where qualifier may be empty.
+        """
         if token and token[0] in "+-~?":
             return token[1:], token[0]
         return token, ""
 
     def _normalize_txt_name(self, name: str) -> str:
+        """Normalize a TXT record name to a fully qualified domain.
+
+        Args:
+            name (str): TXT record name or template.
+
+        Returns:
+            str: Fully qualified TXT record name without trailing dot.
+        """
         trimmed = name.strip()
         if trimmed == "@":
             return self.domain
@@ -140,6 +218,14 @@ class DNSChecker:
         return f"{trimmed}.{self.domain}"
 
     def _normalize_record_name(self, name: str) -> str:
+        """Normalize a record name to a fully qualified domain.
+
+        Args:
+            name (str): Record name or template.
+
+        Returns:
+            str: Fully qualified record name without trailing dot.
+        """
         trimmed = name.strip()
         if trimmed == "@":
             return self.domain
@@ -152,6 +238,17 @@ class DNSChecker:
         return f"{trimmed}.{self.domain}"
 
     def _normalize_mailto(self, value: str) -> str:
+        """Normalize a DMARC mailto value.
+
+        Args:
+            value (str): Mailto value with or without "mailto:" prefix.
+
+        Returns:
+            str: Normalized mailto URI in lowercase.
+
+        Raises:
+            ValueError: If the mailto value is empty.
+        """
         trimmed = value.strip()
         if "{domain}" in trimmed:
             trimmed = trimmed.replace("{domain}", self.domain)
@@ -166,6 +263,14 @@ class DNSChecker:
         return f"mailto:{address}".lower()
 
     def _normalize_mailto_list(self, values: Iterable[str]) -> List[str]:
+        """Normalize and de-duplicate a list of mailto values.
+
+        Args:
+            values (Iterable[str]): Mailto values to normalize.
+
+        Returns:
+            List[str]: Normalized, de-duplicated mailto URIs.
+        """
         normalized: List[str] = []
         for value in values:
             normalized_value = self._normalize_mailto(str(value))
@@ -174,6 +279,11 @@ class DNSChecker:
         return normalized
 
     def _effective_required_rua(self) -> List[str]:
+        """Determine the required rua mailto values.
+
+        Returns:
+            List[str]: Required rua mailto URIs after overrides.
+        """
         if not self.provider.dmarc:
             return []
         if self._dmarc_rua_override:
@@ -181,6 +291,11 @@ class DNSChecker:
         return self._normalize_mailto_list(self.provider.dmarc.required_rua)
 
     def _effective_required_ruf(self) -> List[str]:
+        """Determine the required ruf mailto values.
+
+        Returns:
+            List[str]: Required ruf mailto URIs after overrides.
+        """
         if not self.provider.dmarc:
             return []
         if self._dmarc_ruf_override:
@@ -188,6 +303,14 @@ class DNSChecker:
         return self._normalize_mailto_list(self.provider.dmarc.required_ruf)
 
     def _rua_required(self, required_rua: List[str]) -> bool:
+        """Check whether rua values must be present.
+
+        Args:
+            required_rua (List[str]): Required rua entries.
+
+        Returns:
+            bool: True if rua is required.
+        """
         if not self.provider.dmarc:
             return False
         if self._dmarc_rua_override:
@@ -195,6 +318,14 @@ class DNSChecker:
         return self.provider.dmarc.rua_required or bool(required_rua)
 
     def _ruf_required(self, required_ruf: List[str]) -> bool:
+        """Check whether ruf values must be present.
+
+        Args:
+            required_ruf (List[str]): Required ruf entries.
+
+        Returns:
+            bool: True if ruf is required.
+        """
         if not self.provider.dmarc:
             return False
         if self._dmarc_ruf_override:
@@ -202,6 +333,14 @@ class DNSChecker:
         return self.provider.dmarc.ruf_required or bool(required_ruf)
 
     def check_mx(self) -> RecordCheck:
+        """Validate MX records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the MX validation.
+
+        Raises:
+            ValueError: If the provider does not define MX requirements.
+        """
         if not self.provider.mx:
             raise ValueError("MX configuration not available for provider")
 
@@ -276,6 +415,14 @@ class DNSChecker:
         return RecordCheck("MX", "PASS", "Required MX records present", {"found": sorted(found)})
 
     def _build_expected_spf(self) -> str:
+        """Build the expected SPF record string.
+
+        Returns:
+            str: Expected SPF record value.
+
+        Raises:
+            ValueError: If the provider does not define SPF requirements.
+        """
         if not self.provider.spf:
             raise ValueError("SPF configuration not available for provider")
 
@@ -298,6 +445,14 @@ class DNSChecker:
         return " ".join(tokens)
 
     def check_spf(self) -> RecordCheck:
+        """Validate SPF records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the SPF validation.
+
+        Raises:
+            ValueError: If the provider does not define SPF requirements.
+        """
         if not self.provider.spf:
             raise ValueError("SPF configuration not available for provider")
 
@@ -464,6 +619,14 @@ class DNSChecker:
         )
 
     def check_dkim(self) -> RecordCheck:
+        """Validate DKIM selectors for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the DKIM validation.
+
+        Raises:
+            ValueError: If the provider does not define DKIM requirements.
+        """
         if not self.provider.dkim:
             raise ValueError("DKIM configuration not available for provider")
 
@@ -543,6 +706,14 @@ class DNSChecker:
         )
 
     def check_cname(self) -> RecordCheck:
+        """Validate CNAME records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the CNAME validation.
+
+        Raises:
+            ValueError: If the provider does not define CNAME requirements.
+        """
         if not self.provider.cname:
             raise ValueError("CNAME configuration not available for provider")
 
@@ -587,6 +758,14 @@ class DNSChecker:
         )
 
     def check_srv(self) -> RecordCheck:
+        """Validate SRV records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the SRV validation.
+
+        Raises:
+            ValueError: If the provider does not define SRV requirements.
+        """
         if not self.provider.srv:
             raise ValueError("SRV configuration not available for provider")
 
@@ -649,6 +828,11 @@ class DNSChecker:
         )
 
     def check_txt(self) -> RecordCheck:
+        """Validate TXT records for the configured provider and overrides.
+
+        Returns:
+            RecordCheck: Result of the TXT validation.
+        """
         required: Dict[str, List[str]] = {}
         user_required = False
         if self.provider.txt:
@@ -723,6 +907,17 @@ class DNSChecker:
         required_ruf: List[str],
         ruf_required: bool,
     ) -> str:
+        """Build the expected DMARC policy string.
+
+        Args:
+            required_rua (List[str]): Required rua values.
+            rua_required (bool): Whether rua is required.
+            required_ruf (List[str]): Required ruf values.
+            ruf_required (bool): Whether ruf is required.
+
+        Returns:
+            str: Expected DMARC record string.
+        """
         policy = self.dmarc_policy
         parts = [f"v=DMARC1", f"p={policy}"]
         if rua_required:
@@ -738,15 +933,40 @@ class DNSChecker:
 
     @staticmethod
     def _parse_dmarc_tokens(record: str) -> Dict[str, str]:
+        """Parse a DMARC record into a tag map.
+
+        Args:
+            record (str): Raw DMARC record string.
+
+        Returns:
+            Dict[str, str]: Mapping of tag to value.
+        """
         parts = [part for part in record.replace(" ", "").split(";") if "=" in part]
         return {part.split("=", 1)[0].lower(): part.split("=", 1)[1] for part in parts}
 
     @staticmethod
     def _parse_mailto_entries(raw_value: str) -> List[str]:
+        """Parse a DMARC mailto value list.
+
+        Args:
+            raw_value (str): Comma-separated mailto entries.
+
+        Returns:
+            List[str]: Normalized mailto entries.
+        """
         return [entry.strip().lower() for entry in raw_value.split(",") if entry.strip()]
 
     @staticmethod
     def _matches_dmarc_uri(required: str, found: str) -> bool:
+        """Check if a found mailto entry satisfies a required entry.
+
+        Args:
+            required (str): Required mailto URI.
+            found (str): Found mailto URI.
+
+        Returns:
+            bool: True if the found entry satisfies the requirement.
+        """
         if required == found:
             return True
         if not required.startswith("mailto:") or not found.startswith("mailto:"):
@@ -759,12 +979,30 @@ class DNSChecker:
         return not suffix or suffix[0] in {"!", "?"}
 
     def _required_dmarc_uris_present(self, required: List[str], found: List[str]) -> bool:
+        """Check that all required DMARC URIs appear in the found list.
+
+        Args:
+            required (List[str]): Required mailto URIs.
+            found (List[str]): Found mailto URIs.
+
+        Returns:
+            bool: True if every required entry is present.
+        """
         return all(
             any(self._matches_dmarc_uri(required_value, entry) for entry in found)
             for required_value in required
         )
 
     def _strict_dmarc_uris_match(self, required: List[str], found: List[str]) -> bool:
+        """Check that required and found DMARC URIs match exactly.
+
+        Args:
+            required (List[str]): Required mailto URIs.
+            found (List[str]): Found mailto URIs.
+
+        Returns:
+            bool: True if both sets match under DMARC matching rules.
+        """
         for required_value in required:
             if not any(self._matches_dmarc_uri(required_value, entry) for entry in found):
                 return False
@@ -776,6 +1014,14 @@ class DNSChecker:
         return True
 
     def check_dmarc(self) -> RecordCheck:
+        """Validate DMARC records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the DMARC validation.
+
+        Raises:
+            ValueError: If the provider does not define DMARC requirements.
+        """
         if not self.provider.dmarc:
             raise ValueError("DMARC configuration not available for provider")
 
