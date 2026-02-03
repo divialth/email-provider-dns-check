@@ -2,10 +2,20 @@ name: tests
 
 on:
   push:
+    branches-ignore:
+      - renovate/**
+      - renovate-*
   pull_request:
+
+env:
+  SKIP_RENOVATE: >-
+    ${{ startsWith(github.actor, 'renovate')
+        || (github.event_name == 'pull_request'
+            && startsWith(github.event.pull_request.user.login, 'renovate')) }}
 
 jobs:
   black:
+    if: ${{ env.SKIP_RENOVATE != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,6 +33,7 @@ jobs:
         run: python -m black --check .
 
   requirements:
+    if: ${{ env.SKIP_RENOVATE != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,6 +51,7 @@ jobs:
         run: git diff --exit-code requirements.txt requirements-dev.txt
 
   yamllint:
+    if: ${{ env.SKIP_RENOVATE != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -57,6 +69,7 @@ jobs:
         run: yamllint -c .yamllint src
 
   pytest:
+    if: ${{ env.SKIP_RENOVATE != 'true' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -81,6 +94,7 @@ jobs:
         run: python -m pytest -vv --color=yes
 
   coverage:
+    if: ${{ env.SKIP_RENOVATE != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

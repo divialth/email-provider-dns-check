@@ -7,6 +7,12 @@ on:
   schedule:
     - cron: "0 3 * * 1"
 
+env:
+  SKIP_RENOVATE: >-
+    ${{ startsWith(github.actor, 'renovate')
+        || (github.event_name == 'pull_request'
+            && startsWith(github.event.pull_request.user.login, 'renovate')) }}
+
 permissions:
   actions: read
   contents: read
@@ -15,6 +21,7 @@ permissions:
 
 jobs:
   analyze:
+    if: ${{ env.SKIP_RENOVATE != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -4,12 +4,22 @@ on:
   push:
     branches:
       - '**'
+    branches-ignore:
+      - renovate/**
+      - renovate-*
   workflow_dispatch:
   schedule:
     - cron: "0 3 * * 1"
 
+env:
+  SKIP_RENOVATE: >-
+    ${{ startsWith(github.actor, 'renovate')
+        || (github.event_name == 'pull_request'
+            && startsWith(github.event.pull_request.user.login, 'renovate')) }}
+
 jobs:
   sync-repo-to-codeberg:
+    if: ${{ env.SKIP_RENOVATE != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
