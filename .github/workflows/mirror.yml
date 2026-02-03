@@ -2,8 +2,6 @@ name: mirror
 
 on:
   push:
-    branches:
-      - '**'
     branches-ignore:
       - renovate/**
       - renovate-*
