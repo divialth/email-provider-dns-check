@@ -1,5 +1,10 @@
 name: mirror
 
+x-renovate-skip: &skip_renovate >-
+  ${{ !startsWith(github.actor, 'renovate')
+      && (github.event_name != 'pull_request'
+          || !startsWith(github.event.pull_request.user.login, 'renovate')) }}
+
 on:
   push:
     branches:
@@ -11,15 +16,9 @@ on:
   schedule:
     - cron: "0 3 * * 1"
 
-env:
-  SKIP_RENOVATE: >-
-    ${{ startsWith(github.actor, 'renovate')
-        || (github.event_name == 'pull_request'
-            && startsWith(github.event.pull_request.user.login, 'renovate')) }}
-
 jobs:
   sync-repo-to-codeberg:
-    if: ${{ env.SKIP_RENOVATE != 'true' }}
+    if: *skip_renovate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
