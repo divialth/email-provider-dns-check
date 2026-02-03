@@ -13,7 +13,9 @@ def test_to_text_lists_dkim_selectors():
         == "PASS - report for domain example.com (2026-01-31 19:37) / provider: dummy-provider (v9)"
     )
     assert "DKIM: PASS" in text
-    assert "s1._domainkey.example.com -> s1._domainkey.provider.test." in text
+    assert "Status" in text
+    assert "s1._domainkey.example.com" in text
+    assert "s1._domainkey.provider.test." in text
 
 
 def test_dkim_missing_still_lists_all_selectors():
@@ -36,8 +38,8 @@ def test_dkim_missing_still_lists_all_selectors():
 
     text = to_text([result], "example.com", "2026-01-31 19:37", "dummy-provider", "9")
 
-    assert "SEL1._domainkey.example.com -> SEL1._domainkey.provider.test." in text
-    assert "SEL2._domainkey.example.com -> SEL2._domainkey.provider.test." in text
+    assert "SEL1._domainkey.example.com" in text
+    assert "SEL2._domainkey.example.com" in text
 
 
 def test_to_text_uses_custom_template(monkeypatch, tmp_path):

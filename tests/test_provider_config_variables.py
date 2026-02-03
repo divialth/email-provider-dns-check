@@ -35,7 +35,7 @@ def test_resolve_provider_config_applies_variables_and_domain():
             txt_values={},
         ),
         cname=CNAMEConfig(
-            records={"sip": "sip.{tenant}.example.test.", "lyncdiscover": "webdir.{tenant}."},
+            records={"sip": "sip.{tenant}.example.test.", "discover": "webdir.{tenant}."},
             records_optional={"autoconfig": "auto.{tenant}.example.test."},
         ),
         srv=SRVConfig(
@@ -78,27 +78,27 @@ def test_resolve_provider_config_applies_variables_and_domain():
 
     resolved = resolve_provider_config(
         provider,
-        {"tenant": "contoso"},
+        {"tenant": "tenant-a"},
         domain="example.test",
     )
 
-    assert resolved.mx.hosts == ["contoso.mx.us.example.test."]
-    assert resolved.spf.required_includes == ["spf.contoso.example.test"]
-    assert resolved.spf.strict_record == "v=spf1 include:spf.contoso.example.test -all"
-    assert resolved.spf.required_modifiers["redirect"] == "_spf.contoso.example.test"
-    assert resolved.dkim.selectors == ["sel-contoso"]
-    assert resolved.dkim.target_template == "{selector}._domainkey.contoso.example.test."
+    assert resolved.mx.hosts == ["tenant-a.mx.us.example.test."]
+    assert resolved.spf.required_includes == ["spf.tenant-a.example.test"]
+    assert resolved.spf.strict_record == "v=spf1 include:spf.tenant-a.example.test -all"
+    assert resolved.spf.required_modifiers["redirect"] == "_spf.tenant-a.example.test"
+    assert resolved.dkim.selectors == ["sel-tenant-a"]
+    assert resolved.dkim.target_template == "{selector}._domainkey.tenant-a.example.test."
     assert resolved.cname.records == {
-        "sip": "sip.contoso.example.test.",
-        "lyncdiscover": "webdir.contoso.",
+        "sip": "sip.tenant-a.example.test.",
+        "discover": "webdir.tenant-a.",
     }
-    assert resolved.cname.records_optional == {"autoconfig": "auto.contoso.example.test."}
-    assert resolved.srv.records["_sip._tls"][0].target == "sipdir.contoso.example.test."
+    assert resolved.cname.records_optional == {"autoconfig": "auto.tenant-a.example.test."}
+    assert resolved.srv.records["_sip._tls"][0].target == "sipdir.tenant-a.example.test."
     assert (
         resolved.srv.records_optional["_autodiscover._tcp"][0].target
-        == "auto.contoso.example.test."
+        == "auto.tenant-a.example.test."
     )
-    assert resolved.txt.required == {"_verify.example.test": ["token-contoso"]}
+    assert resolved.txt.required == {"_verify.example.test": ["token-tenant-a"]}
     assert resolved.dmarc.required_rua == ["mailto:dmarc@example.test"]
     assert resolved.dmarc.required_ruf == ["mailto:forensic@example.test"]
 

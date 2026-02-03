@@ -1,6 +1,6 @@
 ---
 name: mailbox.org
-version: 1
+version: 2
 short_description: "DNS records for mailbox.org custom domain email hosting"
 long_description: |
   Check for mailbox.org custom-domain DNS records for MX, SPF, DKIM

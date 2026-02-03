@@ -5,12 +5,10 @@
 
 {%   endif %}
 {{   result.record_type }}: {{   result.status }} - {{   result.message }}
-{%   if result.record_type == "DKIM" and result.selector_rows %}
-{%     for selector in result.selector_rows %}
-  {{     selector.name }} -> {{     selector.value }}
+{%   if result.text_rows %}
+{{     format_text_row(text_headers, result.text_widths) }}
+{%     for row in result.text_rows %}
+{{       format_text_row(row, result.text_widths) }}
 {%     endfor %}
 {%   endif %}
-{%   for key, value in result.details.items() %}
-  {{     key }}: {{     value }}
-{%   endfor %}
 {% endfor %}

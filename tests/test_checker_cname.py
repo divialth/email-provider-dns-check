@@ -24,15 +24,15 @@ def _build_provider(records, records_optional=None):
 def test_cname_passes_when_records_match():
     provider = _build_provider(
         {
-            "sip": "sipdir.online.lync.com.",
-            "lyncdiscover": "webdir.online.lync.com.",
+            "sip": "sip.provider.test.",
+            "discover": "web.provider.test.",
         }
     )
     domain = "example.com"
     resolver = FakeResolver(
         cname={
-            "sip.example.com": "sipdir.online.lync.com.",
-            "lyncdiscover.example.com": "webdir.online.lync.com.",
+            "sip.example.com": "sip.provider.test.",
+            "discover.example.com": "web.provider.test.",
         }
     )
 
@@ -44,7 +44,7 @@ def test_cname_passes_when_records_match():
 
 
 def test_cname_missing_records_fail():
-    provider = _build_provider({"sip": "sipdir.online.lync.com."})
+    provider = _build_provider({"sip": "sip.provider.test."})
     resolver = FakeResolver(cname={})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 
@@ -55,7 +55,7 @@ def test_cname_missing_records_fail():
 
 
 def test_cname_mismatch_records_fail():
-    provider = _build_provider({"sip": "sipdir.online.lync.com."})
+    provider = _build_provider({"sip": "sip.provider.test."})
     resolver = FakeResolver(cname={"sip.example.com": "wrong.example."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 
@@ -70,7 +70,7 @@ def test_cname_lookup_error_returns_unknown():
         def get_cname(self, name: str):
             raise DnsLookupError("CNAME", name, RuntimeError("timeout"))
 
-    provider = _build_provider({"sip": "sipdir.online.lync.com."})
+    provider = _build_provider({"sip": "sip.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=FailingResolver())
 
     result = checker.check_cname()
@@ -80,10 +80,10 @@ def test_cname_lookup_error_returns_unknown():
 
 def test_cname_optional_missing_warns():
     provider = _build_provider(
-        {"sip": "sipdir.online.lync.com."},
-        records_optional={"autoconfig": "auto.mailbox.org."},
+        {"sip": "sip.provider.test."},
+        records_optional={"autoconfig": "autoconfig.provider.test."},
     )
-    resolver = FakeResolver(cname={"sip.example.com": "sipdir.online.lync.com."})
+    resolver = FakeResolver(cname={"sip.example.com": "sip.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 
     result = checker.check_cname_optional()
@@ -94,8 +94,8 @@ def test_cname_optional_missing_warns():
 
 
 def test_cname_optional_present_passes():
-    provider = _build_provider({}, records_optional={"autoconfig": "auto.mailbox.org."})
-    resolver = FakeResolver(cname={"autoconfig.example.com": "auto.mailbox.org."})
+    provider = _build_provider({}, records_optional={"autoconfig": "autoconfig.provider.test."})
+    resolver = FakeResolver(cname={"autoconfig.example.com": "autoconfig.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 
     result = checker.check_cname_optional()
@@ -105,7 +105,7 @@ def test_cname_optional_present_passes():
 
 
 def test_cname_optional_mismatch_fails():
-    provider = _build_provider({}, records_optional={"autoconfig": "auto.mailbox.org."})
+    provider = _build_provider({}, records_optional={"autoconfig": "autoconfig.provider.test."})
     resolver = FakeResolver(cname={"autoconfig.example.com": "wrong.example."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 
@@ -117,7 +117,7 @@ def test_cname_optional_mismatch_fails():
 
 
 def test_cname_optional_no_records_passes():
-    provider = _build_provider({"sip": "sipdir.online.lync.com."}, records_optional={})
+    provider = _build_provider({"sip": "sip.provider.test."}, records_optional={})
     checker = DNSChecker("example.com", provider, resolver=FakeResolver())
 
     result = checker.check_cname_optional()
@@ -131,7 +131,7 @@ def test_cname_optional_lookup_error_returns_unknown():
         def get_cname(self, name: str):
             raise DnsLookupError("CNAME", name, RuntimeError("timeout"))
 
-    provider = _build_provider({}, records_optional={"autoconfig": "auto.mailbox.org."})
+    provider = _build_provider({}, records_optional={"autoconfig": "autoconfig.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=FailingResolver())
 
     result = checker.check_cname_optional()
@@ -159,8 +159,8 @@ def test_cname_optional_requires_config():
 
 
 def test_run_checks_includes_optional_cname():
-    provider = _build_provider({}, records_optional={"autoconfig": "auto.mailbox.org."})
-    resolver = FakeResolver(cname={"autoconfig.example.com": "auto.mailbox.org."})
+    provider = _build_provider({}, records_optional={"autoconfig": "autoconfig.provider.test."})
+    resolver = FakeResolver(cname={"autoconfig.example.com": "autoconfig.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 
     results = checker.run_checks()

@@ -34,7 +34,7 @@ def test_run_checks_includes_cname_and_srv():
         mx=None,
         spf=None,
         dkim=None,
-        cname=CNAMEConfig(records={"sip": "sipdir.online.lync.com."}),
+        cname=CNAMEConfig(records={"sip": "sip.provider.test."}),
         srv=SRVConfig(
             records={
                 "_sip._tls": [
@@ -42,7 +42,7 @@ def test_run_checks_includes_cname_and_srv():
                         priority=100,
                         weight=1,
                         port=443,
-                        target="sipdir.online.lync.com.",
+                        target="sip.provider.test.",
                     )
                 ]
             }
@@ -52,8 +52,8 @@ def test_run_checks_includes_cname_and_srv():
     )
     domain = "example.com"
     resolver = FakeResolver(
-        cname={"sip.example.com": "sipdir.online.lync.com."},
-        srv={"_sip._tls.example.com": [(100, 1, 443, "sipdir.online.lync.com.")]},
+        cname={"sip.example.com": "sip.provider.test."},
+        srv={"_sip._tls.example.com": [(100, 1, 443, "sip.provider.test.")]},
     )
 
     checker = DNSChecker(domain, provider, resolver=resolver)

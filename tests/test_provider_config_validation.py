@@ -369,7 +369,7 @@ def test_invalid_cname_value_rejected(monkeypatch, tmp_path):
           cname:
             records:
               sip:
-                target: sipdir.online.lync.com.
+                target: sip.provider.test.
         """,
     )
     import provider_check.provider_config as provider_config
@@ -412,7 +412,7 @@ def test_invalid_srv_entry_rejected(monkeypatch, tmp_path):
           srv:
             records:
               _sip._tls:
-                - target: sipdir.online.lync.com.
+                - target: sip.provider.test.
         """,
     )
     import provider_check.provider_config as provider_config

@@ -118,15 +118,15 @@ def test_get_cname_dns_exception_raises_lookup_error(monkeypatch):
 def test_get_srv_success(monkeypatch):
     answers = {
         ("_sip._tls.example.com", "SRV"): [
-            SimpleNamespace(priority=100, weight=1, port=443, target="sipdir.online.lync.com."),
-            SimpleNamespace(priority=100, weight=1, port=5061, target="sipfed.online.lync.com."),
+            SimpleNamespace(priority=100, weight=1, port=443, target="sip.provider.test."),
+            SimpleNamespace(priority=100, weight=1, port=5061, target="sip.extra.provider.test."),
         ]
     }
     resolver = _make_resolver(monkeypatch, answers)
 
     assert resolver.get_srv("_sip._tls.example.com") == [
-        (100, 1, 443, "sipdir.online.lync.com."),
-        (100, 1, 5061, "sipfed.online.lync.com."),
+        (100, 1, 443, "sip.provider.test."),
+        (100, 1, 5061, "sip.extra.provider.test."),
     ]
 
 

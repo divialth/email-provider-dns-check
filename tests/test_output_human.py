@@ -5,7 +5,12 @@ from provider_check.output import to_human
 def test_to_human_renders_table():
     results = [
         RecordCheck("MX", "PASS", "ok", {"found": ["mx"]}),
-        RecordCheck("SPF", "WARN", "extra", {"extras": ["include:other"]}),
+        RecordCheck(
+            "SPF",
+            "WARN",
+            "extra",
+            {"record": "v=spf1 include:example.test ~all", "extras": ["include:other"]},
+        ),
     ]
 
     table = to_human(results, "example.com", "2026-01-31 19:37", "dummy-provider", "9")
@@ -15,12 +20,11 @@ def test_to_human_renders_table():
         lines[0]
         == "WARN - report for domain example.com (2026-01-31 19:37) / provider: dummy-provider (v9)"
     )
-    assert lines[1].startswith("| Record ")
-    assert lines[2].startswith("| ---")
-    assert lines[3].startswith("| MX")
-    assert lines[4].startswith("|  ")
-    assert lines[5].startswith("| SPF")
-    assert "extras" in table
+    assert "MX - PASS: ok" in table
+    assert "| Status" in table
+    assert "| PASS" in table
+    assert "SPF - WARN: extra" in table
+    assert "include:other" in table
 
 
 def test_to_human_includes_dkim_selectors():
@@ -34,11 +38,8 @@ def test_to_human_includes_dkim_selectors():
 
     table = to_human(results, "example.com", "2026-01-31 19:37", "dummy-provider", "9")
 
-    lines = [line for line in table.splitlines() if line.strip()]
-    summary_line = next(line for line in lines if line.startswith("| DKIM"))
-    assert "All DKIM selectors configured" in summary_line
+    assert "DKIM - PASS: All DKIM selectors configured" in table
     for selector in selectors:
-        assert "DKIM selector valid" in table
         assert selector in table
 
 
@@ -62,7 +63,7 @@ def test_dkim_human_summary_details_blank():
 
     table = to_human([result], "example.com", "2026-01-31 19:37", "dummy-provider", "9")
     lines = [line for line in table.splitlines() if line.strip()]
-    summary_line = next(line for line in lines if line.startswith("| DKIM"))
+    summary_line = next(line for line in lines if line.startswith("DKIM -"))
 
     assert "expected_selectors" not in summary_line
     assert "missing" not in summary_line

@@ -23,7 +23,7 @@ def test_serialize_results_marks_mismatched_dkim():
     assert selector_row["details"]["found"] == "wrong.target."
 
 
-def test_build_table_rows_adds_separator_and_selectors():
+def test_build_table_rows_includes_dkim_and_mx_rows():
     results = [
         RecordCheck(
             "DKIM",
@@ -37,8 +37,8 @@ def test_build_table_rows_adds_separator_and_selectors():
     serialized = _serialize_results(results)
     rows = _build_table_rows(serialized)
 
-    assert ["", "", "—", ""] in rows
-    assert any(row[2] == "DKIM selector valid" for row in rows)
+    assert any("DKIM selector s1._domainkey.example.com" in row[1] for row in rows)
+    assert any(row[1].startswith("MX host") for row in rows)
 
 
 def test_stringify_details_empty_returns_dash():

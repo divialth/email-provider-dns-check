@@ -325,9 +325,10 @@ Add or override templates by dropping `text.j2` and/or `human.j2` into one of th
 
 Template context includes:
 - `domain`, `report_time`, `provider_name`, `provider_version`, `provider_label`, `summary`
-- `results` (list of dicts with `record_type`, `status`, `message`, `details`, `selectors`)
+- `results` (list of dicts with `record_type`, `status`, `message`, `details`, `selectors`, `rows`)
 - `lines` (legacy list of rendered output lines, populated by text output)
 - `table_headers`, `format_row` (human output only)
+- `text_headers`, `format_text_row` (text output only)
 - `stringify_details` (human output only)
 - `build_table_rows`, `build_table_widths`, `build_table_separator` (human output only)
 
