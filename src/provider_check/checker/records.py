@@ -7,11 +7,10 @@ import ipaddress
 import logging
 from typing import Dict, Iterable, List, Optional
 
-from .dns_resolver import DnsLookupError, DnsResolver
-from .provider_config import ProviderConfig
+from ..dns_resolver import DnsLookupError
+from .utils import SPF_QUALIFIERS, strip_spf_qualifier
 
-LOGGER = logging.getLogger(__name__)
-_SPF_QUALIFIERS = {"-", "~", "?"}
+LOGGER = logging.getLogger("provider_check.checker")
 
 
 @dataclasses.dataclass
@@ -33,8 +32,8 @@ class RecordCheck:
     optional: bool = False
 
 
-class DNSChecker:
-    """Validate provider-specific DNS records for a domain.
+class RecordsMixin:
+    """Mixin that implements provider-specific DNS record checks.
 
     Attributes:
         domain (str): Normalized domain being checked.
@@ -54,147 +53,6 @@ class DNSChecker:
         skip_txt_verification (bool): Skip provider-required TXT verification checks.
     """
 
-    def __init__(
-        self,
-        domain: str,
-        provider: ProviderConfig,
-        resolver: Optional[DnsResolver] = None,
-        *,
-        strict: bool = False,
-        dmarc_rua_mailto: Optional[Iterable[str]] = None,
-        dmarc_ruf_mailto: Optional[Iterable[str]] = None,
-        dmarc_policy: Optional[str] = None,
-        dmarc_required_tags: Optional[Dict[str, str]] = None,
-        spf_policy: str = "hardfail",
-        additional_spf_includes: Optional[Iterable[str]] = None,
-        additional_spf_ip4: Optional[Iterable[str]] = None,
-        additional_spf_ip6: Optional[Iterable[str]] = None,
-        additional_txt: Optional[Dict[str, Iterable[str]]] = None,
-        additional_txt_verification: Optional[Dict[str, Iterable[str]]] = None,
-        skip_txt_verification: bool = False,
-    ) -> None:
-        """Initialize a DNSChecker for a domain and provider.
-
-        Args:
-            domain (str): Domain to validate.
-            provider (ProviderConfig): Provider configuration to enforce.
-            resolver (Optional[DnsResolver]): DNS resolver to use.
-            strict (bool): If True, require exact matches and no extras.
-            dmarc_rua_mailto (Optional[Iterable[str]]): Required DMARC rua mailto URIs.
-            dmarc_ruf_mailto (Optional[Iterable[str]]): Required DMARC ruf mailto URIs.
-            dmarc_policy (Optional[str]): Override DMARC policy (p=).
-            dmarc_required_tags (Optional[Dict[str, str]]): DMARC tag overrides to require.
-            spf_policy (str): SPF policy ("hardfail" -> -all, "softfail" -> ~all).
-            additional_spf_includes (Optional[Iterable[str]]): Additional SPF include entries.
-            additional_spf_ip4 (Optional[Iterable[str]]): Additional SPF ip4 entries.
-            additional_spf_ip6 (Optional[Iterable[str]]): Additional SPF ip6 entries.
-            additional_txt (Optional[Dict[str, Iterable[str]]]): Additional required TXT values.
-            additional_txt_verification (Optional[Dict[str, Iterable[str]]]): TXT verification values.
-            skip_txt_verification (bool): Skip provider-required TXT verification checks.
-
-        Raises:
-            ValueError: If a DMARC mailto value is empty after normalization.
-        """
-        self.domain = domain.lower().strip()
-        self.provider = provider
-        self.resolver = resolver or DnsResolver()
-        self.strict = strict
-
-        dmarc_default_policy = "reject"
-        if provider.dmarc:
-            dmarc_default_policy = provider.dmarc.default_policy
-
-        self.dmarc_policy = (dmarc_policy or dmarc_default_policy).lower()
-        self.dmarc_rua_mailto = self._normalize_mailto_list(dmarc_rua_mailto or [])
-        self._dmarc_rua_override = bool(self.dmarc_rua_mailto)
-        self.dmarc_ruf_mailto = self._normalize_mailto_list(dmarc_ruf_mailto or [])
-        self._dmarc_ruf_override = bool(self.dmarc_ruf_mailto)
-        self.dmarc_required_tags: Dict[str, str] = {}
-        if provider.dmarc:
-            self.dmarc_required_tags = {
-                str(key).lower(): str(value) for key, value in provider.dmarc.required_tags.items()
-            }
-        if dmarc_required_tags:
-            for key, value in dmarc_required_tags.items():
-                self.dmarc_required_tags[str(key).lower()] = str(value)
-        self.spf_policy = spf_policy.lower()
-        self.additional_spf_includes = list(additional_spf_includes or [])
-        self.additional_spf_ip4 = list(additional_spf_ip4 or [])
-        self.additional_spf_ip6 = list(additional_spf_ip6 or [])
-        self.additional_txt = {
-            str(name): [str(value) for value in values]
-            for name, values in (additional_txt or {}).items()
-        }
-        self.additional_txt_verification = {
-            str(name): [str(value) for value in values]
-            for name, values in (additional_txt_verification or {}).items()
-        }
-        self.skip_txt_verification = skip_txt_verification
-
-    def run_checks(self) -> List[RecordCheck]:
-        """Run all enabled DNS checks for the configured provider.
-
-        Returns:
-            List[RecordCheck]: Ordered list of check results.
-        """
-        LOGGER.info(
-            "Running DNS checks for %s with provider %s (v%s)",
-            self.domain,
-            self.provider.name,
-            self.provider.version,
-        )
-        checks: List[tuple[str, callable]] = []
-        if self.provider.mx:
-            checks.append(("MX", self.check_mx))
-        if self.provider.spf:
-            checks.append(("SPF", self.check_spf))
-        if self.provider.dkim:
-            checks.append(("DKIM", self.check_dkim))
-        if self.provider.a:
-            if self.provider.a.records:
-                checks.append(("A", self.check_a))
-            if self.provider.a.records_optional:
-                checks.append(("A", self.check_a_optional))
-        if self.provider.aaaa:
-            if self.provider.aaaa.records:
-                checks.append(("AAAA", self.check_aaaa))
-            if self.provider.aaaa.records_optional:
-                checks.append(("AAAA", self.check_aaaa_optional))
-        if self.provider.cname:
-            if self.provider.cname.records:
-                checks.append(("CNAME", self.check_cname))
-            if self.provider.cname.records_optional:
-                checks.append(("CNAME", self.check_cname_optional))
-        if self.provider.caa:
-            if self.provider.caa.records:
-                checks.append(("CAA", self.check_caa))
-            if self.provider.caa.records_optional:
-                checks.append(("CAA", self.check_caa_optional))
-        if self.provider.srv:
-            if self.provider.srv.records:
-                checks.append(("SRV", self.check_srv))
-            if self.provider.srv.records_optional:
-                checks.append(("SRV", self.check_srv_optional))
-        if self.provider.txt or self.additional_txt or self.additional_txt_verification:
-            checks.append(("TXT", self.check_txt))
-        if self.provider.dmarc:
-            checks.append(("DMARC", self.check_dmarc))
-
-        if not checks:
-            LOGGER.info("No checks enabled for %s", self.domain)
-            return []
-
-        LOGGER.debug("Enabled checks: %s", ", ".join(name for name, _check in checks))
-        results: List[RecordCheck] = []
-        for name, check in checks:
-            LOGGER.debug("Starting %s check", name)
-            result = check()
-            LOGGER.info("%s: %s - %s", result.record_type, result.status, result.message)
-            if result.details:
-                LOGGER.debug("%s details: %s", result.record_type, result.details)
-            results.append(result)
-        return results
-
     @staticmethod
     def _normalize_host(host: str) -> str:
         """Normalize a hostname to lowercase and ensure a trailing dot.
@@ -206,20 +64,6 @@ class DNSChecker:
             str: Normalized hostname ending in a dot.
         """
         return host.rstrip(".").lower() + "."
-
-    @staticmethod
-    def _strip_spf_qualifier(token: str) -> tuple[str, str]:
-        """Split an SPF token into base value and qualifier.
-
-        Args:
-            token (str): SPF token (e.g., "-all", "~ip4:1.2.3.4").
-
-        Returns:
-            tuple[str, str]: (base, qualifier) where qualifier may be empty.
-        """
-        if token and token[0] in "+-~?":
-            return token[1:], token[0]
-        return token, ""
 
     def _normalize_txt_name(self, name: str) -> str:
         """Normalize a TXT record name to a fully qualified domain.
@@ -882,7 +726,7 @@ class DNSChecker:
         ip6_tokens: List[str] = []
         other_mechanisms: List[str] = []
         for token in mechanisms:
-            base, _ = self._strip_spf_qualifier(token)
+            base, _ = strip_spf_qualifier(token)
             if base.startswith("include:"):
                 include_tokens.append(base)
             elif base.startswith("ip4:"):
@@ -904,19 +748,19 @@ class DNSChecker:
         }
         advanced_checks = bool(required_mechanisms or allowed_mechanisms)
 
-        mechanism_bases_present = {self._strip_spf_qualifier(token)[0] for token in mechanisms}
+        mechanism_bases_present = {strip_spf_qualifier(token)[0] for token in mechanisms}
         mechanism_exact_present = {
             f"{qualifier}{base}"
             for token in mechanisms
-            for base, qualifier in [self._strip_spf_qualifier(token)]
-            if qualifier in _SPF_QUALIFIERS
+            for base, qualifier in [strip_spf_qualifier(token)]
+            if qualifier in SPF_QUALIFIERS
         }
 
         required_base = set()
         required_exact = set()
         for token in required_mechanisms:
-            base, qualifier = self._strip_spf_qualifier(token)
-            if qualifier in _SPF_QUALIFIERS:
+            base, qualifier = strip_spf_qualifier(token)
+            if qualifier in SPF_QUALIFIERS:
                 required_exact.add(f"{qualifier}{base}")
             else:
                 required_base.add(base)
@@ -933,8 +777,8 @@ class DNSChecker:
             allowed_base = set()
             allowed_exact = set()
             for token in allowed_mechanisms:
-                base, qualifier = self._strip_spf_qualifier(token)
-                if qualifier in _SPF_QUALIFIERS:
+                base, qualifier = strip_spf_qualifier(token)
+                if qualifier in SPF_QUALIFIERS:
                     allowed_exact.add(f"{qualifier}{base}")
                 else:
                     allowed_base.add(base)
@@ -948,8 +792,8 @@ class DNSChecker:
             for token in mechanisms:
                 if token == policy_required_token:
                     continue
-                base, qualifier = self._strip_spf_qualifier(token)
-                exact = f"{qualifier}{base}" if qualifier in _SPF_QUALIFIERS else base
+                base, qualifier = strip_spf_qualifier(token)
+                exact = f"{qualifier}{base}" if qualifier in SPF_QUALIFIERS else base
                 if exact in allowed_exact or base in allowed_base:
                     continue
                 unexpected_tokens.append(token)
