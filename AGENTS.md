@@ -16,6 +16,7 @@
 - Ensure `yamllint -c .yamllint src` reports no errors before handoff.
 - When editing Markdown tables, align columns so the raw Markdown is readable (consistent column widths with aligned pipes).
 - For Markdown-only changes, you may skip formatting/lint/test runs.
+- When adding new functionality, keep modules small and focused: use per-feature submodules (for example `checker/records/*`, `output/rows/*`, `provider_config/loader/parse/*`, `cli/*` handlers) and re-export from package `__init__` files to preserve stable imports.
 - Git commit messages must use this format:
   `chore/fix/feat/...(topic): short description`
   `long description`

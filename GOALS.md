@@ -6,6 +6,7 @@ CODE:
 -  use argparse for command-line argument parsing
 -  use logging for output messages
 -  use UTC timezone for timestamps
+-  code structure: small, focused modules with per-feature subpackages and re-exports in `__init__` (e.g., `checker/records/*`, `output/rows/*`, `provider_config/loader/parse/*`, `cli/*`)
 
 PROJECT GOALS:
 -  Script for checking if the DNS records for a domain are correctly set up.
