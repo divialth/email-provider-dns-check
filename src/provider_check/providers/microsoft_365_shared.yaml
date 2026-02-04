@@ -25,6 +25,9 @@ records:
     required_includes:
       - spf.protection.outlook.com
     strict_record: "v=spf1 include:spf.protection.outlook.com -all"
+  cname:
+    records_optional:
+      msoid: clientconfig.microsoftonline-p.net.
   txt:
     # Provider requires a user-supplied TXT record for domain verification.
     # Users must provide the name/value via --txt-verification.
