@@ -2,22 +2,48 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import Callable, List
 
+from .color import visible_len
 from .rows import _build_result_rows
 
 
-def _format_row(row: List[str], widths: List[int]) -> str:
+def _pad_cell(cell: str, width: int) -> str:
+    """Pad a cell to the desired visible width.
+
+    Args:
+        cell (str): Cell value.
+        width (int): Target width.
+
+    Returns:
+        str: Cell padded with spaces on the right.
+    """
+    padding = width - visible_len(cell)
+    if padding <= 0:
+        return cell
+    return f"{cell}{' ' * padding}"
+
+
+def _format_row(
+    row: List[str],
+    widths: List[int],
+    *,
+    colorize_status: Callable[[str], str] | None = None,
+) -> str:
     """Format a markdown table row with padded cells.
 
     Args:
         row (List[str]): Row values.
         widths (List[int]): Column widths.
+        colorize_status (Callable[[str], str] | None): Optional status colorizer.
 
     Returns:
         str: Formatted markdown table row.
     """
-    padded = [f"{cell:<{widths[i]}}" for i, cell in enumerate(row)]
+    display_row = list(row)
+    if colorize_status and display_row:
+        display_row[0] = colorize_status(display_row[0])
+    padded = [_pad_cell(cell, widths[i]) for i, cell in enumerate(display_row)]
     return "| " + " | ".join(padded) + " |"
 
 
@@ -50,10 +76,10 @@ def _build_table_widths(headers: List[str], rows: List[List[str]]) -> List[int]:
     Returns:
         List[int]: Widths for each column.
     """
-    widths = [len(header) for header in headers]
+    widths = [visible_len(header) for header in headers]
     for row in rows:
         for i, cell in enumerate(row):
-            widths[i] = max(widths[i], len(cell))
+            widths[i] = max(widths[i], visible_len(cell))
     return widths
 
 
@@ -69,18 +95,28 @@ def _build_table_separator(widths: List[int]) -> str:
     return "| " + " | ".join("-" * max(3, width) for width in widths) + " |"
 
 
-def _format_text_row(row: List[str], widths: List[int], indent: str = "  ") -> str:
+def _format_text_row(
+    row: List[str],
+    widths: List[int],
+    indent: str = "  ",
+    *,
+    colorize_status: Callable[[str], str] | None = None,
+) -> str:
     """Format a text row with padded columns.
 
     Args:
         row (List[str]): Row values.
         widths (List[int]): Column widths.
         indent (str): Prefix for the row.
+        colorize_status (Callable[[str], str] | None): Optional status colorizer.
 
     Returns:
         str: Formatted text row.
     """
-    padded = [f"{cell:<{widths[i]}}" for i, cell in enumerate(row)]
+    display_row = list(row)
+    if colorize_status and display_row:
+        display_row[0] = colorize_status(display_row[0])
+    padded = [_pad_cell(cell, widths[i]) for i, cell in enumerate(display_row)]
     return f"{indent}{'  '.join(padded).rstrip()}"
 
 
@@ -94,10 +130,10 @@ def _build_text_widths(headers: List[str], rows: List[List[str]]) -> List[int]:
     Returns:
         List[int]: Widths for each column.
     """
-    widths = [len(header) for header in headers]
+    widths = [visible_len(header) for header in headers]
     for row in rows:
         for i, cell in enumerate(row):
-            widths[i] = max(widths[i], len(cell))
+            widths[i] = max(widths[i], visible_len(cell))
     return widths
 
 

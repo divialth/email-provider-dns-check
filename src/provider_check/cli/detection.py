@@ -25,6 +25,7 @@ def handle_detection(
     summarize_status: Callable[[list[object]], str],
     to_human: Callable[..., str],
     to_text: Callable[..., str],
+    colorize_status: Callable[[str], str],
 ) -> int:
     """Handle provider detection and autoselect flows.
 
@@ -44,12 +45,17 @@ def handle_detection(
         summarize_status (Callable[[list[object]], str]): Status summarizer.
         to_human (Callable[..., str]): Human output formatter.
         to_text (Callable[..., str]): Text output formatter.
+        colorize_status (Callable[[str], str]): Status colorizer callback.
 
     Returns:
         int: Exit code.
     """
     report = detect_providers(args.domain, top_n=default_top_n)
-    detection_output = format_detection_report(report, report_time)
+    detection_output = format_detection_report(
+        report,
+        report_time,
+        colorize_status=colorize_status,
+    )
     if args.output == "json":
         detection_payload = build_detection_payload(report, report_time)
         if args.provider_autoselect and report.selected and not report.ambiguous:
@@ -131,10 +137,28 @@ def handle_detection(
         results = checker.run_checks()
         if args.output == "human":
             print()
-            print(to_human(results, args.domain, report_time, provider.name, provider.version))
+            print(
+                to_human(
+                    results,
+                    args.domain,
+                    report_time,
+                    provider.name,
+                    provider.version,
+                    colorize_status=colorize_status,
+                )
+            )
         else:
             print()
-            print(to_text(results, args.domain, report_time, provider.name, provider.version))
+            print(
+                to_text(
+                    results,
+                    args.domain,
+                    report_time,
+                    provider.name,
+                    provider.version,
+                    colorize_status=colorize_status,
+                )
+            )
 
         status = summarize_status(results)
         if status == "PASS":

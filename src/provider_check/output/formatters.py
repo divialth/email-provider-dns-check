@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from ..checker import RecordCheck
 from .serialize import _serialize_results
@@ -31,6 +31,7 @@ def _template_context(
     summary: str,
     results: List[dict],
     lines: List[str],
+    colorize_status: Callable[[str], str] | None = None,
     table_headers: Optional[List[str]] = None,
 ) -> dict:
     """Build a template context for output rendering.
@@ -43,12 +44,15 @@ def _template_context(
         summary (str): Summary status string.
         results (List[dict]): Serialized results.
         lines (List[str]): Pre-rendered text lines.
+        colorize_status (Callable[[str], str] | None): Status colorizer callback.
         table_headers (Optional[List[str]]): Optional table headers.
 
     Returns:
         dict: Template context mapping.
     """
     provider_label = _provider_label(provider_name, provider_version)
+    if colorize_status is None:
+        colorize_status = lambda text: text
     context = {
         "domain": domain,
         "report_time": report_time,
@@ -65,6 +69,7 @@ def _template_context(
         "build_table_widths": _build_table_widths,
         "build_table_separator": _build_table_separator,
         "text_headers": _TEXT_TABLE_HEADERS,
+        "colorize_status": colorize_status,
     }
     if table_headers is not None:
         context["table_headers"] = table_headers
@@ -137,6 +142,8 @@ def to_text(
     report_time: str,
     provider_name: str,
     provider_version: str,
+    *,
+    colorize_status: Callable[[str], str] | None = None,
 ) -> str:
     """Render results as plain text output.
 
@@ -146,30 +153,42 @@ def to_text(
         report_time (str): UTC report timestamp string.
         provider_name (str): Provider display name.
         provider_version (str): Provider configuration version.
+        colorize_status (Callable[[str], str] | None): Status colorizer callback.
 
     Returns:
         str: Rendered text output.
     """
+    if colorize_status is None:
+        colorize_status = lambda text: text
     serialized = _serialize_results(results)
     summary = summarize_status(results)
     header = (
-        f"{summary} - report for domain {domain} ({report_time}) / provider: "
+        f"{colorize_status(summary)} - report for domain {domain} ({report_time}) / provider: "
         f"{_provider_label(provider_name, provider_version)}"
     )
     lines = [header, ""]
     for idx, result in enumerate(serialized):
         if idx:
             lines.append("")
-        section_header = f"{result['record_type']}: {result['status']} - {result['message']}"
+        section_header = (
+            f"{result['record_type']}: {colorize_status(result['status'])} - "
+            f"{result['message']}"
+        )
         lines.append(section_header)
         text_rows = _build_text_cells(result["rows"])
         result["text_rows"] = text_rows
         if text_rows:
             widths = _build_text_widths(_TEXT_TABLE_HEADERS, text_rows)
             result["text_widths"] = widths
-            lines.append(_format_text_row(_TEXT_TABLE_HEADERS, widths))
+            lines.append(
+                _format_text_row(
+                    _TEXT_TABLE_HEADERS,
+                    widths,
+                    colorize_status=colorize_status,
+                )
+            )
             for row in text_rows:
-                lines.append(_format_text_row(row, widths))
+                lines.append(_format_text_row(row, widths, colorize_status=colorize_status))
     context = _template_context(
         domain=domain,
         report_time=report_time,
@@ -178,6 +197,7 @@ def to_text(
         summary=summary,
         results=serialized,
         lines=lines,
+        colorize_status=colorize_status,
     )
     return _render_template("text.j2", context)
 
@@ -202,6 +222,8 @@ def to_human(
     report_time: str,
     provider_name: str,
     provider_version: str,
+    *,
+    colorize_status: Callable[[str], str] | None = None,
 ) -> str:
     """Render results as a markdown table for human-friendly output.
 
@@ -211,6 +233,7 @@ def to_human(
         report_time (str): UTC report timestamp string.
         provider_name (str): Provider display name.
         provider_version (str): Provider configuration version.
+        colorize_status (Callable[[str], str] | None): Status colorizer callback.
 
     Returns:
         str: Rendered markdown output.
@@ -228,6 +251,7 @@ def to_human(
         results=serialized,
         lines=[],
         table_headers=_HUMAN_TABLE_HEADERS,
+        colorize_status=colorize_status,
     )
     return _render_template("human.j2", context)
 

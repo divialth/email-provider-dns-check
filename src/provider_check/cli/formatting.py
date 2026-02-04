@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import Callable, List
 
 from ..detection import DetectionReport
 
@@ -52,18 +52,27 @@ def _build_detection_payload(report: DetectionReport, report_time: str) -> dict:
     }
 
 
-def _format_detection_report(report: DetectionReport, report_time: str) -> str:
+def _format_detection_report(
+    report: DetectionReport,
+    report_time: str,
+    *,
+    colorize_status: Callable[[str], str] | None = None,
+) -> str:
     """Format a detection report as human-readable text.
 
     Args:
         report (DetectionReport): Detection report data.
         report_time (str): UTC report timestamp string.
+        colorize_status (Callable[[str], str] | None): Status colorizer callback.
 
     Returns:
         str: Formatted detection report.
     """
+    if colorize_status is None:
+        colorize_status = lambda text: text
     lines = [
-        f"{report.status} - provider detection report for domain {report.domain} ({report_time})"
+        f"{colorize_status(report.status)} - provider detection report for domain "
+        f"{report.domain} ({report_time})"
     ]
     if report.selected:
         lines.append(
@@ -94,7 +103,8 @@ def _format_detection_report(report: DetectionReport, report_time: str) -> str:
                 details.append(f"core: {', '.join(candidate.core_pass_records)}")
             if candidate.record_statuses:
                 record_summary = " ".join(
-                    f"{key}={value}" for key, value in sorted(candidate.record_statuses.items())
+                    f"{key}={colorize_status(value)}"
+                    for key, value in sorted(candidate.record_statuses.items())
                 )
                 details.append(f"records: {record_summary}")
             if candidate.optional_bonus:

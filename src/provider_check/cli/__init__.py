@@ -9,7 +9,15 @@ from typing import List
 
 from ..checker import DNSChecker
 from ..detection import DEFAULT_TOP_N, detect_providers
-from ..output import build_json_payload, summarize_status, to_human, to_json, to_text
+from ..output import (
+    build_json_payload,
+    make_status_colorizer,
+    resolve_color_enabled,
+    summarize_status,
+    to_human,
+    to_json,
+    to_text,
+)
 from ..provider_config import (
     list_providers,
     load_provider_config,
@@ -53,6 +61,8 @@ def main(argv: List[str] | None = None) -> int:
 
     _setup_logging(args.verbose)
     LOGGER.debug("Parsed arguments: %s", args)
+    color_enabled = resolve_color_enabled(args.color, sys.stdout)
+    colorize_status = make_status_colorizer(color_enabled)
 
     if args.providers_list:
         LOGGER.info("Listing available providers")
@@ -102,6 +112,7 @@ def main(argv: List[str] | None = None) -> int:
             summarize_status=summarize_status,
             to_human=to_human,
             to_text=to_text,
+            colorize_status=colorize_status,
         )
 
     if not args.provider:
@@ -121,6 +132,7 @@ def main(argv: List[str] | None = None) -> int:
         to_human=to_human,
         to_text=to_text,
         logger=LOGGER,
+        colorize_status=colorize_status,
     )
 
 

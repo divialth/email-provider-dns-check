@@ -103,6 +103,19 @@ def build_parser() -> argparse.ArgumentParser:
         default="human",
         help="Output format",
     )
+    output_group.add_argument(
+        "--color",
+        choices=["auto", "always", "never"],
+        default="auto",
+        help="Colorize output (disabled when NO_COLOR is set)",
+    )
+    output_group.add_argument(
+        "--no-color",
+        dest="color",
+        action="store_const",
+        const="never",
+        help="Disable colorized output",
+    )
     validation_group.add_argument(
         "--strict",
         action="store_true",

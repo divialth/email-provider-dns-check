@@ -1,12 +1,12 @@
-{{ summary }} - report for domain {{ domain }} ({{ report_time }}) / provider: {{ provider_label }}
+{{ colorize_status(summary) }} - report for domain {{ domain }} ({{ report_time }}) / provider: {{ provider_label }}
 
 {% for result in results %}
-{{   result.record_type }} - {{   result.status }}: {{   result.message }}
+{{   result.record_type }} - {{   colorize_status(result.status) }}: {{   result.message }}
 {%   set widths = result.table_widths %}
-{{   format_row(table_headers, widths) }}
+{{   format_row(table_headers, widths, colorize_status=colorize_status) }}
 {{   build_table_separator(widths) }}
 {%   for row in result.table_rows %}
-{{     format_row(row, widths) }}
+{{     format_row(row, widths, colorize_status=colorize_status) }}
 {%   endfor %}
 {%   if not loop.last %}
 

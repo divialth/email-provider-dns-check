@@ -22,6 +22,7 @@ def handle_checks(
     to_human: Callable[..., str],
     to_text: Callable[..., str],
     logger: object,
+    colorize_status: Callable[[str], str],
 ) -> int:
     """Handle explicit provider checks.
 
@@ -39,6 +40,7 @@ def handle_checks(
         to_human (Callable[..., str]): Human output formatter.
         to_text (Callable[..., str]): Text output formatter.
         logger (object): Logger for CLI messages.
+        colorize_status (Callable[[str], str]): Status colorizer callback.
 
     Returns:
         int: Exit code.
@@ -95,9 +97,27 @@ def handle_checks(
     if args.output == "json":
         print(to_json(results, args.domain, report_time, provider.name, provider.version))
     elif args.output == "human":
-        print(to_human(results, args.domain, report_time, provider.name, provider.version))
+        print(
+            to_human(
+                results,
+                args.domain,
+                report_time,
+                provider.name,
+                provider.version,
+                colorize_status=colorize_status,
+            )
+        )
     else:
-        print(to_text(results, args.domain, report_time, provider.name, provider.version))
+        print(
+            to_text(
+                results,
+                args.domain,
+                report_time,
+                provider.name,
+                provider.version,
+                colorize_status=colorize_status,
+            )
+        )
 
     status = summarize_status(results)
     if status == "PASS":

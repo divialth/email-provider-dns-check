@@ -121,8 +121,10 @@ These are compatible with Nagios/Icinga plugin exit codes.
 
 #### Output and strictness
 ```text
---output {text,json,human} choose output type (default: human; markdown table)
---strict                  require exact provider configuration
+--output {text,json,human}   choose output type (default: human; markdown table)
+--color {auto,always,never}  colorize output (auto respects NO_COLOR)
+--no-color                   disable colorized output
+--strict                     require exact provider configuration
 ```
 
 #### DMARC overrides
