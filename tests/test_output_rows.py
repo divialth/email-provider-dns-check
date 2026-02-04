@@ -197,6 +197,28 @@ def test_build_srv_rows_pass_uses_expected_when_found_missing():
     assert rows[0]["found"].startswith("priority 0 weight 5 port 443")
 
 
+def test_build_srv_rows_with_mismatched_values():
+    result = {
+        "status": "WARN",
+        "details": {
+            "expected": {"_srv._tcp.example.test": [(10, 0, 443, "srv.example.test")]},
+            "found": {"_srv._tcp.example.test": [(20, 5, 443, "srv.example.test")]},
+            "mismatched": {
+                "_srv._tcp.example.test": [
+                    {
+                        "expected": (10, 0, 443, "srv.example.test"),
+                        "found": (20, 5, 443, "srv.example.test"),
+                    }
+                ]
+            },
+        },
+    }
+
+    rows = _build_srv_rows(result)
+
+    assert any(row["found"].startswith("priority 20 weight 5 port 443") for row in rows)
+
+
 def test_build_txt_rows_variants():
     missing_result = {
         "status": "FAIL",

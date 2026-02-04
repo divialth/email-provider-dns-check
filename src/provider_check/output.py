@@ -489,6 +489,7 @@ def _build_srv_rows(result: dict) -> List[dict]:
     expected = details.get("expected") or details.get("records") or {}
     found = details.get("found", {})
     missing = details.get("missing", {})
+    mismatched = details.get("mismatched", {})
     extra = details.get("extra", {})
     rows: List[dict] = []
 
@@ -498,6 +499,9 @@ def _build_srv_rows(result: dict) -> List[dict]:
     for name in sorted(expected.keys()):
         expected_entries = expected[name] or []
         missing_entries = {tuple(entry) for entry in missing.get(name, [])}
+        mismatched_entries = {
+            tuple(entry["expected"]): tuple(entry["found"]) for entry in mismatched.get(name, [])
+        }
         found_entries = {tuple(entry) for entry in found.get(name, [])}
         for entry in expected_entries:
             entry_tuple = tuple(entry)
@@ -505,6 +509,9 @@ def _build_srv_rows(result: dict) -> List[dict]:
             if entry_tuple in missing_entries:
                 status = result["status"]
                 found_value = "(missing)"
+            elif entry_tuple in mismatched_entries:
+                status = result["status"]
+                found_value = _format_srv_entry(mismatched_entries[entry_tuple])
             else:
                 found_value = expected_value if entry_tuple in found_entries else "(missing)"
                 status = "PASS" if found_value != "(missing)" else result["status"]

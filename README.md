@@ -275,6 +275,8 @@ SRV configs validate required SRV records:
 | `records`          | Mapping of `name: [entries...]` (each entry requires `priority`, `weight`, `port`, `target`). |
 | `records_optional` | Mapping of `name: [entries...]` for optional SRV values (missing entries WARN; mismatches FAIL). |
 
+In non-strict mode, SRV entries with the correct target/port but different priority or weight report as WARN.
+
 ### TXT fields
 TXT configs let providers require arbitrary validation records:
 

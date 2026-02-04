@@ -41,6 +41,110 @@ def test_srv_passes_when_records_match():
     assert result.status == "PASS"
 
 
+def test_srv_priority_mismatch_warns_in_non_strict():
+    provider = _build_provider(
+        {
+            "_sip._tls": [
+                SRVRecord(priority=100, weight=1, port=443, target="srv.primary.provider.test.")
+            ]
+        }
+    )
+    resolver = FakeResolver(
+        srv={
+            "_sip._tls.example.com": [(200, 1, 443, "srv.primary.provider.test.")],
+        }
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver, strict=False)
+
+    result = checker.check_srv()
+
+    assert result.status == "WARN"
+    assert result.details["mismatched"] == {
+        "_sip._tls.example.com": [
+            {
+                "expected": (100, 1, 443, "srv.primary.provider.test."),
+                "found": (200, 1, 443, "srv.primary.provider.test."),
+            }
+        ]
+    }
+
+
+def test_srv_priority_mismatch_pairing_stable():
+    provider = _build_provider(
+        {
+            "_sip._tls": [
+                SRVRecord(priority=10, weight=0, port=443, target="srv.primary.provider.test."),
+                SRVRecord(priority=20, weight=0, port=443, target="srv.primary.provider.test."),
+            ]
+        }
+    )
+    resolver = FakeResolver(
+        srv={
+            "_sip._tls.example.com": [
+                (40, 1, 443, "srv.primary.provider.test."),
+                (30, 2, 443, "srv.primary.provider.test."),
+            ],
+        }
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver, strict=False)
+
+    result = checker.check_srv()
+
+    assert result.status == "WARN"
+    assert result.details["mismatched"] == {
+        "_sip._tls.example.com": [
+            {
+                "expected": (10, 0, 443, "srv.primary.provider.test."),
+                "found": (30, 2, 443, "srv.primary.provider.test."),
+            },
+            {
+                "expected": (20, 0, 443, "srv.primary.provider.test."),
+                "found": (40, 1, 443, "srv.primary.provider.test."),
+            },
+        ]
+    }
+
+
+def test_srv_priority_mismatch_fails_in_strict():
+    provider = _build_provider(
+        {
+            "_sip._tls": [
+                SRVRecord(priority=100, weight=1, port=443, target="srv.primary.provider.test.")
+            ]
+        }
+    )
+    resolver = FakeResolver(
+        srv={
+            "_sip._tls.example.com": [(200, 1, 443, "srv.primary.provider.test.")],
+        }
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver, strict=True)
+
+    result = checker.check_srv()
+
+    assert result.status == "FAIL"
+
+
+def test_srv_strict_passes_when_records_match():
+    provider = _build_provider(
+        {
+            "_sip._tls": [
+                SRVRecord(priority=100, weight=1, port=443, target="srv.primary.provider.test.")
+            ]
+        }
+    )
+    resolver = FakeResolver(
+        srv={
+            "_sip._tls.example.com": [(100, 1, 443, "srv.primary.provider.test.")],
+        }
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver, strict=True)
+
+    result = checker.check_srv()
+
+    assert result.status == "PASS"
+
+
 def test_srv_missing_records_fail():
     provider = _build_provider(
         {
@@ -57,6 +161,51 @@ def test_srv_missing_records_fail():
     assert result.status == "FAIL"
     assert result.details["missing"] == {
         "_sip._tls.example.com": [(100, 1, 443, "srv.primary.provider.test.")]
+    }
+
+
+def test_srv_missing_records_fail_in_strict():
+    provider = _build_provider(
+        {
+            "_sip._tls": [
+                SRVRecord(priority=100, weight=1, port=443, target="srv.primary.provider.test.")
+            ]
+        }
+    )
+    resolver = FakeResolver(srv={"_sip._tls.example.com": []})
+    checker = DNSChecker("example.com", provider, resolver=resolver, strict=True)
+
+    result = checker.check_srv()
+
+    assert result.status == "FAIL"
+    assert result.details["missing"] == {
+        "_sip._tls.example.com": [(100, 1, 443, "srv.primary.provider.test.")]
+    }
+
+
+def test_srv_mismatch_and_extra_warn_in_non_strict():
+    provider = _build_provider(
+        {
+            "_sip._tls": [
+                SRVRecord(priority=100, weight=1, port=443, target="srv.primary.provider.test.")
+            ]
+        }
+    )
+    resolver = FakeResolver(
+        srv={
+            "_sip._tls.example.com": [
+                (200, 1, 443, "srv.primary.provider.test."),
+                (50, 5, 5061, "srv.extra.provider.test."),
+            ]
+        }
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver, strict=False)
+
+    result = checker.check_srv()
+
+    assert result.status == "WARN"
+    assert result.details["extra"] == {
+        "_sip._tls.example.com": [(50, 5, 5061, "srv.extra.provider.test.")]
     }
 
 
