@@ -3,11 +3,11 @@ extends:
   - microsoft_365_teams_dkim_legacy
 name: Microsoft 365 (+ Teams + DKIM Legacy + DMARC)
 version: 1
-short_description: "Microsoft 365 email + Teams checks with legacy DKIM and DMARC."
+short_description: "Microsoft 365 email + Teams federation SRV with legacy DKIM/DMARC."
 long_description: |
-  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM Legacy, plus Teams/Skype
-  for Business CNAME and SRV records, and DMARC validation. The DMARC policy
-  defaults to p=reject; rua/ruf are optional unless overridden.
+  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM Legacy, plus the Teams
+  federation SRV record and DMARC validation. The DMARC policy defaults to
+  p=reject; rua/ruf are optional unless overridden.
 records:
   dmarc:
     default_policy: reject

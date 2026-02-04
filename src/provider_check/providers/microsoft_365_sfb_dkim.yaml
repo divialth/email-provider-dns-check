@@ -1,0 +1,11 @@
+---
+extends:
+  - microsoft_365_sfb
+  - microsoft_365_dkim
+name: Microsoft 365 (+ SfB / Teams + DKIM)
+version: 1
+short_description: "Microsoft 365 email + SfB/Teams with DKIM."
+long_description: |
+  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM, plus SfB (Skype for
+  Business) CNAME and SRV records. These records are also valid for Teams
+  scenarios.

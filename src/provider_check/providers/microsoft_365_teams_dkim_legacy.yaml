@@ -4,7 +4,7 @@ extends:
   - microsoft_365_dkim_legacy
 name: Microsoft 365 (+ Teams + DKIM Legacy)
 version: 1
-short_description: "Microsoft 365 email + Teams checks with legacy DKIM targets."
+short_description: "Microsoft 365 email + Teams federation SRV with legacy DKIM."
 long_description: |
-  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM Legacy, plus Teams/Skype
-  for Business CNAME and SRV records.
+  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM Legacy, plus the Teams
+  federation SRV record.
