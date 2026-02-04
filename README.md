@@ -159,9 +159,9 @@ These are compatible with Nagios/Icinga plugin exit codes.
 
 ## Provider configs
 Provider definitions are YAML files. Packaged providers live in
-`src/provider_check/providers/*.yaml`. Each file must include a version and can define any
+`src/provider_check/resources/providers/*.yaml`. Each file must include a version and can define any
 subset of MX/SPF/DKIM/CNAME/CAA/SRV/TXT/DMARC/A/AAAA. For a fully documented example, see
-`src/provider_check/providers/example_do_not_use.yaml`.
+`src/provider_check/resources/providers/example_do_not_use.yaml`.
 
 ### Locations
 Add or override providers by dropping files into one of these locations (first match wins if

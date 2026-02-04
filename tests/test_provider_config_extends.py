@@ -2,7 +2,8 @@ import textwrap
 
 import pytest
 
-from provider_check.provider_config import _normalize_extends, list_providers, load_provider_config
+from provider_check.provider_config import list_providers, load_provider_config
+from provider_check.provider_config.utils import _normalize_extends
 
 
 def _write_provider(tmp_path, provider_id: str, content: str) -> None:
@@ -55,7 +56,7 @@ def test_extends_merges_and_ignores_base_enabled(monkeypatch, tmp_path):
               - spf.child.test
         """,
     )
-    import provider_check.provider_config as provider_config
+    import provider_check.provider_config.loader as provider_config
 
     monkeypatch.setattr(
         provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
@@ -98,7 +99,7 @@ def test_extends_allows_removal_with_null(monkeypatch, tmp_path):
           dkim: null
         """,
     )
-    import provider_check.provider_config as provider_config
+    import provider_check.provider_config.loader as provider_config
 
     monkeypatch.setattr(
         provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
@@ -145,7 +146,7 @@ def test_extends_multiple_bases(monkeypatch, tmp_path):
           - base-two
         """,
     )
-    import provider_check.provider_config as provider_config
+    import provider_check.provider_config.loader as provider_config
 
     monkeypatch.setattr(
         provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]

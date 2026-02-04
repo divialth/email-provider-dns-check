@@ -45,7 +45,7 @@ line-length = 100
 target-version = ["py311"]
 
 [tool.setuptools.package-data]
-"provider_check.providers" = ["*.yaml", "*.yml"]
+"provider_check.resources.providers" = ["*.yaml", "*.yml"]
 "provider_check.templates" = ["*.j2"]
 
 [tool.setuptools]

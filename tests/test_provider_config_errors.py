@@ -2,7 +2,7 @@ import textwrap
 
 import pytest
 
-import provider_check.provider_config as provider_config
+import provider_check.provider_config.loader as provider_config
 from provider_check.provider_config import ProviderConfig, load_provider_config
 
 

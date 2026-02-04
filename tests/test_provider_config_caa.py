@@ -1,6 +1,6 @@
 import pytest
 
-import provider_check.provider_config as provider_config
+import provider_check.provider_config.loader as provider_config
 
 
 def test_load_provider_caa_records_parsed():

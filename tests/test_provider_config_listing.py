@@ -7,7 +7,7 @@ from provider_check.provider_config import list_providers, load_provider_config
 
 
 def _packaged_provider_ids():
-    base = resources.files("provider_check.providers")
+    base = resources.files("provider_check.resources.providers")
     provider_ids = {"__disabled__": []}
     for entry in base.iterdir():
         if not entry.is_file() or entry.suffix not in {".yaml", ".yml"}:
@@ -74,7 +74,7 @@ def test_external_providers_override_packaged(monkeypatch, tmp_path):
         """).strip()
     (provider_dir / "disabled.yaml").write_text(disabled, encoding="utf-8")
 
-    import provider_check.provider_config as provider_config
+    import provider_check.provider_config.loader as provider_config
 
     monkeypatch.setattr(provider_config, "_external_provider_dirs", lambda: [provider_dir])
 
