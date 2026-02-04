@@ -46,7 +46,7 @@ target-version = ["py311"]
 
 [tool.setuptools.package-data]
 "provider_check.resources.providers" = ["*.yaml", "*.yml"]
-"provider_check.templates" = ["*.j2"]
+"provider_check.resources.templates" = ["*.j2"]
 
 [tool.setuptools]
 license-files = ["LICENSE"]

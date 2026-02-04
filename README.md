@@ -343,7 +343,7 @@ If the top two candidates are tied on ratio, score, and optional bonus, detectio
 
 ## Templates
 Text and human outputs are rendered with Jinja2 templates. Packaged templates live in
-`src/provider_check/templates/`.
+`src/provider_check/resources/templates/`.
 
 Add or override templates by dropping `text.j2` and/or `human.j2` into one of these locations:
 - `~/.config/provider-dns-check/templates/` (or `$XDG_CONFIG_HOME/provider-dns-check/templates/`)
