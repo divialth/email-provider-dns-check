@@ -5,6 +5,8 @@
 # you copy it into a custom provider directory and set enabled: true.
 
 enabled: false
+# Optional inheritance. Use a provider id or list of ids; [] means no inheritance.
+extends: []
 name: Example Provider (DO NOT USE)
 version: 1
 short_description: "Optional short summary of the provider (keep under 150 chars)."
@@ -15,71 +17,101 @@ long_description: |
 variables:
   # Provider variables can be referenced using {name} placeholders.
   # Values are provided via --provider-var name=value (repeatable).
+  # {domain} is always available and {selector} is reserved for DKIM templates.
   tenant:
     required: true
     description: "Example required variable used in record templates."
   region:
     default: us
-    description: "Optional variable with a default."
+    description: "Optional region short code used in record templates."
 
 records:
+  # Record sections are ordered for readability; order has no functional effect.
+  # Use trailing dots for fully-qualified names; omit for names relative to the checked domain.
+  # records_optional entries are optional and warn if missing (they do not fail the check).
   mx:
     # List of MX hostnames required for the provider.
     # Trailing dots are preferred to keep names fully-qualified.
+    # Hosts can be inferred from records/priorities; shown explicitly for clarity.
     hosts:
-      - mx1.example-provider.test.
-      - mx2.example-provider.test.
+      - mx1.{tenant}.example-provider.test.
+      - mx2.{tenant}.example-provider.test.
+      - mx3.{tenant}.example-provider.test.
     # Optional list of MX records with explicit priorities.
     # When provided, these priorities are validated.
     records:
-      - host: mx1.example-provider.test.
+      - host: mx1.{tenant}.example-provider.test.
         priority: 10
-      - host: mx2.example-provider.test.
+      - host: mx2.{tenant}.example-provider.test.
         priority: 20
     # Optional mapping of host -> priority (alternate form to records list).
     priorities:
-      mx3.example-provider.test.: 30
+      mx3.{tenant}.example-provider.test.: 30
 
   spf:
     # SPF include mechanisms the provider requires (values only).
     required_includes:
-      - example-provider.test
-      - spf.example-provider.test
+      - spf.{tenant}.example-provider.test
+      - "{tenant}.example-provider.test"
     # Strict mode can enforce a specific SPF string when provided.
-    strict_record: "v=spf1 include:example-provider.test -all"
+    strict_record: "v=spf1 include:{tenant}.example-provider.test -all"
     # Optional list of additional SPF mechanisms that must be present.
-    # Include full tokens (e.g., a, mx:mail.example.test, exists:%{i}.spf.example.test).
+    # Include full tokens (e.g., a, mx:mail.example-provider.test, exists:%{i}.spf.example-provider.test).
     required_mechanisms:
       - a
-      - mx:mail.example-provider.test
-      - exists:%{i}.spf.example-provider.test
+      - mx:mail.{tenant}.example-provider.test
+      - exists:%{i}.spf.{tenant}.example-provider.test
     # Optional list of allowed mechanisms beyond required ones.
     # These are permitted in standard mode without warnings.
     allowed_mechanisms:
-      - mx
-      - ptr
       - ip4:203.0.113.0/24
       - ip6:2001:db8::/32
+      - mx
+      - ptr
     # Optional SPF modifiers that must be present with exact values.
     # Common modifiers are redirect= and exp=.
     required_modifiers:
-      redirect: _spf.example-provider.test
-      exp: exp._spf.example-provider.test
+      exp: exp._spf.{tenant}.example-provider.test
+      redirect: _spf.{tenant}.example-provider.test
 
   dkim:
     # DKIM selectors that must exist for the domain.
     selectors:
-      - EXAMPLE1
-      - EXAMPLE2
+      - selector1
+      - selector2
     # DKIM record type: cname (hosted) or txt (self-hosted).
     record_type: cname
     # Template for the expected CNAME target for each selector.
     # The {selector} placeholder is required.
-    target_template: "{selector}._domainkey.example-provider.test."
+    target_template: "{selector}._domainkey.{tenant}.example-provider.test."
     # Optional mapping of selector -> expected TXT value.
     # Used when record_type is txt (ignored for cname).
     txt_values:
-      EXAMPLE1: "v=DKIM1; k=rsa; p=BASE64KEY"
+      selector1: "v=DKIM1; k=rsa; p=BASE64KEY"
+
+  dmarc:
+    # Default DMARC policy to apply when --dmarc-policy is not provided.
+    default_policy: reject
+    # Whether the DMARC record must include a rua tag.
+    rua_required: true
+    # Whether the DMARC record must include a ruf tag.
+    ruf_required: false
+    # Optional list of rua URIs that must be present in the DMARC record.
+    # Use full mailto: URIs to avoid ambiguity. {domain} is replaced at runtime.
+    required_rua:
+      - mailto:dmarc-aggregate@example-provider.test
+      - mailto:dmarc-fallback@example-provider.test
+      - mailto:postmaster@{domain}
+    # Optional list of ruf URIs that must be present in the DMARC record.
+    # Use full mailto: URIs to avoid ambiguity. {domain} is replaced at runtime.
+    required_ruf:
+      - mailto:dmarc-forensic@example-provider.test
+    # Optional additional DMARC tags that must match exact values.
+    # These are checked in standard mode and enforced in strict mode output.
+    required_tags:
+      adkim: s
+      aspf: s
+      pct: "100"
 
   a:
     # Required A records (name -> list of IPv4 addresses).
@@ -135,53 +167,33 @@ records:
         - priority: 100
           weight: 1
           port: 443
-          target: sipdir.example-provider.test.
+          target: sipdir.{region}.example-provider.test.
       _sipfederationtls._tcp:
         - priority: 100
           weight: 1
           port: 5061
-          target: sipfed.example-provider.test.
+          target: sipfed.{region}.example-provider.test.
     # Optional SRV records (name -> list of entries).
     records_optional:
       _autodiscover._tcp:
         - priority: 0
           weight: 0
           port: 443
-          target: auto.example-provider.test.
+          target: autodiscover.{region}.example-provider.test.
 
   txt:
-    # Required TXT records for validation (name -> list of expected values).
+    # Required TXT records for any purpose (name -> list of expected values).
     # Names may be relative (appended to the domain) or fully-qualified.
+    # "_provider-token" is just an example name; any TXT record name can be used.
+    # "@" means the zone apex (the bare domain itself).
     required:
-      _verification:
-        - "example-verification=abc123"
-        - "example-verification=def456"
+      _provider-token:
+        - "provisioning-key=abc123"
+        - "activation-hint=def456"
+      "@":
+        - "v=example-domain-txt; flag=enabled"
       "validation.example-provider.test.":
         - "v=custom-validation; token=xyz"
     # When true, the provider requires a user-supplied TXT verification record.
     # The user must pass it via --txt-verification. If omitted, the result is WARN (unless skipped).
     verification_required: true
-
-  dmarc:
-    # Default DMARC policy to apply when --dmarc-policy is not provided.
-    default_policy: reject
-    # Whether the DMARC record must include a rua tag.
-    rua_required: true
-    # Whether the DMARC record must include a ruf tag.
-    ruf_required: false
-    # Optional list of rua URIs that must be present in the DMARC record.
-    # Use full mailto: URIs to avoid ambiguity. {domain} is replaced at runtime.
-    required_rua:
-      - mailto:postmaster@{domain}
-      - mailto:dmarc-aggregate@example-provider.test
-      - mailto:dmarc-fallback@example-provider.test
-    # Optional list of ruf URIs that must be present in the DMARC record.
-    # Use full mailto: URIs to avoid ambiguity. {domain} is replaced at runtime.
-    required_ruf:
-      - mailto:dmarc-forensic@example-provider.test
-    # Optional additional DMARC tags that must match exact values.
-    # These are checked in standard mode and enforced in strict mode output.
-    required_tags:
-      adkim: s
-      aspf: s
-      pct: "100"
