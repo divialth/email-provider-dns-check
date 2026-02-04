@@ -154,6 +154,11 @@ class DNSChecker:
                 checks.append(("CNAME", self.check_cname))
             if self.provider.cname.records_optional:
                 checks.append(("CNAME", self.check_cname_optional))
+        if self.provider.caa:
+            if self.provider.caa.records:
+                checks.append(("CAA", self.check_caa))
+            if self.provider.caa.records_optional:
+                checks.append(("CAA", self.check_caa_optional))
         if self.provider.srv:
             if self.provider.srv.records:
                 checks.append(("SRV", self.check_srv))
@@ -244,6 +249,41 @@ class DNSChecker:
         if trimmed.endswith(self.domain):
             return trimmed
         return f"{trimmed}.{self.domain}"
+
+    @staticmethod
+    def _normalize_caa_value(value: str, tag: str) -> str:
+        """Normalize a CAA value for comparison.
+
+        Args:
+            value (str): Raw CAA value.
+            tag (str): CAA tag associated with the value.
+
+        Returns:
+            str: Normalized CAA value.
+        """
+        normalized = " ".join(str(value).split()).strip()
+        tag_normalized = str(tag).strip().lower()
+        if tag_normalized in {"issue", "issuewild"}:
+            return normalized.lower()
+        return normalized
+
+    def _normalize_caa_entry(self, flags: int, tag: str, value: str) -> tuple[int, str, str]:
+        """Normalize a CAA entry for comparison.
+
+        Args:
+            flags (int): CAA flags value.
+            tag (str): CAA tag value.
+            value (str): CAA value string.
+
+        Returns:
+            tuple[int, str, str]: Normalized tuple for matching.
+        """
+        normalized_tag = str(tag).strip().lower()
+        return (
+            int(flags),
+            normalized_tag,
+            self._normalize_caa_value(str(value), normalized_tag),
+        )
 
     def _normalize_mailto(self, value: str) -> str:
         """Normalize a DMARC mailto value.
@@ -846,6 +886,174 @@ class DNSChecker:
             "PASS",
             "CNAME optional records present",
             {"records": expected_targets},
+            optional=True,
+        )
+
+    def _evaluate_caa_records(
+        self, records: Dict[str, List["CAARecord"]], *, strict: bool
+    ) -> tuple[
+        Dict[str, List[Dict[str, object]]],
+        Dict[str, List[Dict[str, object]]],
+        Dict[str, List[Dict[str, object]]],
+        Dict[str, List[Dict[str, object]]],
+    ]:
+        """Evaluate CAA records and return missing/extra details.
+
+        Args:
+            records (Dict[str, List[CAARecord]]): Expected CAA records.
+            strict (bool): Whether to require exact matches.
+
+        Returns:
+            tuple[Dict[str, List[Dict[str, object]]], ...]: Missing, extra, expected,
+                and found entries keyed by name.
+
+        Raises:
+            DnsLookupError: If DNS lookup fails.
+        """
+        missing: Dict[str, List[Dict[str, object]]] = {}
+        extra: Dict[str, List[Dict[str, object]]] = {}
+        expected: Dict[str, List[Dict[str, object]]] = {}
+        found: Dict[str, List[Dict[str, object]]] = {}
+
+        for name, entries in records.items():
+            lookup_name = self._normalize_record_name(name)
+            expected_entries = [
+                {
+                    "flags": int(entry.flags),
+                    "tag": str(entry.tag),
+                    "value": str(entry.value),
+                }
+                for entry in entries
+            ]
+            expected[lookup_name] = expected_entries
+
+            found_entries = self.resolver.get_caa(lookup_name)
+            found_entries_dicts = [
+                {"flags": int(flags), "tag": str(tag), "value": str(value)}
+                for flags, tag, value in found_entries
+            ]
+            found[lookup_name] = found_entries_dicts
+
+            expected_norm = {
+                self._normalize_caa_entry(entry["flags"], entry["tag"], entry["value"]): entry
+                for entry in expected_entries
+            }
+            found_norm = {
+                self._normalize_caa_entry(entry["flags"], entry["tag"], entry["value"]): entry
+                for entry in found_entries_dicts
+            }
+
+            missing_entries = [
+                entry for key, entry in expected_norm.items() if key not in found_norm
+            ]
+            if missing_entries:
+                missing[lookup_name] = missing_entries
+
+            if strict:
+                extra_entries = [
+                    entry for key, entry in found_norm.items() if key not in expected_norm
+                ]
+                if extra_entries:
+                    extra[lookup_name] = extra_entries
+
+        return missing, extra, expected, found
+
+    def check_caa(self) -> RecordCheck:
+        """Validate CAA records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the CAA validation.
+
+        Raises:
+            ValueError: If the provider does not define CAA requirements.
+        """
+        if not self.provider.caa:
+            raise ValueError("CAA configuration not available for provider")
+
+        try:
+            missing, extra, expected, found = self._evaluate_caa_records(
+                self.provider.caa.records, strict=self.strict
+            )
+        except DnsLookupError as err:
+            return RecordCheck("CAA", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+
+        if self.strict and (missing or extra):
+            details: Dict[str, object] = {"expected": expected, "found": found}
+            if missing:
+                details["missing"] = missing
+            if extra:
+                details["extra"] = extra
+            return RecordCheck(
+                "CAA",
+                "FAIL",
+                "CAA records do not exactly match required configuration",
+                details,
+            )
+
+        if missing:
+            return RecordCheck(
+                "CAA",
+                "FAIL",
+                "Missing required CAA records",
+                {"missing": missing, "expected": expected, "found": found},
+            )
+
+        return RecordCheck(
+            "CAA",
+            "PASS",
+            "Required CAA records present",
+            {"records": expected},
+        )
+
+    def check_caa_optional(self) -> RecordCheck:
+        """Validate optional CAA records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the optional CAA validation.
+
+        Raises:
+            ValueError: If the provider does not define CAA requirements.
+        """
+        if not self.provider.caa:
+            raise ValueError("CAA configuration not available for provider")
+
+        records_optional = self.provider.caa.records_optional
+        if not records_optional:
+            return RecordCheck(
+                "CAA",
+                "PASS",
+                "No optional CAA records required",
+                {},
+                optional=True,
+            )
+
+        try:
+            missing, _extra, expected, found = self._evaluate_caa_records(
+                records_optional, strict=False
+            )
+        except DnsLookupError as err:
+            return RecordCheck(
+                "CAA",
+                "UNKNOWN",
+                "DNS lookup failed",
+                {"error": str(err)},
+                optional=True,
+            )
+
+        if missing:
+            return RecordCheck(
+                "CAA",
+                "WARN",
+                "CAA optional records missing",
+                {"missing": missing, "expected": expected, "found": found},
+                optional=True,
+            )
+
+        return RecordCheck(
+            "CAA",
+            "PASS",
+            "CAA optional records present",
+            {"records": expected},
             optional=True,
         )
 

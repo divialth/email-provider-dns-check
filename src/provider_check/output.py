@@ -541,6 +541,74 @@ def _build_srv_rows(result: dict) -> List[dict]:
     return rows
 
 
+def _format_caa_entry(entry: Dict[str, object]) -> str:
+    """Format a CAA entry dict.
+
+    Args:
+        entry (Dict[str, object]): CAA entry mapping.
+
+    Returns:
+        str: Formatted CAA entry.
+    """
+    flags = entry.get("flags")
+    tag = entry.get("tag")
+    value = entry.get("value")
+    return f"flags {flags} tag {tag} value {value}"
+
+
+def _build_caa_rows(result: dict) -> List[dict]:
+    """Build expected/found rows for CAA results.
+
+    Args:
+        result (dict): Serialized CAA result.
+
+    Returns:
+        List[dict]: Row dicts for output.
+    """
+    details = result["details"]
+    expected = details.get("expected") or details.get("records") or {}
+    found = details.get("found", {})
+    missing = details.get("missing", {})
+    extra = details.get("extra", {})
+    rows: List[dict] = []
+
+    if not found and result["status"] == "PASS" and expected:
+        found = expected
+
+    for name in sorted(expected.keys()):
+        expected_entries = expected[name] or []
+        missing_entries = missing.get(name, [])
+        for entry in expected_entries:
+            status = "PASS"
+            found_value = _format_caa_entry(entry)
+            if entry in missing_entries:
+                status = result["status"]
+                found_value = "(missing)"
+            rows.append(
+                {
+                    "status": status,
+                    "message": f"CAA {name}",
+                    "item": name,
+                    "expected": _format_caa_entry(entry),
+                    "found": found_value,
+                }
+            )
+
+    for name in sorted(extra.keys()):
+        for entry in extra[name]:
+            rows.append(
+                {
+                    "status": result["status"],
+                    "message": f"CAA {name} extra",
+                    "item": name,
+                    "expected": "(none)",
+                    "found": _format_caa_entry(entry),
+                }
+            )
+
+    return rows
+
+
 def _build_txt_rows(result: dict) -> List[dict]:
     """Build expected/found rows for TXT results.
 
@@ -743,6 +811,8 @@ def _build_result_rows(result: dict) -> List[dict]:
         rows = _build_cname_rows(result)
     elif record_type == "SRV":
         rows = _build_srv_rows(result)
+    elif record_type == "CAA":
+        rows = _build_caa_rows(result)
     elif record_type == "TXT":
         rows = _build_txt_rows(result)
     elif record_type == "DMARC":

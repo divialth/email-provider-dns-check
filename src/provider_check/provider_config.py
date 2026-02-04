@@ -91,6 +91,34 @@ class CNAMEConfig:
 
 
 @dataclass(frozen=True)
+class CAARecord:
+    """Define a single CAA record entry.
+
+    Attributes:
+        flags (int): CAA flags value.
+        tag (str): CAA tag (issue, issuewild, iodef).
+        value (str): CAA value string.
+    """
+
+    flags: int
+    tag: str
+    value: str
+
+
+@dataclass(frozen=True)
+class CAAConfig:
+    """Define CAA record requirements for a provider.
+
+    Attributes:
+        records (Dict[str, List[CAARecord]]): CAA records keyed by name.
+        records_optional (Dict[str, List[CAARecord]]): Optional CAA records keyed by name.
+    """
+
+    records: Dict[str, List[CAARecord]]
+    records_optional: Dict[str, List[CAARecord]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class SRVRecord:
     """Define a single SRV record entry.
 
@@ -183,6 +211,7 @@ class ProviderConfig:
         spf (Optional[SPFConfig]): SPF requirements.
         dkim (Optional[DKIMConfig]): DKIM requirements.
         cname (Optional[CNAMEConfig]): CNAME requirements.
+        caa (Optional[CAAConfig]): CAA requirements.
         srv (Optional[SRVConfig]): SRV requirements.
         txt (Optional[TXTConfig]): TXT requirements.
         dmarc (Optional[DMARCConfig]): DMARC requirements.
@@ -198,6 +227,7 @@ class ProviderConfig:
     spf: Optional[SPFConfig]
     dkim: Optional[DKIMConfig]
     cname: Optional[CNAMEConfig] = None
+    caa: Optional[CAAConfig] = None
     srv: Optional[SRVConfig] = None
     txt: Optional[TXTConfig] = None
     dmarc: Optional[DMARCConfig] = None
@@ -673,6 +703,57 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
             cname_optional_records[str(name)] = str(target)
         cname = CNAMEConfig(records=cname_records, records_optional=cname_optional_records)
 
+    caa = None
+    if "caa" in records:
+        caa_section = _require_mapping(provider_id, "caa", records.get("caa"))
+        caa_records_raw = _require_mapping(
+            provider_id, "caa records", caa_section.get("records", {})
+        )
+        caa_optional_raw = _require_mapping(
+            provider_id, "caa records_optional", caa_section.get("records_optional", {})
+        )
+
+        def _parse_caa_records(
+            field_label: str, raw_records: Dict[str, object]
+        ) -> Dict[str, List[CAARecord]]:
+            """Parse a CAA records mapping.
+
+            Args:
+                field_label (str): Label used in error messages.
+                raw_records (Dict[str, object]): Raw CAA records mapping.
+
+            Returns:
+                Dict[str, List[CAARecord]]: Parsed CAA records.
+
+            Raises:
+                ValueError: If any record entries are invalid.
+            """
+            caa_records: Dict[str, List[CAARecord]] = {}
+            for name, entries in raw_records.items():
+                entries_list = _require_list(provider_id, f"{field_label}.{name}", entries)
+                parsed_entries: List[CAARecord] = []
+                for entry in entries_list:
+                    if not isinstance(entry, dict):
+                        raise ValueError(
+                            f"Provider config {provider_id} {field_label}.{name} entries must be mappings"
+                        )
+                    flags = entry.get("flags", entry.get("flag"))
+                    tag = entry.get("tag")
+                    value = entry.get("value")
+                    if flags is None or tag is None or value is None:
+                        raise ValueError(
+                            f"Provider config {provider_id} {field_label}.{name} entries require flags, tag, and value"
+                        )
+                    parsed_entries.append(
+                        CAARecord(flags=int(flags), tag=str(tag), value=str(value))
+                    )
+                caa_records[str(name)] = parsed_entries
+            return caa_records
+
+        caa_records = _parse_caa_records("caa records", caa_records_raw)
+        caa_optional_records = _parse_caa_records("caa records_optional", caa_optional_raw)
+        caa = CAAConfig(records=caa_records, records_optional=caa_optional_records)
+
     srv = None
     if "srv" in records:
         srv_section = _require_mapping(provider_id, "srv", records.get("srv"))
@@ -793,6 +874,7 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         spf=spf,
         dkim=dkim,
         cname=cname,
+        caa=caa,
         srv=srv,
         txt=txt,
         dmarc=dmarc,
@@ -940,6 +1022,32 @@ def resolve_provider_config(
             },
         )
 
+    caa = None
+    if provider.caa:
+        caa_records: Dict[str, List[CAARecord]] = {}
+        for name, entries in provider.caa.records.items():
+            formatted_name = _format_string(name, resolved)
+            caa_records[formatted_name] = [
+                CAARecord(
+                    flags=int(entry.flags),
+                    tag=str(_format_string(entry.tag, resolved)),
+                    value=str(_format_string(entry.value, resolved)),
+                )
+                for entry in entries
+            ]
+        caa_optional_records: Dict[str, List[CAARecord]] = {}
+        for name, entries in provider.caa.records_optional.items():
+            formatted_name = _format_string(name, resolved)
+            caa_optional_records[formatted_name] = [
+                CAARecord(
+                    flags=int(entry.flags),
+                    tag=str(_format_string(entry.tag, resolved)),
+                    value=str(_format_string(entry.value, resolved)),
+                )
+                for entry in entries
+            ]
+        caa = CAAConfig(records=caa_records, records_optional=caa_optional_records)
+
     srv = None
     if provider.srv:
         srv_records: Dict[str, List[SRVRecord]] = {}
@@ -999,6 +1107,7 @@ def resolve_provider_config(
         spf=spf,
         dkim=dkim,
         cname=cname,
+        caa=caa,
         srv=srv,
         txt=txt,
         dmarc=dmarc,

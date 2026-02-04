@@ -7,6 +7,8 @@ from provider_check.provider_config import (
     ProviderConfig,
     ProviderVariable,
     SPFConfig,
+    CAAConfig,
+    CAARecord,
     CNAMEConfig,
     SRVConfig,
     SRVRecord,
@@ -37,6 +39,12 @@ def test_resolve_provider_config_applies_variables_and_domain():
         cname=CNAMEConfig(
             records={"sip": "sip.{tenant}.example.test.", "discover": "webdir.{tenant}."},
             records_optional={"autoconfig": "auto.{tenant}.example.test."},
+        ),
+        caa=CAAConfig(
+            records={"@": [CAARecord(flags=0, tag="issue", value="ca.{tenant}.example.test")]},
+            records_optional={
+                "mail.{domain}": [CAARecord(flags=0, tag="iodef", value="mailto:security@{domain}")]
+            },
         ),
         srv=SRVConfig(
             records={
@@ -93,6 +101,10 @@ def test_resolve_provider_config_applies_variables_and_domain():
         "discover": "webdir.tenant-a.",
     }
     assert resolved.cname.records_optional == {"autoconfig": "auto.tenant-a.example.test."}
+    assert resolved.caa.records["@"][0].value == "ca.tenant-a.example.test"
+    assert resolved.caa.records_optional["mail.example.test"][0].value == (
+        "mailto:security@example.test"
+    )
     assert resolved.srv.records["_sip._tls"][0].target == "sipdir.tenant-a.example.test."
     assert (
         resolved.srv.records_optional["_autodiscover._tcp"][0].target

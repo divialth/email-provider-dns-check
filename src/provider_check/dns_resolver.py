@@ -140,3 +140,32 @@ class DnsResolver:
         except dns.exception.DNSException as err:
             LOGGER.warning("SRV lookup failed for %s: %s", name, err)
             raise DnsLookupError("SRV", name, err) from err
+
+    def get_caa(self, name: str) -> List[tuple[int, str, str]]:
+        """Resolve CAA records for a DNS name.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            List[tuple[int, str, str]]: (flags, tag, value) tuples.
+
+        Raises:
+            DnsLookupError: If a DNS error occurs during lookup.
+        """
+        try:
+            answers = self._resolver.resolve(name, "CAA")
+            records: List[tuple[int, str, str]] = []
+            for rdata in answers:
+                value = rdata.value
+                if isinstance(value, bytes):
+                    value_text = value.decode()
+                else:
+                    value_text = str(value)
+                records.append((int(rdata.flags), str(rdata.tag), value_text))
+            return records
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+            return []
+        except dns.exception.DNSException as err:
+            LOGGER.warning("CAA lookup failed for %s: %s", name, err)
+            raise DnsLookupError("CAA", name, err) from err

@@ -1,9 +1,9 @@
 # Email provider custom domain DNS checker
 
 CLI tool to verify that a domain's DNS records match a selected email provider's configuration
-(MX, SPF, DKIM, DMARC). Provider rules are stored as YAML files, so adding a new provider is as
-easy as dropping in another config file. All output formats include the validated domain, provider
-name, provider version, and a report timestamp (UTC).
+(MX, SPF, DKIM, DMARC, CAA, CNAME, SRV, TXT). Provider rules are stored as YAML files, so adding a
+new provider is as easy as dropping in another config file. All output formats include the
+validated domain, provider name, provider version, and a report timestamp (UTC).
 
 ## Features
 - Supports multiple providers via YAML config files
@@ -159,7 +159,7 @@ These are compatible with Nagios/Icinga plugin exit codes.
 ## Provider configs
 Provider definitions are YAML files. Packaged providers live in
 `src/provider_check/providers/*.yaml`. Each file must include a version and can define any
-subset of MX/SPF/DKIM/TXT/DMARC. For a fully documented example, see
+subset of MX/SPF/DKIM/CNAME/CAA/SRV/TXT/DMARC. For a fully documented example, see
 `src/provider_check/providers/example_do_not_use.yaml`.
 
 ### Locations
@@ -267,6 +267,14 @@ CNAME configs validate arbitrary CNAME records:
 | `records`          | Mapping of `name: target` for required CNAME values.                        |
 | `records_optional` | Mapping of `name: target` for optional CNAME values (missing entries WARN; mismatches FAIL). |
 
+### CAA fields
+CAA configs validate CA authorization records:
+
+| Field              | Description                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `records`          | Mapping of `name: [entries...]` (each entry requires `flags`, `tag`, `value`).                      |
+| `records_optional` | Mapping of `name: [entries...]` for optional CAA values (missing entries WARN).                    |
+
 ### SRV fields
 SRV configs validate required SRV records:
 
@@ -296,7 +304,7 @@ TXT configs let providers require arbitrary validation records:
 
 Detection score details:
 - Required records only contribute to the core score and ratio.
-- Each record type has a weight (`MX=5`, `SPF=4`, `DKIM=4`, `CNAME=3`, `SRV=2`, `TXT=1`, `DMARC=1`).
+- Each record type has a weight (`MX=5`, `SPF=4`, `DKIM=4`, `CNAME=3`, `SRV=2`, `CAA=1`, `TXT=1`, `DMARC=1`).
 - Status scores are `PASS=2`, `WARN=1`, `FAIL=0`, `UNKNOWN=0`.
 - Optional records do not increase `max_score`; they add a small `optional_bonus` when present.
 

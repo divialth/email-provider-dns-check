@@ -1,5 +1,12 @@
 from provider_check.checker import DNSChecker
-from provider_check.provider_config import CNAMEConfig, ProviderConfig, SRVConfig, SRVRecord
+from provider_check.provider_config import (
+    CAAConfig,
+    CAARecord,
+    CNAMEConfig,
+    ProviderConfig,
+    SRVConfig,
+    SRVRecord,
+)
 
 from tests.support import BASE_PROVIDER, FakeResolver
 
@@ -62,6 +69,36 @@ def test_run_checks_includes_cname_and_srv():
     record_types = {result.record_type for result in results}
 
     assert {"CNAME", "SRV"} <= record_types
+
+
+def test_run_checks_includes_caa():
+    provider = ProviderConfig(
+        provider_id="check_caa",
+        name="Check CAA Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        cname=None,
+        caa=CAAConfig(
+            records={"@": [CAARecord(flags=0, tag="issue", value="ca.example.test")]},
+            records_optional={
+                "mail": [CAARecord(flags=0, tag="issuewild", value="ca.example.test")]
+            },
+        ),
+        srv=None,
+        txt=None,
+        dmarc=None,
+    )
+    domain = "example.com"
+    resolver = FakeResolver(caa={domain: [(0, "issue", "ca.example.test")], f"mail.{domain}": []})
+
+    checker = DNSChecker(domain, provider, resolver=resolver)
+
+    results = checker.run_checks()
+    record_types = {result.record_type for result in results}
+
+    assert "CAA" in record_types
 
 
 def test_normalize_record_name_variants():

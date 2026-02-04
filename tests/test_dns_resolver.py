@@ -146,3 +146,36 @@ def test_get_srv_dns_exception_raises_lookup_error(monkeypatch):
 
     assert exc.value.record_type == "SRV"
     assert exc.value.name == "_sip._tls.example.com"
+
+
+def test_get_caa_success(monkeypatch):
+    answers = {
+        ("example.com", "CAA"): [
+            SimpleNamespace(flags=0, tag="issue", value=b"ca.example.test"),
+            SimpleNamespace(flags=0, tag="issuewild", value="ca.example.test"),
+        ]
+    }
+    resolver = _make_resolver(monkeypatch, answers)
+
+    assert resolver.get_caa("example.com") == [
+        (0, "issue", "ca.example.test"),
+        (0, "issuewild", "ca.example.test"),
+    ]
+
+
+def test_get_caa_no_answer_returns_empty(monkeypatch):
+    answers = {("example.com", "CAA"): dns.resolver.NoAnswer()}
+    resolver = _make_resolver(monkeypatch, answers)
+
+    assert resolver.get_caa("example.com") == []
+
+
+def test_get_caa_dns_exception_raises_lookup_error(monkeypatch):
+    answers = {("example.com", "CAA"): dns.exception.DNSException("boom")}
+    resolver = _make_resolver(monkeypatch, answers)
+
+    with pytest.raises(DnsLookupError) as exc:
+        resolver.get_caa("example.com")
+
+    assert exc.value.record_type == "CAA"
+    assert exc.value.name == "example.com"

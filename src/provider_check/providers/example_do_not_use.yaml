@@ -90,6 +90,23 @@ records:
     records_optional:
       autoconfig: autoconfig.example-provider.test.
 
+  caa:
+    # Required CAA records (name -> list of entries).
+    records:
+      "@":
+        - flags: 0
+          tag: issue
+          value: ca.example-provider.test
+        - flags: 0
+          tag: issuewild
+          value: ca-wild.example-provider.test
+    # Optional CAA records (name -> list of entries).
+    records_optional:
+      "mail.{domain}":
+        - flags: 0
+          tag: iodef
+          value: "mailto:security@{domain}"
+
   srv:
     # Required SRV records (name -> list of entries).
     records:

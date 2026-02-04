@@ -21,6 +21,7 @@ TYPE_WEIGHTS = {
     "DKIM": 4,
     "CNAME": 3,
     "SRV": 2,
+    "CAA": 1,
     "TXT": 1,
     "DMARC": 1,
 }
