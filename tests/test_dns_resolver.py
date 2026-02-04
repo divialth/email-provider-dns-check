@@ -179,3 +179,63 @@ def test_get_caa_dns_exception_raises_lookup_error(monkeypatch):
 
     assert exc.value.record_type == "CAA"
     assert exc.value.name == "example.com"
+
+
+def test_get_a_success(monkeypatch):
+    answers = {
+        ("example.com", "A"): [
+            SimpleNamespace(address="192.0.2.1"),
+            SimpleNamespace(address="192.0.2.2"),
+        ]
+    }
+    resolver = _make_resolver(monkeypatch, answers)
+
+    assert resolver.get_a("example.com") == ["192.0.2.1", "192.0.2.2"]
+
+
+def test_get_a_no_answer_returns_empty(monkeypatch):
+    answers = {("example.com", "A"): dns.resolver.NoAnswer()}
+    resolver = _make_resolver(monkeypatch, answers)
+
+    assert resolver.get_a("example.com") == []
+
+
+def test_get_a_dns_exception_raises_lookup_error(monkeypatch):
+    answers = {("example.com", "A"): dns.exception.DNSException("boom")}
+    resolver = _make_resolver(monkeypatch, answers)
+
+    with pytest.raises(DnsLookupError) as exc:
+        resolver.get_a("example.com")
+
+    assert exc.value.record_type == "A"
+    assert exc.value.name == "example.com"
+
+
+def test_get_aaaa_success(monkeypatch):
+    answers = {
+        ("example.com", "AAAA"): [
+            SimpleNamespace(address="2001:db8::1"),
+            SimpleNamespace(address="2001:db8::2"),
+        ]
+    }
+    resolver = _make_resolver(monkeypatch, answers)
+
+    assert resolver.get_aaaa("example.com") == ["2001:db8::1", "2001:db8::2"]
+
+
+def test_get_aaaa_no_answer_returns_empty(monkeypatch):
+    answers = {("example.com", "AAAA"): dns.resolver.NoAnswer()}
+    resolver = _make_resolver(monkeypatch, answers)
+
+    assert resolver.get_aaaa("example.com") == []
+
+
+def test_get_aaaa_dns_exception_raises_lookup_error(monkeypatch):
+    answers = {("example.com", "AAAA"): dns.exception.DNSException("boom")}
+    resolver = _make_resolver(monkeypatch, answers)
+
+    with pytest.raises(DnsLookupError) as exc:
+        resolver.get_aaaa("example.com")
+
+    assert exc.value.record_type == "AAAA"
+    assert exc.value.name == "example.com"

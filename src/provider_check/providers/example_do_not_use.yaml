@@ -81,6 +81,27 @@ records:
     txt_values:
       EXAMPLE1: "v=DKIM1; k=rsa; p=BASE64KEY"
 
+  a:
+    # Required A records (name -> list of IPv4 addresses).
+    records:
+      "@":
+        - 192.0.2.10
+        - 192.0.2.11
+    # Optional A records (name -> list of IPv4 addresses).
+    records_optional:
+      autodiscover:
+        - 192.0.2.12
+
+  aaaa:
+    # Required AAAA records (name -> list of IPv6 addresses).
+    records:
+      "@":
+        - 2001:db8::10
+    # Optional AAAA records (name -> list of IPv6 addresses).
+    records_optional:
+      autodiscover:
+        - 2001:db8::12
+
   cname:
     # Required CNAME records (name -> expected target).
     records:

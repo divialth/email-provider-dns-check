@@ -91,6 +91,19 @@ class CNAMEConfig:
 
 
 @dataclass(frozen=True)
+class AddressConfig:
+    """Define A/AAAA record requirements for a provider.
+
+    Attributes:
+        records (Dict[str, List[str]]): Mapping of record name to expected IP values.
+        records_optional (Dict[str, List[str]]): Optional record mapping.
+    """
+
+    records: Dict[str, List[str]]
+    records_optional: Dict[str, List[str]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class CAARecord:
     """Define a single CAA record entry.
 
@@ -210,6 +223,8 @@ class ProviderConfig:
         mx (Optional[MXConfig]): MX requirements.
         spf (Optional[SPFConfig]): SPF requirements.
         dkim (Optional[DKIMConfig]): DKIM requirements.
+        a (Optional[AddressConfig]): A record requirements.
+        aaaa (Optional[AddressConfig]): AAAA record requirements.
         cname (Optional[CNAMEConfig]): CNAME requirements.
         caa (Optional[CAAConfig]): CAA requirements.
         srv (Optional[SRVConfig]): SRV requirements.
@@ -226,6 +241,8 @@ class ProviderConfig:
     mx: Optional[MXConfig]
     spf: Optional[SPFConfig]
     dkim: Optional[DKIMConfig]
+    a: Optional[AddressConfig] = None
+    aaaa: Optional[AddressConfig] = None
     cname: Optional[CNAMEConfig] = None
     caa: Optional[CAAConfig] = None
     srv: Optional[SRVConfig] = None
@@ -678,6 +695,51 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
             txt_values=txt_values,
         )
 
+    def _parse_address_records(
+        field_label: str, raw_records: Dict[str, object]
+    ) -> Dict[str, List[str]]:
+        """Parse A/AAAA record mappings.
+
+        Args:
+            field_label (str): Label used in error messages.
+            raw_records (Dict[str, object]): Raw mapping of name to values.
+
+        Returns:
+            Dict[str, List[str]]: Parsed record mapping.
+
+        Raises:
+            ValueError: If any record values are invalid.
+        """
+        parsed: Dict[str, List[str]] = {}
+        for name, values in raw_records.items():
+            values_list = _require_list(provider_id, f"{field_label}.{name}", values)
+            parsed[str(name)] = [str(value) for value in values_list]
+        return parsed
+
+    a = None
+    if "a" in records:
+        a_section = _require_mapping(provider_id, "a", records.get("a"))
+        a_records_raw = _require_mapping(provider_id, "a records", a_section.get("records", {}))
+        a_optional_raw = _require_mapping(
+            provider_id, "a records_optional", a_section.get("records_optional", {})
+        )
+        a_records = _parse_address_records("a records", a_records_raw)
+        a_optional_records = _parse_address_records("a records_optional", a_optional_raw)
+        a = AddressConfig(records=a_records, records_optional=a_optional_records)
+
+    aaaa = None
+    if "aaaa" in records:
+        aaaa_section = _require_mapping(provider_id, "aaaa", records.get("aaaa"))
+        aaaa_records_raw = _require_mapping(
+            provider_id, "aaaa records", aaaa_section.get("records", {})
+        )
+        aaaa_optional_raw = _require_mapping(
+            provider_id, "aaaa records_optional", aaaa_section.get("records_optional", {})
+        )
+        aaaa_records = _parse_address_records("aaaa records", aaaa_records_raw)
+        aaaa_optional_records = _parse_address_records("aaaa records_optional", aaaa_optional_raw)
+        aaaa = AddressConfig(records=aaaa_records, records_optional=aaaa_optional_records)
+
     cname = None
     if "cname" in records:
         cname_section = _require_mapping(provider_id, "cname", records.get("cname"))
@@ -873,6 +935,8 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         mx=mx,
         spf=spf,
         dkim=dkim,
+        a=a,
+        aaaa=aaaa,
         cname=cname,
         caa=caa,
         srv=srv,
@@ -1009,6 +1073,40 @@ def resolve_provider_config(
             },
         )
 
+    a = None
+    if provider.a:
+        a = AddressConfig(
+            records={
+                _format_string(name, resolved): [
+                    _format_string(value, resolved) for value in values
+                ]
+                for name, values in provider.a.records.items()
+            },
+            records_optional={
+                _format_string(name, resolved): [
+                    _format_string(value, resolved) for value in values
+                ]
+                for name, values in provider.a.records_optional.items()
+            },
+        )
+
+    aaaa = None
+    if provider.aaaa:
+        aaaa = AddressConfig(
+            records={
+                _format_string(name, resolved): [
+                    _format_string(value, resolved) for value in values
+                ]
+                for name, values in provider.aaaa.records.items()
+            },
+            records_optional={
+                _format_string(name, resolved): [
+                    _format_string(value, resolved) for value in values
+                ]
+                for name, values in provider.aaaa.records_optional.items()
+            },
+        )
+
     cname = None
     if provider.cname:
         cname = CNAMEConfig(
@@ -1106,6 +1204,8 @@ def resolve_provider_config(
         mx=mx,
         spf=spf,
         dkim=dkim,
+        a=a,
+        aaaa=aaaa,
         cname=cname,
         caa=caa,
         srv=srv,

@@ -169,3 +169,45 @@ class DnsResolver:
         except dns.exception.DNSException as err:
             LOGGER.warning("CAA lookup failed for %s: %s", name, err)
             raise DnsLookupError("CAA", name, err) from err
+
+    def get_a(self, name: str) -> List[str]:
+        """Resolve A records for a DNS name.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            List[str]: IPv4 address strings.
+
+        Raises:
+            DnsLookupError: If a DNS error occurs during lookup.
+        """
+        try:
+            answers = self._resolver.resolve(name, "A")
+            return [str(rdata.address) for rdata in answers]
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+            return []
+        except dns.exception.DNSException as err:
+            LOGGER.warning("A lookup failed for %s: %s", name, err)
+            raise DnsLookupError("A", name, err) from err
+
+    def get_aaaa(self, name: str) -> List[str]:
+        """Resolve AAAA records for a DNS name.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            List[str]: IPv6 address strings.
+
+        Raises:
+            DnsLookupError: If a DNS error occurs during lookup.
+        """
+        try:
+            answers = self._resolver.resolve(name, "AAAA")
+            return [str(rdata.address) for rdata in answers]
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+            return []
+        except dns.exception.DNSException as err:
+            LOGGER.warning("AAAA lookup failed for %s: %s", name, err)
+            raise DnsLookupError("AAAA", name, err) from err

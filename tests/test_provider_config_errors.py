@@ -154,6 +154,31 @@ def test_load_provider_txt_required_values_loaded():
     assert config.txt.required == {"_verify": ["token-1", "token-2"]}
 
 
+def test_load_provider_address_records_loaded():
+    data = {
+        "version": "1",
+        "records": {
+            "a": {
+                "records": {"@": ["192.0.2.1"]},
+                "records_optional": {"autodiscover": ["192.0.2.2"]},
+            },
+            "aaaa": {
+                "records": {"@": ["2001:db8::1"]},
+                "records_optional": {"autodiscover": ["2001:db8::2"]},
+            },
+        },
+    }
+
+    config = provider_config._load_provider_from_data("address", data)
+
+    assert config.a is not None
+    assert config.a.records == {"@": ["192.0.2.1"]}
+    assert config.a.records_optional == {"autodiscover": ["192.0.2.2"]}
+    assert config.aaaa is not None
+    assert config.aaaa.records == {"@": ["2001:db8::1"]}
+    assert config.aaaa.records_optional == {"autodiscover": ["2001:db8::2"]}
+
+
 def test_load_provider_config_requires_selection():
     with pytest.raises(ValueError):
         load_provider_config("")

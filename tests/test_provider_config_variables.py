@@ -1,6 +1,7 @@
 import pytest
 
 from provider_check.provider_config import (
+    AddressConfig,
     DKIMConfig,
     DMARCConfig,
     MXConfig,
@@ -35,6 +36,14 @@ def test_resolve_provider_config_applies_variables_and_domain():
             record_type="cname",
             target_template="{selector}._domainkey.{tenant}.example.test.",
             txt_values={},
+        ),
+        a=AddressConfig(
+            records={"mail.{domain}": ["192.0.2.1"]},
+            records_optional={"autodiscover.{domain}": ["192.0.2.2"]},
+        ),
+        aaaa=AddressConfig(
+            records={"mail.{domain}": ["2001:db8::1"]},
+            records_optional={"autodiscover.{domain}": ["2001:db8::2"]},
         ),
         cname=CNAMEConfig(
             records={"sip": "sip.{tenant}.example.test.", "discover": "webdir.{tenant}."},
@@ -96,6 +105,10 @@ def test_resolve_provider_config_applies_variables_and_domain():
     assert resolved.spf.required_modifiers["redirect"] == "_spf.tenant-a.example.test"
     assert resolved.dkim.selectors == ["sel-tenant-a"]
     assert resolved.dkim.target_template == "{selector}._domainkey.tenant-a.example.test."
+    assert resolved.a.records == {"mail.example.test": ["192.0.2.1"]}
+    assert resolved.a.records_optional == {"autodiscover.example.test": ["192.0.2.2"]}
+    assert resolved.aaaa.records == {"mail.example.test": ["2001:db8::1"]}
+    assert resolved.aaaa.records_optional == {"autodiscover.example.test": ["2001:db8::2"]}
     assert resolved.cname.records == {
         "sip": "sip.tenant-a.example.test.",
         "discover": "webdir.tenant-a.",

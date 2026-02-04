@@ -36,12 +36,14 @@ BASE_PROVIDER = ProviderConfig(
 
 
 class FakeResolver:
-    def __init__(self, mx=None, txt=None, cname=None, srv=None, caa=None):
+    def __init__(self, mx=None, txt=None, cname=None, srv=None, caa=None, a=None, aaaa=None):
         self.mx = mx or {}
         self.txt = txt or {}
         self.cname = cname or {}
         self.srv = srv or {}
         self.caa = caa or {}
+        self.a = a or {}
+        self.aaaa = aaaa or {}
 
     def get_mx(self, domain: str):
         return self.mx.get(domain, [])
@@ -57,3 +59,9 @@ class FakeResolver:
 
     def get_caa(self, name: str):
         return self.caa.get(name, [])
+
+    def get_a(self, name: str):
+        return self.a.get(name, [])
+
+    def get_aaaa(self, name: str):
+        return self.aaaa.get(name, [])

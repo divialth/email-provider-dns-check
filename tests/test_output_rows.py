@@ -1,4 +1,5 @@
 from provider_check.output import (
+    _build_address_rows,
     _build_cname_rows,
     _build_dkim_rows,
     _build_dmarc_rows,
@@ -164,6 +165,44 @@ def test_build_cname_rows_missing_mismatch_and_found():
     assert any(row["found"] == "c.target." for row in rows)
 
 
+def test_build_address_rows_missing_and_extra():
+    result_extra = {
+        "record_type": "A",
+        "status": "WARN",
+        "details": {
+            "expected": {"mail.example.test": ["192.0.2.1"]},
+            "found": {"mail.example.test": ["192.0.2.1", "192.0.2.2"]},
+            "extra": {"mail.example.test": ["192.0.2.2"]},
+        },
+    }
+    result_missing = {
+        "record_type": "AAAA",
+        "status": "FAIL",
+        "details": {
+            "expected": {"mail.example.test": ["2001:db8::1"]},
+            "missing": {"mail.example.test": ["2001:db8::1"]},
+        },
+    }
+
+    extra_rows = _build_address_rows(result_extra)
+    missing_rows = _build_address_rows(result_missing)
+
+    assert any(row["expected"] == "(none)" for row in extra_rows)
+    assert any(row["found"] == "(missing)" for row in missing_rows)
+
+
+def test_build_address_rows_without_missing_details():
+    result = {
+        "record_type": "A",
+        "status": "FAIL",
+        "details": {"expected": {"mail.example.test": ["192.0.2.1"]}},
+    }
+
+    rows = _build_address_rows(result)
+
+    assert rows[0]["found"] == "(missing)"
+
+
 def test_build_srv_rows_with_missing_and_extra():
     result = {
         "status": "FAIL",
@@ -301,6 +340,11 @@ def test_build_result_rows_for_specific_record_types():
         "status": "PASS",
         "details": {"records": {"cname.example.test": "target.example.test."}},
     }
+    a_result = {
+        "record_type": "A",
+        "status": "PASS",
+        "details": {"records": {"mail.example.test": ["192.0.2.1"]}},
+    }
     srv_result = {
         "record_type": "SRV",
         "status": "PASS",
@@ -318,6 +362,7 @@ def test_build_result_rows_for_specific_record_types():
     }
 
     assert _build_result_rows(cname_result)
+    assert _build_result_rows(a_result)
     assert _build_result_rows(srv_result)
     assert _build_result_rows(txt_result)
     assert _build_result_rows(dmarc_result)

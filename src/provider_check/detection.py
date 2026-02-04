@@ -14,11 +14,13 @@ from .provider_config import ProviderConfig, list_providers, resolve_provider_co
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_TOP_N = 3
-CORE_RECORD_TYPES = {"MX", "SPF", "DKIM", "CNAME", "SRV"}
+CORE_RECORD_TYPES = {"MX", "SPF", "DKIM", "CNAME", "SRV", "A", "AAAA"}
 TYPE_WEIGHTS = {
     "MX": 5,
     "SPF": 4,
     "DKIM": 4,
+    "A": 1,
+    "AAAA": 1,
     "CNAME": 3,
     "SRV": 2,
     "CAA": 1,

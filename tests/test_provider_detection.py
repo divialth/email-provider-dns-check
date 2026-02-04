@@ -1,6 +1,7 @@
 import provider_check.detection as detection
 from provider_check.detection import detect_providers
 from provider_check.provider_config import (
+    AddressConfig,
     CNAMEConfig,
     MXConfig,
     ProviderConfig,
@@ -36,6 +37,54 @@ def test_detect_providers_selects_best_match(monkeypatch):
     assert report.selected is not None
     assert report.selected.provider_id == "alpha"
     assert report.candidates[0].provider_id == "alpha"
+
+
+def test_detect_providers_supports_a_only(monkeypatch):
+    provider = ProviderConfig(
+        provider_id="a_only",
+        name="A Only Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        a=AddressConfig(records={"@": ["192.0.2.1"]}, records_optional={}),
+        aaaa=None,
+        txt=None,
+        dmarc=None,
+        variables={},
+    )
+    monkeypatch.setattr(detection, "list_providers", lambda: [provider])
+    resolver = FakeResolver(a={"example.com": ["192.0.2.1"]})
+
+    report = detect_providers("example.com", resolver=resolver, top_n=3)
+
+    assert report.status == "PASS"
+    assert report.selected is not None
+    assert report.selected.provider_id == "a_only"
+
+
+def test_detect_providers_supports_aaaa_only(monkeypatch):
+    provider = ProviderConfig(
+        provider_id="aaaa_only",
+        name="AAAA Only Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        a=None,
+        aaaa=AddressConfig(records={"@": ["2001:db8::1"]}, records_optional={}),
+        txt=None,
+        dmarc=None,
+        variables={},
+    )
+    monkeypatch.setattr(detection, "list_providers", lambda: [provider])
+    resolver = FakeResolver(aaaa={"example.com": ["2001:db8::1"]})
+
+    report = detect_providers("example.com", resolver=resolver, top_n=3)
+
+    assert report.status == "PASS"
+    assert report.selected is not None
+    assert report.selected.provider_id == "aaaa_only"
 
 
 def test_detect_providers_marks_tie_as_ambiguous(monkeypatch):

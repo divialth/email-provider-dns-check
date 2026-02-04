@@ -476,6 +476,65 @@ def _build_cname_rows(result: dict) -> List[dict]:
     return rows
 
 
+def _build_address_rows(result: dict) -> List[dict]:
+    """Build expected/found rows for A/AAAA results.
+
+    Args:
+        result (dict): Serialized A/AAAA result.
+
+    Returns:
+        List[dict]: Row dicts for output.
+    """
+    details = result["details"]
+    expected = details.get("expected") or details.get("records") or {}
+    found = details.get("found", {})
+    missing = details.get("missing", {})
+    extra = details.get("extra", {})
+    rows: List[dict] = []
+
+    if not found and result["status"] == "PASS" and expected:
+        found = expected
+
+    record_label = result["record_type"]
+    for name in sorted(expected.keys()):
+        expected_values = expected[name] or []
+        missing_values = set(missing.get(name, []))
+        found_values = set(found.get(name, []))
+        for value in expected_values:
+            if value in missing_values:
+                status = result["status"]
+                found_value = "(missing)"
+            elif value in found_values:
+                status = "PASS"
+                found_value = value
+            else:
+                status = result["status"]
+                found_value = "(missing)"
+            rows.append(
+                {
+                    "status": status,
+                    "message": f"{record_label} {name}",
+                    "item": name,
+                    "expected": str(value),
+                    "found": str(found_value),
+                }
+            )
+
+    for name in sorted(extra.keys()):
+        for value in extra[name]:
+            rows.append(
+                {
+                    "status": result["status"],
+                    "message": f"{record_label} {name} extra",
+                    "item": name,
+                    "expected": "(none)",
+                    "found": str(value),
+                }
+            )
+
+    return rows
+
+
 def _build_srv_rows(result: dict) -> List[dict]:
     """Build expected/found rows for SRV results.
 
@@ -809,6 +868,8 @@ def _build_result_rows(result: dict) -> List[dict]:
         rows = _build_spf_rows(result)
     elif record_type == "CNAME":
         rows = _build_cname_rows(result)
+    elif record_type in {"A", "AAAA"}:
+        rows = _build_address_rows(result)
     elif record_type == "SRV":
         rows = _build_srv_rows(result)
     elif record_type == "CAA":
