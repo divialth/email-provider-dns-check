@@ -1,0 +1,61 @@
+"""Provider config parsing helpers."""
+
+from __future__ import annotations
+
+from typing import Dict
+
+from ...models import ProviderConfig
+from ...utils import _require_mapping
+from .address import _parse_a, _parse_aaaa
+from .caa import _parse_caa
+from .cname import _parse_cname
+from .dkim import _parse_dkim
+from .dmarc import _parse_dmarc
+from .metadata import _parse_provider_metadata
+from .mx import _parse_mx
+from .spf import _parse_spf
+from .srv import _parse_srv
+from .txt import _parse_txt
+from .variables import _parse_variables
+
+
+def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
+    """Load a ProviderConfig from resolved data.
+
+    Args:
+        provider_id (str): Provider identifier.
+        data (dict): Resolved provider configuration mapping.
+
+    Returns:
+        ProviderConfig: Parsed provider configuration.
+
+    Raises:
+        ValueError: If the data is missing required fields or has invalid types.
+    """
+    version, provider_name, short_description, long_description = _parse_provider_metadata(
+        provider_id, data
+    )
+    variables = _parse_variables(provider_id, data)
+    if "records" in data:
+        records = _require_mapping(provider_id, "records", data.get("records"))
+    else:
+        records = {}
+
+    return ProviderConfig(
+        provider_id=provider_id,
+        name=provider_name,
+        version=version,
+        short_description=short_description,
+        long_description=long_description,
+        mx=_parse_mx(provider_id, records),
+        spf=_parse_spf(provider_id, records),
+        dkim=_parse_dkim(provider_id, records),
+        a=_parse_a(provider_id, records),
+        aaaa=_parse_aaaa(provider_id, records),
+        cname=_parse_cname(provider_id, records),
+        caa=_parse_caa(provider_id, records),
+        srv=_parse_srv(provider_id, records),
+        txt=_parse_txt(provider_id, records),
+        dmarc=_parse_dmarc(provider_id, records),
+        variables=variables,
+    )
