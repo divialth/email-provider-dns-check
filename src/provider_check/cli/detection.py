@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Callable
 
-from .shared import _build_dmarc_required_tags
+from .shared import _build_dmarc_required_tags, _parse_txt_inputs
 
 
 def handle_detection(
@@ -60,11 +60,11 @@ def handle_detection(
             provider = resolve_provider_config(
                 provider, report.selected.inferred_variables, domain=args.domain
             )
-            try:
-                txt_records = parse_txt_records(args.txt_records)
-                txt_verification_records = parse_txt_records(args.txt_verification_records)
-            except ValueError as exc:
-                parser.error(str(exc))
+            txt_records, txt_verification_records = _parse_txt_inputs(
+                args,
+                parser,
+                parse_txt_records,
+            )
             checker = dns_checker_cls(
                 args.domain,
                 provider,
@@ -106,11 +106,11 @@ def handle_detection(
         provider = resolve_provider_config(
             provider, report.selected.inferred_variables, domain=args.domain
         )
-        try:
-            txt_records = parse_txt_records(args.txt_records)
-            txt_verification_records = parse_txt_records(args.txt_verification_records)
-        except ValueError as exc:
-            parser.error(str(exc))
+        txt_records, txt_verification_records = _parse_txt_inputs(
+            args,
+            parser,
+            parse_txt_records,
+        )
 
         checker = dns_checker_cls(
             args.domain,
