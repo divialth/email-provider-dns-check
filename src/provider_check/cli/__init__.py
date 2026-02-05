@@ -9,17 +9,9 @@ from pathlib import Path
 from typing import List
 
 from ..checker import DNSChecker
-from ..detection import DEFAULT_TOP_N, detect_providers
+from ..detection import detect_providers
 from ..dns_resolver import DnsResolver
-from ..output import (
-    build_json_payload,
-    make_status_colorizer,
-    resolve_color_enabled,
-    summarize_status,
-    to_human,
-    to_json,
-    to_text,
-)
+from ..output import make_status_colorizer, resolve_color_enabled, summarize_status
 from ..provider_config import (
     list_providers,
     load_provider_config,
@@ -87,23 +79,14 @@ def main(argv: List[str] | None = None) -> int:
         if path not in provider_dirs:
             provider_dirs.append(path)
 
-    list_providers_fn = list_providers
-    load_provider_config_fn = load_provider_config
     load_provider_config_data_fn = load_provider_config_data
-    detect_providers_fn = detect_providers
     if provider_dirs:
-        list_providers_fn = lambda: list_providers(provider_dirs=provider_dirs)
-        load_provider_config_fn = lambda selection: load_provider_config(
-            selection, provider_dirs=provider_dirs
-        )
         load_provider_config_data_fn = lambda selection: load_provider_config_data(
             selection, provider_dirs=provider_dirs
         )
-        detect_providers_fn = (
-            lambda domain, *, resolver=None, top_n=DEFAULT_TOP_N: detect_providers(
-                domain, resolver=resolver, top_n=top_n, provider_dirs=provider_dirs
-            )
-        )
+        list_providers_fn = lambda: list_providers(provider_dirs=provider_dirs)
+    else:
+        list_providers_fn = list_providers
 
     if args.providers_list:
         LOGGER.info("Listing available providers")
@@ -160,20 +143,14 @@ def main(argv: List[str] | None = None) -> int:
             parser,
             report_time,
             resolver=resolver,
-            detect_providers=detect_providers_fn,
-            default_top_n=DEFAULT_TOP_N,
-            detect_limit=args.provider_detect_limit,
-            format_detection_report=_format_detection_report,
-            build_detection_payload=_build_detection_payload,
-            load_provider_config=load_provider_config_fn,
-            resolve_provider_config=resolve_provider_config,
             parse_txt_records=_parse_txt_records,
-            dns_checker_cls=DNSChecker,
-            build_json_payload=build_json_payload,
-            summarize_status=summarize_status,
-            to_human=to_human,
-            to_text=to_text,
             colorize_status=colorize_status,
+            provider_dirs=provider_dirs,
+            detect_providers=detect_providers,
+            load_provider_config=load_provider_config,
+            resolve_provider_config=resolve_provider_config,
+            dns_checker_cls=DNSChecker,
+            summarize_status=summarize_status,
         )
 
     if not args.provider:
@@ -184,17 +161,15 @@ def main(argv: List[str] | None = None) -> int:
         parser,
         report_time,
         resolver=resolver,
-        load_provider_config=load_provider_config_fn,
-        resolve_provider_config=resolve_provider_config,
         parse_provider_vars=_parse_provider_vars,
         parse_txt_records=_parse_txt_records,
-        dns_checker_cls=DNSChecker,
-        summarize_status=summarize_status,
-        to_json=to_json,
-        to_human=to_human,
-        to_text=to_text,
         logger=LOGGER,
         colorize_status=colorize_status,
+        provider_dirs=provider_dirs,
+        load_provider_config=load_provider_config,
+        resolve_provider_config=resolve_provider_config,
+        dns_checker_cls=DNSChecker,
+        summarize_status=summarize_status,
     )
 
 

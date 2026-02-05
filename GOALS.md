@@ -7,6 +7,7 @@ CODE:
 -  use logging for output messages
 -  use UTC timezone for timestamps
 -  code structure: small, focused modules with per-feature subpackages and re-exports in `__init__` (e.g., `checker/records/*`, `output/rows/*`, `provider_config/loader/parse/*`, `cli/*`)
+-  provide a stable programmatic API in `provider_check.runner` with typed request/response dataclasses for checks and detection
 
 PROJECT GOALS:
 -  Script for checking if the DNS records for a domain are correctly set up.
@@ -14,6 +15,7 @@ PROJECT GOALS:
 -  Support multiple email providers via separate YAML configuration files.
 -  Provider configs must include a version tag and can define any subset of record types.
 -  Validate only the record types present in the selected provider config.
+-  Provide a stable runner API via `run_checks(CheckRequest) -> CheckResult` and `run_detection(DetectionRequest) -> DetectionResult`.
 -  Allow users to specify the domain to check via command-line arguments.
 -  Allow users to specify verbosity level for logging output.
 -  Provide a help message for command-line usage.

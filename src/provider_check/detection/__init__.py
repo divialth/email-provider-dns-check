@@ -16,6 +16,7 @@ from .inference import (
     _infer_from_srv,
     infer_provider_variables,
 )
+from .formatting import build_detection_payload, format_detection_report
 from .report import DEFAULT_TOP_N, DetectionCandidate, DetectionReport
 from .scoring import (
     CORE_RECORD_TYPES,
@@ -58,7 +59,9 @@ __all__ = [
     "_same_score",
     "_score_results",
     "_template_regex",
+    "build_detection_payload",
     "detect_providers",
+    "format_detection_report",
     "infer_provider_variables",
 ]
 

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import json
-from typing import Callable
+from typing import Callable, Optional
 
 from ..dns_resolver import DnsResolver
+from ..runner import DetectionRequest, run_detection
 
 from .shared import _build_dmarc_required_tags, _parse_txt_inputs
 
@@ -16,20 +16,14 @@ def handle_detection(
     report_time: str,
     *,
     resolver: DnsResolver,
-    detect_providers: Callable[..., object],
-    default_top_n: int,
-    detect_limit: int | None,
-    format_detection_report: Callable[[object, str], str],
-    build_detection_payload: Callable[[object, str], dict],
-    load_provider_config: Callable[[str], object],
-    resolve_provider_config: Callable[..., object],
     parse_txt_records: Callable[[list[str] | None], dict],
-    dns_checker_cls: type,
-    build_json_payload: Callable[..., dict],
-    summarize_status: Callable[[list[object]], str],
-    to_human: Callable[..., str],
-    to_text: Callable[..., str],
     colorize_status: Callable[[str], str],
+    provider_dirs: Optional[list[object]] = None,
+    detect_providers: Optional[Callable[..., object]] = None,
+    load_provider_config: Optional[Callable[..., object]] = None,
+    resolve_provider_config: Optional[Callable[..., object]] = None,
+    dns_checker_cls: Optional[type] = None,
+    summarize_status: Optional[Callable[[list[object]], str]] = None,
 ) -> int:
     """Handle provider detection and autoselect flows.
 
@@ -38,50 +32,30 @@ def handle_detection(
         parser (object): Argument parser with an error() method.
         report_time (str): Report timestamp.
         resolver (DnsResolver): DNS resolver to use for lookups.
-        detect_providers (Callable[..., object]): Provider detection callback.
-        default_top_n (int): Default number of candidates to return.
-        detect_limit (int | None): Optional detection candidate limit override.
-        format_detection_report (Callable[[object, str], str]): Report formatter.
-        build_detection_payload (Callable[[object, str], dict]): JSON payload builder.
-        load_provider_config (Callable[[str], object]): Provider loader callback.
-        resolve_provider_config (Callable[..., object]): Provider resolver callback.
         parse_txt_records (Callable[[list[str] | None], dict]): TXT parser callback.
-        dns_checker_cls (type): DNSChecker class or factory.
-        build_json_payload (Callable[..., dict]): JSON payload builder.
-        summarize_status (Callable[[list[object]], str]): Status summarizer.
-        to_human (Callable[..., str]): Human output formatter.
-        to_text (Callable[..., str]): Text output formatter.
         colorize_status (Callable[[str], str]): Status colorizer callback.
+        provider_dirs (Optional[list[object]]): Additional provider config directories.
+        detect_providers (Optional[Callable[..., object]]): Detection override.
+        load_provider_config (Optional[Callable[..., object]]): Provider loader override.
+        resolve_provider_config (Optional[Callable[..., object]]): Provider resolver override.
+        dns_checker_cls (Optional[type]): DNS checker class override.
+        summarize_status (Optional[Callable[[list[object]], str]]): Status override.
 
     Returns:
         int: Exit code.
     """
-    top_n = detect_limit if detect_limit is not None else default_top_n
-    report = detect_providers(args.domain, resolver=resolver, top_n=top_n)
-    detection_output = format_detection_report(
-        report,
-        report_time,
-        colorize_status=colorize_status,
+    txt_records, txt_verification_records = _parse_txt_inputs(
+        args,
+        parser,
+        parse_txt_records,
     )
-    if args.output == "json":
-        detection_payload = build_detection_payload(report, report_time)
-        if args.provider_autoselect and report.selected and not report.ambiguous:
-            try:
-                provider = load_provider_config(report.selected.provider_id)
-            except ValueError as exc:
-                parser.error(str(exc))
-            provider = resolve_provider_config(
-                provider, report.selected.inferred_variables, domain=args.domain
-            )
-            txt_records, txt_verification_records = _parse_txt_inputs(
-                args,
-                parser,
-                parse_txt_records,
-            )
-            checker = dns_checker_cls(
-                args.domain,
-                provider,
-                resolver=resolver,
+    try:
+        result = run_detection(
+            DetectionRequest(
+                domain=args.domain,
+                provider_dirs=provider_dirs,
+                detect_limit=args.provider_detect_limit,
+                autoselect=args.provider_autoselect,
                 strict=args.strict,
                 dmarc_rua_mailto=args.dmarc_rua_mailto,
                 dmarc_ruf_mailto=args.dmarc_ruf_mailto,
@@ -94,88 +68,19 @@ def handle_detection(
                 additional_txt=txt_records,
                 additional_txt_verification=txt_verification_records,
                 skip_txt_verification=args.skip_txt_verification,
+                output=args.output,
+                colorize_status=colorize_status,
+                report_time=report_time,
+                resolver=resolver,
+                detect_providers_fn=detect_providers,
+                load_provider_config_fn=load_provider_config,
+                resolve_provider_config_fn=resolve_provider_config,
+                dns_checker_cls=dns_checker_cls,
+                summarize_status_fn=summarize_status,
             )
-            results = checker.run_checks()
-            detection_payload["report"] = build_json_payload(
-                results, args.domain, report_time, provider.name, provider.version
-            )
-            print(json.dumps(detection_payload, indent=2))
-            status = summarize_status(results)
-            if status == "PASS":
-                return 0
-            if status == "WARN":
-                return 1
-            if status == "FAIL":
-                return 2
-            return 3
-        print(json.dumps(detection_payload, indent=2))
-        return 0 if report.status == "PASS" and not report.ambiguous else 3
-
-    print(detection_output)
-    if args.provider_autoselect and report.selected and not report.ambiguous:
-        try:
-            provider = load_provider_config(report.selected.provider_id)
-        except ValueError as exc:
-            parser.error(str(exc))
-        provider = resolve_provider_config(
-            provider, report.selected.inferred_variables, domain=args.domain
         )
-        txt_records, txt_verification_records = _parse_txt_inputs(
-            args,
-            parser,
-            parse_txt_records,
-        )
+    except ValueError as exc:
+        parser.error(str(exc))
 
-        checker = dns_checker_cls(
-            args.domain,
-            provider,
-            resolver=resolver,
-            strict=args.strict,
-            dmarc_rua_mailto=args.dmarc_rua_mailto,
-            dmarc_ruf_mailto=args.dmarc_ruf_mailto,
-            dmarc_policy=args.dmarc_policy,
-            dmarc_required_tags=_build_dmarc_required_tags(args),
-            spf_policy=args.spf_policy,
-            additional_spf_includes=args.spf_includes,
-            additional_spf_ip4=args.spf_ip4,
-            additional_spf_ip6=args.spf_ip6,
-            additional_txt=txt_records,
-            additional_txt_verification=txt_verification_records,
-            skip_txt_verification=args.skip_txt_verification,
-        )
-        results = checker.run_checks()
-        if args.output == "human":
-            print()
-            print(
-                to_human(
-                    results,
-                    args.domain,
-                    report_time,
-                    provider.name,
-                    provider.version,
-                    colorize_status=colorize_status,
-                )
-            )
-        else:
-            print()
-            print(
-                to_text(
-                    results,
-                    args.domain,
-                    report_time,
-                    provider.name,
-                    provider.version,
-                    colorize_status=colorize_status,
-                )
-            )
-
-        status = summarize_status(results)
-        if status == "PASS":
-            return 0
-        if status == "WARN":
-            return 1
-        if status == "FAIL":
-            return 2
-        return 3
-
-    return 0 if report.status == "PASS" and not report.ambiguous else 3
+    print(result.output)
+    return result.exit_code

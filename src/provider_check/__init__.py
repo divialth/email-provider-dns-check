@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
+from . import runner
+
 try:  # pragma: no cover - depends on installation metadata
     __version__ = version("email-provider-dns-check")
 except PackageNotFoundError:  # pragma: no cover - fallback for source checkouts
@@ -13,5 +15,6 @@ __all__ = [
     "checker",
     "dns_resolver",
     "provider_config",
+    "runner",
     "__version__",
 ]
