@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import Dict, List
 
+from ...record_registry import ROW_BUILDER_NAMES
 from .address import _build_address_rows
 from .caa import _build_caa_rows, _format_caa_entry
 from .cname import _build_cname_rows
@@ -16,6 +17,11 @@ from .spf import _build_spf_rows
 from .srv import _build_srv_rows, _format_srv_entry
 from .txt import _build_txt_rows
 
+_ROW_BUILDERS: Dict[str, callable] = {}
+for record_type, builder_name in ROW_BUILDER_NAMES.items():
+    builder = globals().get(builder_name) or _build_generic_rows
+    _ROW_BUILDERS[record_type] = builder
+
 
 def _build_result_rows(result: dict) -> List[dict]:
     """Build output rows for a serialized result.
@@ -27,26 +33,8 @@ def _build_result_rows(result: dict) -> List[dict]:
         List[dict]: Row dicts for output.
     """
     record_type = result["record_type"]
-    if record_type == "DKIM":
-        rows = _build_dkim_rows(result)
-    elif record_type == "MX":
-        rows = _build_mx_rows(result)
-    elif record_type == "SPF":
-        rows = _build_spf_rows(result)
-    elif record_type == "CNAME":
-        rows = _build_cname_rows(result)
-    elif record_type in {"A", "AAAA"}:
-        rows = _build_address_rows(result)
-    elif record_type == "SRV":
-        rows = _build_srv_rows(result)
-    elif record_type == "CAA":
-        rows = _build_caa_rows(result)
-    elif record_type == "TXT":
-        rows = _build_txt_rows(result)
-    elif record_type == "DMARC":
-        rows = _build_dmarc_rows(result)
-    else:
-        rows = _build_generic_rows(result)
+    builder = _ROW_BUILDERS.get(record_type, _build_generic_rows)
+    rows = builder(result)
 
     if not rows:
         rows = _build_generic_rows(result)

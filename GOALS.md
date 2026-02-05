@@ -8,6 +8,7 @@ CODE:
 -  use UTC timezone for timestamps
 -  code structure: small, focused modules with per-feature subpackages and re-exports in `__init__` (e.g., `checker/records/*`, `output/rows/*`, `provider_config/loader/parse/*`, `cli/*`)
 -  provide a stable programmatic API in `provider_check.runner` with typed request/response dataclasses for checks and detection
+-  centralize record-type metadata and check enablement in `provider_check.record_registry`
 
 PROJECT GOALS:
 -  Script for checking if the DNS records for a domain are correctly set up.

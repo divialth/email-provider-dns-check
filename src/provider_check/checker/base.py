@@ -7,6 +7,7 @@ from typing import Dict, Iterable, List, Optional
 
 from ..dns_resolver import DnsResolver
 from ..provider_config import ProviderConfig
+from ..record_registry import CHECK_SPECS
 from .records import RecordCheck, RecordsMixin
 
 LOGGER = logging.getLogger("provider_check.checker")
@@ -123,41 +124,9 @@ class DNSChecker(RecordsMixin):
             self.provider.version,
         )
         checks: List[tuple[str, callable]] = []
-        if self.provider.mx:
-            checks.append(("MX", self.check_mx))
-        if self.provider.spf:
-            checks.append(("SPF", self.check_spf))
-        if self.provider.dkim:
-            checks.append(("DKIM", self.check_dkim))
-        if self.provider.a:
-            if self.provider.a.records:
-                checks.append(("A", self.check_a))
-            if self.provider.a.records_optional:
-                checks.append(("A", self.check_a_optional))
-        if self.provider.aaaa:
-            if self.provider.aaaa.records:
-                checks.append(("AAAA", self.check_aaaa))
-            if self.provider.aaaa.records_optional:
-                checks.append(("AAAA", self.check_aaaa_optional))
-        if self.provider.cname:
-            if self.provider.cname.records:
-                checks.append(("CNAME", self.check_cname))
-            if self.provider.cname.records_optional:
-                checks.append(("CNAME", self.check_cname_optional))
-        if self.provider.caa:
-            if self.provider.caa.records:
-                checks.append(("CAA", self.check_caa))
-            if self.provider.caa.records_optional:
-                checks.append(("CAA", self.check_caa_optional))
-        if self.provider.srv:
-            if self.provider.srv.records:
-                checks.append(("SRV", self.check_srv))
-            if self.provider.srv.records_optional:
-                checks.append(("SRV", self.check_srv_optional))
-        if self.provider.txt or self.additional_txt or self.additional_txt_verification:
-            checks.append(("TXT", self.check_txt))
-        if self.provider.dmarc:
-            checks.append(("DMARC", self.check_dmarc))
+        for spec in CHECK_SPECS:
+            if spec.enabled_when(self):
+                checks.append((spec.record_type, getattr(self, spec.check_method)))
 
         if not checks:
             LOGGER.info("No checks enabled for %s", self.domain)

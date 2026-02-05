@@ -5,21 +5,9 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ..checker import RecordCheck
+from ..record_registry import CORE_RECORD_TYPES, TYPE_WEIGHTS
 from .report import DetectionCandidate
 
-CORE_RECORD_TYPES = {"MX", "SPF", "DKIM", "CNAME", "SRV", "A", "AAAA"}
-TYPE_WEIGHTS = {
-    "MX": 5,
-    "SPF": 4,
-    "DKIM": 4,
-    "A": 1,
-    "AAAA": 1,
-    "CNAME": 3,
-    "SRV": 2,
-    "CAA": 1,
-    "TXT": 1,
-    "DMARC": 1,
-}
 STATUS_SCORES = {"PASS": 2, "WARN": 1, "FAIL": 0, "UNKNOWN": 0}
 
 

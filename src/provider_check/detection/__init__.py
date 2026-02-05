@@ -9,6 +9,7 @@ from typing import List, Optional
 from ..checker import DNSChecker
 from ..dns_resolver import DnsResolver
 from ..provider_config import ProviderConfig, list_providers, resolve_provider_config
+from ..record_registry import CORE_RECORD_TYPES, TYPE_WEIGHTS
 from .inference import (
     _infer_from_cname,
     _infer_from_dkim,
@@ -19,9 +20,7 @@ from .inference import (
 from .formatting import build_detection_payload, format_detection_report
 from .report import DEFAULT_TOP_N, DetectionCandidate, DetectionReport
 from .scoring import (
-    CORE_RECORD_TYPES,
     STATUS_SCORES,
-    TYPE_WEIGHTS,
     _optional_bonus,
     _same_optional_bonus,
     _same_ratio,
