@@ -45,7 +45,7 @@ def _parse_dmarc(provider_id: str, records: dict) -> DMARCConfig | None:
     )
 
     policy = required_section.get("policy", "reject")
-    if policy is not None and not isinstance(policy, str):
+    if policy is None or not isinstance(policy, str):
         raise ValueError(f"Provider config {provider_id} dmarc required policy must be a string")
 
     required_rua = _require_list(provider_id, "dmarc required rua", required_section.get("rua", []))

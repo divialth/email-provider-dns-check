@@ -88,7 +88,7 @@ def _enabled_mx(checker: _CheckerView) -> bool:
         bool: True if MX checks should run.
     """
 
-    return bool(getattr(checker.provider, "mx", None))
+    return _has_required_records(getattr(checker.provider, "mx", None))
 
 
 def _enabled_mx_optional(checker: _CheckerView) -> bool:

@@ -110,6 +110,24 @@ def test_check_specs_enablement() -> None:
         assert spec.enabled_when(checker) is True
 
 
+def test_optional_only_mx_enables_optional_check() -> None:
+    provider = ProviderConfig(
+        provider_id="optional_mx",
+        name="Optional MX",
+        version="1",
+        mx=MXConfig(required=[], optional=[MXRecord(host="mx.optional.test.")]),
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    checker = DummyChecker(provider)
+    specs = {spec.check_method: spec for spec in CHECK_SPECS}
+
+    assert specs["check_mx"].enabled_when(checker) is False
+    assert specs["check_mx_optional"].enabled_when(checker) is True
+
+
 def test_record_type_registry_consistency() -> None:
     record_types = {spec.record_type for spec in RECORD_TYPE_SPECS}
     assert record_types == set(TYPE_WEIGHTS)

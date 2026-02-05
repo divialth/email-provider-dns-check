@@ -105,6 +105,7 @@ class SpfChecksMixin:
                 modifiers[key.lower()] = value
             else:
                 mechanisms.append(token)
+        modifiers.pop("v", None)
 
         include_tokens: List[str] = []
         ip4_tokens: List[str] = []
@@ -131,7 +132,11 @@ class SpfChecksMixin:
         required_modifiers = {
             key.lower(): value.lower() for key, value in spf_config.required.modifiers.items()
         }
+        optional_modifiers = {
+            key.lower(): value.lower() for key, value in spf_config.optional.modifiers.items()
+        }
         advanced_checks = bool(required_mechanisms or allowed_mechanisms)
+        modifier_checks = bool(required_modifiers or optional_modifiers)
 
         mechanism_bases_present = {strip_spf_qualifier(token)[0] for token in mechanisms}
         mechanism_exact_present = {
@@ -191,12 +196,25 @@ class SpfChecksMixin:
                 token for token in ip6_tokens if token[4:] not in self.additional_spf_ip6
             )
 
+        unexpected_modifiers: List[str] = []
+        if modifier_checks:
+            allowed_modifiers = {**optional_modifiers, **required_modifiers}
+            for key, value in modifiers.items():
+                expected_value = allowed_modifiers.get(key)
+                if expected_value is None:
+                    unexpected_modifiers.append(f"{key}={value}")
+                    continue
+                if value.lower() != expected_value:
+                    unexpected_modifiers.append(f"{key}={value}")
+
+        unexpected = unexpected_tokens + unexpected_modifiers
+
         if (
             has_required_includes
             and policy_ok
             and required_mechanisms_ok
             and required_modifiers_ok
-            and not unexpected_tokens
+            and not unexpected
         ):
             return RecordCheck.pass_("SPF", "SPF record valid", {"record": record})
 
@@ -204,7 +222,7 @@ class SpfChecksMixin:
             return RecordCheck.warn(
                 "SPF",
                 "SPF contains required includes but has extra mechanisms",
-                {"record": record, "extras": sorted(set(unexpected_tokens))},
+                {"record": record, "extras": sorted(set(unexpected))},
             )
 
         return RecordCheck.fail(

@@ -131,6 +131,16 @@ def test_load_provider_dmarc_policy_requires_string():
         provider_config._load_provider_from_data("bad", data)
 
 
+def test_load_provider_dmarc_policy_rejects_null():
+    data = {
+        "version": "1",
+        "records": {"dmarc": {"required": {"policy": None}}},
+    }
+
+    with pytest.raises(ValueError, match="dmarc required policy must be a string"):
+        provider_config._load_provider_from_data("bad", data)
+
+
 def test_load_provider_cname_optional_requires_string():
     data = {
         "version": "1",
