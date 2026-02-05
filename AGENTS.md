@@ -17,6 +17,8 @@
 - When editing Markdown tables, align columns so the raw Markdown is readable (consistent column widths with aligned pipes).
 - For Markdown-only changes, you may skip formatting/lint/test runs.
 - When adding new functionality, keep modules small and focused: use per-feature submodules (for example `checker/records/*`, `output/rows/*`, `provider_config/loader/parse/*`, `cli/*` handlers) and re-export from package `__init__` files to preserve stable imports.
-- Git commit messages must use this format:
-  `chore/fix/feat/...(topic): short description`
+- Git commit messages must follow Conventional Commits 1.0.0 with a required scope and body:
+  `type(scope): short description`
   `long description`
+  (Body is required; scope is required. Types should follow Conventional Commits, e.g., `feat`, `fix`, `chore`, `docs`, `refactor`, `test`.)
+- Versioning must follow Semantic Versioning 2.0.0.
