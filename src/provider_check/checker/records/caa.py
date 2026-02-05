@@ -94,7 +94,7 @@ class CaaChecksMixin:
 
         try:
             missing, extra, expected, found = self._evaluate_caa_records(
-                self.provider.caa.records, strict=self.strict
+                self.provider.caa.required, strict=self.strict
             )
         except DnsLookupError as err:
             return RecordCheck.unknown("CAA", "DNS lookup failed", {"error": str(err)})
@@ -136,8 +136,8 @@ class CaaChecksMixin:
         if not self.provider.caa:
             raise ValueError("CAA configuration not available for provider")
 
-        records_optional = self.provider.caa.records_optional
-        if not records_optional:
+        optional_records = self.provider.caa.optional
+        if not optional_records:
             return RecordCheck.pass_(
                 "CAA",
                 "No optional CAA records required",
@@ -147,7 +147,7 @@ class CaaChecksMixin:
 
         try:
             missing, _extra, expected, found = self._evaluate_caa_records(
-                records_optional, strict=False
+                optional_records, strict=False
             )
         except DnsLookupError as err:
             return RecordCheck.unknown(

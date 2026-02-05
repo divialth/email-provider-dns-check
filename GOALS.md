@@ -16,7 +16,7 @@ PROJECT GOALS:
 -  Script for checking if the DNS records for a domain are correctly set up.
 -  Support for checking MX, SPF, DKIM, DMARC, TXT, CNAME, and SRV records.
 -  Support multiple email providers via separate YAML configuration files.
--  Provider configs should use `records` for required values and `records_optional` for optional values where supported.
+-  Provider configs should use `required` and `optional` sections within each record type (under `records`) to distinguish required vs optional values.
 -  Provider configs must include a version tag and can define any subset of record types.
 -  Validate only the record types present in the selected provider config.
 -  Provide a stable runner API via `run_checks(CheckRequest) -> CheckResult` and `run_detection(DetectionRequest) -> DetectionResult`.

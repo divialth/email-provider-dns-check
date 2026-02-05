@@ -7,16 +7,59 @@ from typing import Dict, List, Optional
 
 
 @dataclass(frozen=True)
+class MXRecord:
+    """Define a single MX record entry.
+
+    Attributes:
+        host (str): MX host name.
+        priority (Optional[int]): MX priority value if enforced.
+    """
+
+    host: str
+    priority: Optional[int] = None
+
+
+@dataclass(frozen=True)
 class MXConfig:
     """Define MX record requirements for a provider.
 
     Attributes:
-        hosts (List[str]): Required MX hostnames.
-        priorities (Dict[str, int]): Expected MX priorities by host.
+        required (List[MXRecord]): Required MX host/priority entries.
+        optional (List[MXRecord]): Optional MX host/priority entries.
     """
 
-    hosts: List[str]
-    priorities: Dict[str, int]
+    required: List[MXRecord]
+    optional: List[MXRecord] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class SPFRequired:
+    """Define required SPF values.
+
+    Attributes:
+        record (Optional[str]): Strict SPF record string, if enforced.
+        includes (List[str]): Required include mechanisms.
+        mechanisms (List[str]): Required SPF mechanisms.
+        modifiers (Dict[str, str]): Required SPF modifiers (e.g., redirect).
+    """
+
+    record: Optional[str]
+    includes: List[str]
+    mechanisms: List[str]
+    modifiers: Dict[str, str]
+
+
+@dataclass(frozen=True)
+class SPFOptional:
+    """Define optional SPF values.
+
+    Attributes:
+        mechanisms (List[str]): Optional SPF mechanisms allowed.
+        modifiers (Dict[str, str]): Optional SPF modifiers allowed.
+    """
+
+    mechanisms: List[str]
+    modifiers: Dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -24,23 +67,17 @@ class SPFConfig:
     """Define SPF record requirements for a provider.
 
     Attributes:
-        required_includes (List[str]): Required include mechanisms.
-        strict_record (Optional[str]): Exact SPF record when strict mode is enabled.
-        required_mechanisms (List[str]): Required SPF mechanisms.
-        allowed_mechanisms (List[str]): Allowed SPF mechanisms beyond required ones.
-        required_modifiers (Dict[str, str]): Required SPF modifiers (e.g., redirect).
+        required (SPFRequired): Required SPF values.
+        optional (SPFOptional): Optional SPF values.
     """
 
-    required_includes: List[str]
-    strict_record: Optional[str]
-    required_mechanisms: List[str]
-    allowed_mechanisms: List[str]
-    required_modifiers: Dict[str, str]
+    required: SPFRequired
+    optional: SPFOptional
 
 
 @dataclass(frozen=True)
-class DKIMConfig:
-    """Define DKIM selector requirements for a provider.
+class DKIMRequired:
+    """Define required DKIM selector values.
 
     Attributes:
         selectors (List[str]): DKIM selector names to validate.
@@ -56,16 +93,27 @@ class DKIMConfig:
 
 
 @dataclass(frozen=True)
+class DKIMConfig:
+    """Define DKIM selector requirements for a provider.
+
+    Attributes:
+        required (DKIMRequired): Required DKIM values.
+    """
+
+    required: DKIMRequired
+
+
+@dataclass(frozen=True)
 class CNAMEConfig:
     """Define CNAME record requirements for a provider.
 
     Attributes:
-        records (Dict[str, str]): Mapping of record name to expected target.
-        records_optional (Dict[str, str]): Optional record mapping.
+        required (Dict[str, str]): Mapping of record name to expected target.
+        optional (Dict[str, str]): Optional record mapping.
     """
 
-    records: Dict[str, str]
-    records_optional: Dict[str, str] = field(default_factory=dict)
+    required: Dict[str, str]
+    optional: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -73,12 +121,12 @@ class AddressConfig:
     """Define A/AAAA record requirements for a provider.
 
     Attributes:
-        records (Dict[str, List[str]]): Mapping of record name to expected IP values.
-        records_optional (Dict[str, List[str]]): Optional record mapping.
+        required (Dict[str, List[str]]): Mapping of record name to expected IP values.
+        optional (Dict[str, List[str]]): Optional record mapping.
     """
 
-    records: Dict[str, List[str]]
-    records_optional: Dict[str, List[str]] = field(default_factory=dict)
+    required: Dict[str, List[str]]
+    optional: Dict[str, List[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -101,12 +149,12 @@ class CAAConfig:
     """Define CAA record requirements for a provider.
 
     Attributes:
-        records (Dict[str, List[CAARecord]]): CAA records keyed by name.
-        records_optional (Dict[str, List[CAARecord]]): Optional CAA records keyed by name.
+        required (Dict[str, List[CAARecord]]): CAA records keyed by name.
+        optional (Dict[str, List[CAARecord]]): Optional CAA records keyed by name.
     """
 
-    records: Dict[str, List[CAARecord]]
-    records_optional: Dict[str, List[CAARecord]] = field(default_factory=dict)
+    required: Dict[str, List[CAARecord]]
+    optional: Dict[str, List[CAARecord]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -131,12 +179,23 @@ class SRVConfig:
     """Define SRV record requirements for a provider.
 
     Attributes:
-        records (Dict[str, List[SRVRecord]]): SRV records keyed by name.
-        records_optional (Dict[str, List[SRVRecord]]): Optional SRV records keyed by name.
+        required (Dict[str, List[SRVRecord]]): SRV records keyed by name.
+        optional (Dict[str, List[SRVRecord]]): Optional SRV records keyed by name.
     """
 
-    records: Dict[str, List[SRVRecord]]
-    records_optional: Dict[str, List[SRVRecord]] = field(default_factory=dict)
+    required: Dict[str, List[SRVRecord]]
+    optional: Dict[str, List[SRVRecord]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class TXTSettings:
+    """Define TXT configuration settings.
+
+    Attributes:
+        verification_required (bool): Whether user verification TXT is required.
+    """
+
+    verification_required: bool = False
 
 
 @dataclass(frozen=True)
@@ -144,14 +203,57 @@ class TXTConfig:
     """Define TXT record requirements for a provider.
 
     Attributes:
-        records (Dict[str, List[str]]): Required TXT values keyed by record name.
-        records_optional (Dict[str, List[str]]): Optional TXT values keyed by record name.
-        verification_required (bool): Whether user verification TXT is required.
+        required (Dict[str, List[str]]): Required TXT values keyed by record name.
+        optional (Dict[str, List[str]]): Optional TXT values keyed by record name.
+        settings (TXTSettings): TXT settings.
     """
 
-    records: Dict[str, List[str]]
-    records_optional: Dict[str, List[str]] = field(default_factory=dict)
-    verification_required: bool = False
+    required: Dict[str, List[str]]
+    optional: Dict[str, List[str]] = field(default_factory=dict)
+    settings: TXTSettings = field(default_factory=TXTSettings)
+
+
+@dataclass(frozen=True)
+class DMARCRequired:
+    """Define required DMARC values.
+
+    Attributes:
+        policy (str): Required DMARC policy (p=).
+        rua (List[str]): Required rua mailto URIs.
+        ruf (List[str]): Required ruf mailto URIs.
+        tags (Dict[str, str]): Required DMARC tags and values.
+    """
+
+    policy: str
+    rua: List[str]
+    ruf: List[str]
+    tags: Dict[str, str]
+
+
+@dataclass(frozen=True)
+class DMARCOptional:
+    """Define optional DMARC values.
+
+    Attributes:
+        rua (List[str]): Optional rua mailto URIs.
+        ruf (List[str]): Optional ruf mailto URIs.
+    """
+
+    rua: List[str]
+    ruf: List[str]
+
+
+@dataclass(frozen=True)
+class DMARCSettings:
+    """Define DMARC settings.
+
+    Attributes:
+        rua_required (bool): Whether rua is required at all.
+        ruf_required (bool): Whether ruf is required at all.
+    """
+
+    rua_required: bool = False
+    ruf_required: bool = False
 
 
 @dataclass(frozen=True)
@@ -159,20 +261,14 @@ class DMARCConfig:
     """Define DMARC record requirements for a provider.
 
     Attributes:
-        default_policy (str): Default DMARC policy (p=).
-        required_rua (List[str]): Required rua mailto URIs.
-        required_ruf (List[str]): Required ruf mailto URIs.
-        required_tags (Dict[str, str]): Required DMARC tags and values.
-        rua_required (bool): Whether rua is required at all.
-        ruf_required (bool): Whether ruf is required at all.
+        required (DMARCRequired): Required DMARC values.
+        optional (DMARCOptional): Optional DMARC values.
+        settings (DMARCSettings): DMARC settings.
     """
 
-    default_policy: str
-    required_rua: List[str]
-    required_ruf: List[str]
-    required_tags: Dict[str, str]
-    rua_required: bool = False
-    ruf_required: bool = False
+    required: DMARCRequired
+    optional: DMARCOptional
+    settings: DMARCSettings
 
 
 @dataclass(frozen=True)

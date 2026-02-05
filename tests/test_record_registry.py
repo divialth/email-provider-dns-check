@@ -4,13 +4,21 @@ from provider_check.provider_config import (
     CAARecord,
     CNAMEConfig,
     DKIMConfig,
+    DKIMRequired,
     DMARCConfig,
+    DMARCOptional,
+    DMARCRequired,
+    DMARCSettings,
     MXConfig,
+    MXRecord,
     ProviderConfig,
     SPFConfig,
+    SPFOptional,
+    SPFRequired,
     SRVConfig,
     SRVRecord,
     TXTConfig,
+    TXTSettings,
 )
 from provider_check.record_registry import (
     CHECK_SPECS,
@@ -33,52 +41,65 @@ def _build_provider() -> ProviderConfig:
         provider_id="dummy",
         name="Dummy",
         version="1",
-        mx=MXConfig(hosts=["mx.test."], priorities={}),
+        mx=MXConfig(
+            required=[MXRecord(host="mx.test.")],
+            optional=[MXRecord(host="mx.optional.test.")],
+        ),
         spf=SPFConfig(
-            required_includes=["spf.test"],
-            strict_record=None,
-            required_mechanisms=[],
-            allowed_mechanisms=[],
-            required_modifiers={},
+            required=SPFRequired(
+                record=None,
+                includes=["spf.test"],
+                mechanisms=[],
+                modifiers={},
+            ),
+            optional=SPFOptional(mechanisms=[], modifiers={}),
         ),
         dkim=DKIMConfig(
-            selectors=["selector"],
-            record_type="cname",
-            target_template="{selector}._domainkey.example.test.",
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["selector"],
+                record_type="cname",
+                target_template="{selector}._domainkey.example.test.",
+                txt_values={},
+            )
         ),
         a=AddressConfig(
-            records={"mail": ["192.0.2.1"]},
-            records_optional={"optional": ["192.0.2.2"]},
+            required={"mail": ["192.0.2.1"]},
+            optional={"optional": ["192.0.2.2"]},
         ),
         aaaa=AddressConfig(
-            records={"mail": ["2001:db8::1"]},
-            records_optional={"optional": ["2001:db8::2"]},
+            required={"mail": ["2001:db8::1"]},
+            optional={"optional": ["2001:db8::2"]},
         ),
         cname=CNAMEConfig(
-            records={"autodiscover": "target.example.test."},
-            records_optional={"optional": "optional.example.test."},
+            required={"autodiscover": "target.example.test."},
+            optional={"optional": "optional.example.test."},
         ),
         caa=CAAConfig(
-            records={"@": [CAARecord(flags=0, tag="issue", value="example.test")]},
-            records_optional={"@": [CAARecord(flags=0, tag="issue", value="optional.test")]},
+            required={"@": [CAARecord(flags=0, tag="issue", value="example.test")]},
+            optional={"@": [CAARecord(flags=0, tag="issue", value="optional.test")]},
         ),
         srv=SRVConfig(
-            records={"_sip._tcp": [SRVRecord(priority=1, weight=1, port=5060, target="sip.test.")]},
-            records_optional={
+            required={
+                "_sip._tcp": [SRVRecord(priority=1, weight=1, port=5060, target="sip.test.")]
+            },
+            optional={
                 "_sip._udp": [SRVRecord(priority=1, weight=1, port=5060, target="sip.test.")]
             },
         ),
         txt=TXTConfig(
-            records={"@": ["value"]},
-            records_optional={"@": ["optional"]},
-            verification_required=False,
+            required={"@": ["value"]},
+            optional={"@": ["optional"]},
+            settings=TXTSettings(verification_required=False),
         ),
         dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=[],
-            required_tags={},
+            required=DMARCRequired(
+                policy="reject",
+                rua=[],
+                ruf=[],
+                tags={},
+            ),
+            optional=DMARCOptional(rua=[], ruf=[]),
+            settings=DMARCSettings(rua_required=False, ruf_required=False),
         ),
     )
 

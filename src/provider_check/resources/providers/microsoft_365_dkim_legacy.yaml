@@ -15,8 +15,10 @@ variables:
     description: "Unused for legacy DKIM format (kept for variable alignment)."
 records:
   dkim:
-    selectors:
-      - selector1
-      - selector2
-    record_type: cname
-    target_template: "{selector}-{custom_domain_dashes}._domainkey.{initial_domain_prefix}.onmicrosoft.com."
+    required:
+      selectors:
+        - selector1
+        - selector2
+      record_type: cname
+      target_template: "{selector}-{custom_domain_dashes}._domainkey.{initial_domain_prefix}.onmicrosoft.com."
+      txt_values: {}

@@ -9,11 +9,12 @@ long_description: |
   also valid for Teams scenarios.
 records:
   cname:
-    records:
+    required:
       lyncdiscover: webdir.online.lync.com.
       sip: sipdir.online.lync.com.
+    optional: {}
   srv:
-    records:
+    required:
       _sip._tls:
         - priority: 100
           weight: 1
@@ -24,3 +25,4 @@ records:
           weight: 1
           port: 5061
           target: sipfed.online.lync.com.
+    optional: {}

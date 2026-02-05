@@ -10,13 +10,21 @@ from .models import (
     CAARecord,
     CNAMEConfig,
     DKIMConfig,
+    DKIMRequired,
     DMARCConfig,
+    DMARCOptional,
+    DMARCRequired,
+    DMARCSettings,
     MXConfig,
+    MXRecord,
     ProviderConfig,
     SPFConfig,
+    SPFOptional,
+    SPFRequired,
     SRVConfig,
     SRVRecord,
     TXTConfig,
+    TXTSettings,
 )
 from .utils import _format_string
 
@@ -123,6 +131,25 @@ def _format_srv_mapping(
     }
 
 
+def _format_mx_records(values: List[MXRecord], variables: Dict[str, str]) -> List[MXRecord]:
+    """Format MX record entries using provider variables.
+
+    Args:
+        values (List[MXRecord]): MX records to format.
+        variables (Dict[str, str]): Provider variables.
+
+    Returns:
+        List[MXRecord]: Formatted MX records.
+    """
+    return [
+        MXRecord(
+            host=_format_string(entry.host, variables),
+            priority=int(entry.priority) if entry.priority is not None else None,
+        )
+        for entry in values
+    ]
+
+
 def resolve_provider_config(
     provider: ProviderConfig, variables: Dict[str, str], *, domain: Optional[str] = None
 ) -> ProviderConfig:
@@ -182,90 +209,96 @@ def resolve_provider_config(
     mx = None
     if provider.mx:
         mx = MXConfig(
-            hosts=_format_list(provider.mx.hosts, resolved),
-            priorities={
-                _format_string(host, resolved): int(priority)
-                for host, priority in provider.mx.priorities.items()
-            },
+            required=_format_mx_records(provider.mx.required, resolved),
+            optional=_format_mx_records(provider.mx.optional, resolved),
         )
 
     spf = None
     if provider.spf:
         spf = SPFConfig(
-            required_includes=_format_list(provider.spf.required_includes, resolved),
-            strict_record=_format_string(provider.spf.strict_record, resolved),
-            required_mechanisms=_format_list(provider.spf.required_mechanisms, resolved),
-            allowed_mechanisms=_format_list(provider.spf.allowed_mechanisms, resolved),
-            required_modifiers={
-                key: _format_string(value, resolved)
-                for key, value in provider.spf.required_modifiers.items()
-            },
+            required=SPFRequired(
+                record=_format_string(provider.spf.required.record, resolved),
+                includes=_format_list(provider.spf.required.includes, resolved),
+                mechanisms=_format_list(provider.spf.required.mechanisms, resolved),
+                modifiers=_format_mapping(provider.spf.required.modifiers, resolved),
+            ),
+            optional=SPFOptional(
+                mechanisms=_format_list(provider.spf.optional.mechanisms, resolved),
+                modifiers=_format_mapping(provider.spf.optional.modifiers, resolved),
+            ),
         )
 
     dkim = None
     if provider.dkim:
         dkim = DKIMConfig(
-            selectors=_format_list(provider.dkim.selectors, resolved),
-            record_type=provider.dkim.record_type,
-            target_template=_format_string(provider.dkim.target_template, resolved),
-            txt_values=_format_mapping(provider.dkim.txt_values, resolved),
+            required=DKIMRequired(
+                selectors=_format_list(provider.dkim.required.selectors, resolved),
+                record_type=provider.dkim.required.record_type,
+                target_template=_format_string(provider.dkim.required.target_template, resolved),
+                txt_values=_format_mapping(provider.dkim.required.txt_values, resolved),
+            )
         )
 
     a = None
     if provider.a:
         a = AddressConfig(
-            records=_format_list_mapping(provider.a.records, resolved),
-            records_optional=_format_list_mapping(provider.a.records_optional, resolved),
+            required=_format_list_mapping(provider.a.required, resolved),
+            optional=_format_list_mapping(provider.a.optional, resolved),
         )
 
     aaaa = None
     if provider.aaaa:
         aaaa = AddressConfig(
-            records=_format_list_mapping(provider.aaaa.records, resolved),
-            records_optional=_format_list_mapping(provider.aaaa.records_optional, resolved),
+            required=_format_list_mapping(provider.aaaa.required, resolved),
+            optional=_format_list_mapping(provider.aaaa.optional, resolved),
         )
 
     cname = None
     if provider.cname:
         cname = CNAMEConfig(
-            records=_format_mapping(provider.cname.records, resolved),
-            records_optional=_format_mapping(provider.cname.records_optional, resolved),
+            required=_format_mapping(provider.cname.required, resolved),
+            optional=_format_mapping(provider.cname.optional, resolved),
         )
 
     caa = None
     if provider.caa:
-        caa_records = _format_caa_mapping(provider.caa.records, resolved)
-        caa_optional_records = _format_caa_mapping(provider.caa.records_optional, resolved)
-        caa = CAAConfig(records=caa_records, records_optional=caa_optional_records)
+        caa_required = _format_caa_mapping(provider.caa.required, resolved)
+        caa_optional = _format_caa_mapping(provider.caa.optional, resolved)
+        caa = CAAConfig(required=caa_required, optional=caa_optional)
 
     srv = None
     if provider.srv:
-        srv_records = _format_srv_mapping(provider.srv.records, resolved)
-        srv_optional_records = _format_srv_mapping(provider.srv.records_optional, resolved)
-        srv = SRVConfig(records=srv_records, records_optional=srv_optional_records)
+        srv_required = _format_srv_mapping(provider.srv.required, resolved)
+        srv_optional = _format_srv_mapping(provider.srv.optional, resolved)
+        srv = SRVConfig(required=srv_required, optional=srv_optional)
 
     txt = None
     if provider.txt:
-        required_txt = _format_list_mapping(provider.txt.records, resolved)
-        optional_txt = _format_list_mapping(provider.txt.records_optional, resolved)
+        required_txt = _format_list_mapping(provider.txt.required, resolved)
+        optional_txt = _format_list_mapping(provider.txt.optional, resolved)
         txt = TXTConfig(
-            records=required_txt,
-            records_optional=optional_txt,
-            verification_required=provider.txt.verification_required,
+            required=required_txt,
+            optional=optional_txt,
+            settings=TXTSettings(verification_required=provider.txt.settings.verification_required),
         )
 
     dmarc = None
     if provider.dmarc:
         dmarc = DMARCConfig(
-            default_policy=_format_string(provider.dmarc.default_policy, resolved),
-            required_rua=_format_list(provider.dmarc.required_rua, resolved),
-            required_ruf=_format_list(provider.dmarc.required_ruf, resolved),
-            required_tags={
-                key: _format_string(value, resolved)
-                for key, value in provider.dmarc.required_tags.items()
-            },
-            rua_required=provider.dmarc.rua_required,
-            ruf_required=provider.dmarc.ruf_required,
+            required=DMARCRequired(
+                policy=_format_string(provider.dmarc.required.policy, resolved),
+                rua=_format_list(provider.dmarc.required.rua, resolved),
+                ruf=_format_list(provider.dmarc.required.ruf, resolved),
+                tags=_format_mapping(provider.dmarc.required.tags, resolved),
+            ),
+            optional=DMARCOptional(
+                rua=_format_list(provider.dmarc.optional.rua, resolved),
+                ruf=_format_list(provider.dmarc.optional.ruf, resolved),
+            ),
+            settings=DMARCSettings(
+                rua_required=provider.dmarc.settings.rua_required,
+                ruf_required=provider.dmarc.settings.ruf_required,
+            ),
         )
 
     return ProviderConfig(

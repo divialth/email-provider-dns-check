@@ -28,124 +28,125 @@ variables:
 records:
   # Record sections are ordered for readability; order has no functional effect.
   # Use trailing dots for fully-qualified names; omit for names relative to the checked domain.
-  # records_optional entries are optional and warn if missing (they do not fail the check).
+  # required values must be present; optional values warn if missing.
   mx:
-    # List of MX hostnames required for the provider.
-    # Trailing dots are preferred to keep names fully-qualified.
-    # Hosts can be inferred from records/priorities; shown explicitly for clarity.
-    hosts:
-      - mx1.{tenant}.example-provider.test.
-      - mx2.{tenant}.example-provider.test.
-      - mx3.{tenant}.example-provider.test.
-    # Optional list of MX records with explicit priorities.
-    # When provided, these priorities are validated.
-    records:
+    # Required MX host/priority pairs.
+    required:
       - host: mx1.{tenant}.example-provider.test.
         priority: 10
       - host: mx2.{tenant}.example-provider.test.
         priority: 20
-    # Optional mapping of host -> priority (alternate form to records list).
-    priorities:
-      mx3.{tenant}.example-provider.test.: 30
+      - host: mx3.{tenant}.example-provider.test.
+        priority: 30
+    # Optional MX host/priority pairs.
+    optional:
+      - host: mx4.{tenant}.example-provider.test.
+        priority: 40
 
   spf:
-    # SPF include mechanisms the provider requires (values only).
-    required_includes:
-      - spf.{tenant}.example-provider.test
-      - "{tenant}.example-provider.test"
-    # Strict mode can enforce a specific SPF string when provided.
-    strict_record: "v=spf1 include:{tenant}.example-provider.test -all"
-    # Optional list of additional SPF mechanisms that must be present.
-    # Include full tokens (e.g., a, mx:mail.example-provider.test, exists:%{i}.spf.example-provider.test).
-    required_mechanisms:
-      - a
-      - mx:mail.{tenant}.example-provider.test
-      - exists:%{i}.spf.{tenant}.example-provider.test
-    # Optional list of allowed mechanisms beyond required ones.
-    # These are permitted in standard mode without warnings.
-    allowed_mechanisms:
-      - ip4:203.0.113.0/24
-      - ip6:2001:db8::/32
-      - mx
-      - ptr
-    # Optional SPF modifiers that must be present with exact values.
-    # Common modifiers are redirect= and exp=.
-    required_modifiers:
-      exp: exp._spf.{tenant}.example-provider.test
-      redirect: _spf.{tenant}.example-provider.test
+    # Required SPF values.
+    required:
+      # Strict mode can enforce a specific SPF string when provided.
+      record: "v=spf1 include:{tenant}.example-provider.test -all"
+      # Include mechanisms the provider requires (values only).
+      includes:
+        - spf.{tenant}.example-provider.test
+        - "{tenant}.example-provider.test"
+      # Additional mechanisms that must be present.
+      # Include full tokens (e.g., a, mx:mail.example-provider.test, exists:%{i}.spf.example-provider.test).
+      mechanisms:
+        - a
+        - mx:mail.{tenant}.example-provider.test
+        - exists:%{i}.spf.{tenant}.example-provider.test
+      # Modifiers that must be present with exact values.
+      modifiers:
+        exp: exp._spf.{tenant}.example-provider.test
+        redirect: _spf.{tenant}.example-provider.test
+    # Optional SPF values that are allowed beyond required ones.
+    optional:
+      mechanisms:
+        - ip4:203.0.113.0/24
+        - ip6:2001:db8::/32
+        - mx
+        - ptr
+      modifiers: {}
 
   dkim:
-    # DKIM selectors that must exist for the domain.
-    selectors:
-      - selector1
-      - selector2
-    # DKIM record type: cname (hosted) or txt (self-hosted).
-    record_type: cname
-    # Template for the expected CNAME target for each selector.
-    # The {selector} placeholder is required.
-    target_template: "{selector}._domainkey.{tenant}.example-provider.test."
-    # Optional mapping of selector -> expected TXT value.
-    # Used when record_type is txt (ignored for cname).
-    txt_values:
-      selector1: "v=DKIM1; k=rsa; p=BASE64KEY"
+    # DKIM values that must exist for the domain.
+    required:
+      selectors:
+        - selector1
+        - selector2
+      # DKIM record type: cname (hosted) or txt (self-hosted).
+      record_type: cname
+      # Template for the expected CNAME target for each selector.
+      # The {selector} placeholder is required.
+      target_template: "{selector}._domainkey.{tenant}.example-provider.test."
+      # Optional mapping of selector -> expected TXT value.
+      # Used when record_type is txt (ignored for cname).
+      txt_values:
+        selector1: "v=DKIM1; k=rsa; p=BASE64KEY"
 
   dmarc:
-    # Default DMARC policy to apply when --dmarc-policy is not provided.
-    default_policy: reject
-    # Whether the DMARC record must include a rua tag.
-    rua_required: true
-    # Whether the DMARC record must include a ruf tag.
-    ruf_required: false
-    # Optional list of rua URIs that must be present in the DMARC record.
-    # Use full mailto: URIs to avoid ambiguity. {domain} is replaced at runtime.
-    required_rua:
-      - mailto:dmarc-aggregate@example-provider.test
-      - mailto:dmarc-fallback@example-provider.test
-      - mailto:postmaster@{domain}
-    # Optional list of ruf URIs that must be present in the DMARC record.
-    # Use full mailto: URIs to avoid ambiguity. {domain} is replaced at runtime.
-    required_ruf:
-      - mailto:dmarc-forensic@example-provider.test
-    # Optional additional DMARC tags that must match exact values.
-    # These are checked in standard mode and enforced in strict mode output.
-    required_tags:
-      adkim: s
-      aspf: s
-      pct: "100"
+    # Required DMARC values.
+    required:
+      # Default DMARC policy to apply when --dmarc-policy is not provided.
+      policy: reject
+      # rua URIs that must be present in the DMARC record.
+      rua:
+        - mailto:dmarc-aggregate@example-provider.test
+        - mailto:dmarc-fallback@example-provider.test
+        - mailto:postmaster@{domain}
+      # ruf URIs that must be present in the DMARC record.
+      ruf:
+        - mailto:dmarc-forensic@example-provider.test
+      # Additional DMARC tags that must match exact values.
+      tags:
+        adkim: s
+        aspf: s
+        pct: "100"
+    optional:
+      rua: []
+      ruf: []
+    settings:
+      # Whether the DMARC record must include a rua tag.
+      rua_required: true
+      # Whether the DMARC record must include a ruf tag.
+      ruf_required: false
 
   a:
     # Required A records (name -> list of IPv4 addresses).
-    records:
+    required:
       "@":
         - 192.0.2.10
         - 192.0.2.11
     # Optional A records (name -> list of IPv4 addresses).
-    records_optional:
+    optional:
       autodiscover:
         - 192.0.2.12
 
   aaaa:
     # Required AAAA records (name -> list of IPv6 addresses).
-    records:
+    required:
       "@":
         - 2001:db8::10
     # Optional AAAA records (name -> list of IPv6 addresses).
-    records_optional:
+    optional:
       autodiscover:
         - 2001:db8::12
 
   cname:
     # Required CNAME records (name -> expected target).
-    records:
+    required:
       lyncdiscover: webdir.example-provider.test.
       sip: sipdir.example-provider.test.
     # Optional CNAME records (name -> expected target).
-    records_optional:
+    optional:
       autoconfig: autoconfig.example-provider.test.
 
   caa:
     # Required CAA records (name -> list of entries).
-    records:
+    required:
       "@":
         - flags: 0
           tag: issue
@@ -154,7 +155,7 @@ records:
           tag: issuewild
           value: ca-wild.example-provider.test
     # Optional CAA records (name -> list of entries).
-    records_optional:
+    optional:
       "mail.{domain}":
         - flags: 0
           tag: iodef
@@ -162,7 +163,7 @@ records:
 
   srv:
     # Required SRV records (name -> list of entries).
-    records:
+    required:
       _sip._tls:
         - priority: 100
           weight: 1
@@ -174,7 +175,7 @@ records:
           port: 5061
           target: sipfed.{region}.example-provider.test.
     # Optional SRV records (name -> list of entries).
-    records_optional:
+    optional:
       _autodiscover._tcp:
         - priority: 0
           weight: 0
@@ -186,7 +187,7 @@ records:
     # Names may be relative (appended to the domain) or fully-qualified.
     # "_provider-token" is just an example name; any TXT record name can be used.
     # "@" means the zone apex (the bare domain itself).
-    records:
+    required:
       _provider-token:
         - "provisioning-key=abc123"
         - "activation-hint=def456"
@@ -195,9 +196,10 @@ records:
       "validation.example-provider.test.":
         - "v=custom-validation; token=xyz"
     # Optional TXT records that can be present if supported (name -> list of expected values).
-    records_optional:
+    optional:
       _provider-optional:
         - "optional-flag=true"
-    # When true, the provider requires a user-supplied TXT verification record.
-    # The user must pass it via --txt-verification. If omitted, the result is WARN (unless skipped).
-    verification_required: true
+    settings:
+      # When true, the provider requires a user-supplied TXT verification record.
+      # The user must pass it via --txt-verification. If omitted, the result is WARN (unless skipped).
+      verification_required: true

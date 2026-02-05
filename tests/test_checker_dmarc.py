@@ -2,10 +2,37 @@ import pytest
 
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
-from provider_check.provider_config import DMARCConfig, ProviderConfig
+from provider_check.provider_config import (
+    DMARCConfig,
+    DMARCOptional,
+    DMARCRequired,
+    DMARCSettings,
+    ProviderConfig,
+)
 from provider_check.status import Status
 
 from tests.support import FakeResolver
+
+
+def _dmarc_config(
+    *,
+    policy: str = "reject",
+    required_rua: list[str] | None = None,
+    required_ruf: list[str] | None = None,
+    required_tags: dict[str, str] | None = None,
+    rua_required: bool = False,
+    ruf_required: bool = False,
+) -> DMARCConfig:
+    return DMARCConfig(
+        required=DMARCRequired(
+            policy=policy,
+            rua=required_rua or [],
+            ruf=required_ruf or [],
+            tags=required_tags or {},
+        ),
+        optional=DMARCOptional(rua=[], ruf=[]),
+        settings=DMARCSettings(rua_required=rua_required, ruf_required=ruf_required),
+    )
 
 
 def test_dmarc_optional_rua_allows_unexpected_rua():
@@ -17,13 +44,7 @@ def test_dmarc_optional_rua_allows_unexpected_rua():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=[],
-            required_tags={},
-            rua_required=False,
-        ),
+        dmarc=_dmarc_config(rua_required=False),
     )
     domain = "example.net"
     resolver = FakeResolver(
@@ -45,10 +66,8 @@ def test_dmarc_required_rua_and_tags():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
+        dmarc=_dmarc_config(
             required_rua=["mailto:agg@example.test"],
-            required_ruf=[],
             required_tags={"adkim": "s", "aspf": "s"},
         ),
     )
@@ -73,12 +92,7 @@ def test_dmarc_missing_required_rua_fails():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=["mailto:agg@example.test"],
-            required_ruf=[],
-            required_tags={"adkim": "s"},
-        ),
+        dmarc=_dmarc_config(required_rua=["mailto:agg@example.test"], required_tags={"adkim": "s"}),
     )
     domain = "example.test"
     resolver = FakeResolver(
@@ -101,12 +115,7 @@ def test_dmarc_required_tag_overrides_merge():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=[],
-            required_tags={"adkim": "s", "aspf": "s"},
-        ),
+        dmarc=_dmarc_config(required_tags={"adkim": "s", "aspf": "s"}),
     )
     resolver = FakeResolver(
         txt={"_dmarc.example.test": ["v=DMARC1;p=reject;adkim=r;aspf=s;pct=50;sp=reject"]}
@@ -133,12 +142,7 @@ def test_dmarc_override_required_tag_missing_fails():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(),
     )
     resolver = FakeResolver(txt={"_dmarc.example.test": ["v=DMARC1;p=reject"]})
 
@@ -163,12 +167,7 @@ def test_dmarc_rua_size_suffix_matches_required():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=["mailto:agg@example.test"],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_rua=["mailto:agg@example.test"]),
     )
     resolver = FakeResolver(
         txt={"_dmarc.example.test": ["v=DMARC1;p=reject;rua=mailto:agg@example.test!10m"]}
@@ -189,12 +188,7 @@ def test_dmarc_rua_size_suffix_required_rejects_missing():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=["mailto:agg@example.test!10m"],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_rua=["mailto:agg@example.test!10m"]),
     )
     resolver = FakeResolver(
         txt={"_dmarc.example.test": ["v=DMARC1;p=reject;rua=mailto:agg@example.test"]}
@@ -215,12 +209,7 @@ def test_dmarc_rua_non_mailto_fails_when_required():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=["mailto:agg@example.test"],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_rua=["mailto:agg@example.test"]),
     )
     resolver = FakeResolver(
         txt={"_dmarc.example.test": ["v=DMARC1;p=reject;rua=https://example.test"]}
@@ -241,12 +230,7 @@ def test_dmarc_strict_rua_extra_entry_fails():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=["mailto:agg@example.test"],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_rua=["mailto:agg@example.test"]),
     )
     resolver = FakeResolver(
         txt={
@@ -271,12 +255,7 @@ def test_dmarc_required_ruf_passes():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=["mailto:forensic@example.test"],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_ruf=["mailto:forensic@example.test"]),
     )
     domain = "example.test"
     resolver = FakeResolver(
@@ -298,12 +277,7 @@ def test_dmarc_missing_required_ruf_fails():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=["mailto:forensic@example.test"],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_ruf=["mailto:forensic@example.test"]),
     )
     domain = "example.test"
     resolver = FakeResolver(
@@ -325,12 +299,7 @@ def test_dmarc_missing_ruf_fails_when_required():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=["mailto:forensic@example.test"],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_ruf=["mailto:forensic@example.test"]),
     )
     domain = "example.test"
     resolver = FakeResolver(txt={f"_dmarc.{domain}": ["v=DMARC1;p=reject"]})
@@ -367,13 +336,7 @@ def test_dmarc_rua_optional_allows_missing_rua():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=[],
-            required_tags={},
-            rua_required=False,
-        ),
+        dmarc=_dmarc_config(rua_required=False),
     )
     domain = "example.com"
     resolver = FakeResolver(txt={f"_dmarc.{domain}": ["v=DMARC1; p=reject"]})
@@ -397,12 +360,7 @@ def test_dmarc_lookup_error_returns_unknown():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(),
     )
     checker = DNSChecker("example.test", provider, resolver=FailingResolver())
 
@@ -420,12 +378,7 @@ def test_dmarc_strict_mismatch_fails():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(),
     )
     resolver = FakeResolver(txt={"_dmarc.example.test": ["v=DMARC1;p=none;rua=mailto:x"]})
 
@@ -444,12 +397,7 @@ def test_dmarc_strict_requires_ruf_matches():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=["mailto:forensic@example.test"],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_ruf=["mailto:forensic@example.test"]),
     )
     resolver = FakeResolver(
         txt={"_dmarc.example.test": ["v=DMARC1;p=reject;ruf=mailto:forensic@example.test"]}
@@ -470,12 +418,7 @@ def test_dmarc_strict_missing_ruf_fails():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=["mailto:forensic@example.test"],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_ruf=["mailto:forensic@example.test"]),
     )
     resolver = FakeResolver(txt={"_dmarc.example.test": ["v=DMARC1;p=reject"]})
 
@@ -494,12 +437,7 @@ def test_dmarc_strict_ruf_mismatch_fails():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=["mailto:forensic@example.test"],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_ruf=["mailto:forensic@example.test"]),
     )
     resolver = FakeResolver(
         txt={"_dmarc.example.test": ["v=DMARC1;p=reject;ruf=mailto:other@example.test"]}
@@ -520,10 +458,8 @@ def test_dmarc_records_missing_requirements_fail():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
+        dmarc=_dmarc_config(
             required_rua=["mailto:agg@example.test"],
-            required_ruf=[],
             required_tags={"adkim": "s"},
         ),
     )
@@ -553,12 +489,7 @@ def test_dmarc_rua_override_replaces_required_rua():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=["mailto:agg@example.test"],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_rua=["mailto:agg@example.test"]),
     )
     domain = "example.test"
     resolver = FakeResolver(
@@ -586,12 +517,7 @@ def test_dmarc_ruf_override_replaces_required_ruf():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=["mailto:forensic@example.test"],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(required_ruf=["mailto:forensic@example.test"]),
     )
     domain = "example.test"
     resolver = FakeResolver(
@@ -619,12 +545,7 @@ def test_dmarc_rua_mailto_rejects_empty_values():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=[],
-            required_ruf=[],
-            required_tags={},
-        ),
+        dmarc=_dmarc_config(),
     )
 
     with pytest.raises(ValueError, match="must not be empty"):
@@ -668,10 +589,8 @@ def test_dmarc_strict_filters_invalid_records():
         spf=None,
         dkim=None,
         txt=None,
-        dmarc=DMARCConfig(
-            default_policy="reject",
+        dmarc=_dmarc_config(
             required_rua=["mailto:agg@example.test"],
-            required_ruf=[],
             required_tags={"adkim": "s"},
         ),
     )

@@ -62,11 +62,13 @@ def _parse_caa(provider_id: str, records: dict) -> CAAConfig | None:
         return None
 
     caa_section = _require_mapping(provider_id, "caa", records.get("caa"))
-    _reject_unknown_keys(provider_id, "caa", caa_section, {"records", "records_optional"})
-    caa_records_raw = _require_mapping(provider_id, "caa records", caa_section.get("records", {}))
-    caa_optional_raw = _require_mapping(
-        provider_id, "caa records_optional", caa_section.get("records_optional", {})
+    _reject_unknown_keys(provider_id, "caa", caa_section, {"required", "optional"})
+    caa_required_raw = _require_mapping(
+        provider_id, "caa required", caa_section.get("required", {})
     )
-    caa_records = _parse_caa_records(provider_id, "caa records", caa_records_raw)
-    caa_optional_records = _parse_caa_records(provider_id, "caa records_optional", caa_optional_raw)
-    return CAAConfig(records=caa_records, records_optional=caa_optional_records)
+    caa_optional_raw = _require_mapping(
+        provider_id, "caa optional", caa_section.get("optional", {})
+    )
+    caa_required = _parse_caa_records(provider_id, "caa required", caa_required_raw)
+    caa_optional = _parse_caa_records(provider_id, "caa optional", caa_optional_raw)
+    return CAAConfig(required=caa_required, optional=caa_optional)

@@ -8,8 +8,8 @@ from provider_check.status import Status
 from tests.support import FakeResolver
 
 
-def _build_provider(record_type: str, records, records_optional=None) -> ProviderConfig:
-    config = AddressConfig(records=records, records_optional=records_optional or {})
+def _build_provider(record_type: str, records, optional=None) -> ProviderConfig:
+    config = AddressConfig(required=records, optional=optional or {})
     data = {
         "provider_id": f"{record_type.lower()}_provider",
         "name": f"{record_type} Provider",
@@ -144,9 +144,7 @@ def test_address_records_strict_missing_fails(record_type):
 
 @pytest.mark.parametrize("record_type", ["A", "AAAA"])
 def test_address_optional_missing_warns(record_type):
-    provider = _build_provider(
-        record_type, {}, records_optional={"@": [_address_value(record_type)]}
-    )
+    provider = _build_provider(record_type, {}, optional={"@": [_address_value(record_type)]})
     checker = DNSChecker("example.com", provider, resolver=FakeResolver())
 
     result = getattr(checker, f"check_{record_type.lower()}_optional")()
@@ -158,9 +156,7 @@ def test_address_optional_missing_warns(record_type):
 
 @pytest.mark.parametrize("record_type", ["A", "AAAA"])
 def test_address_optional_no_records_passes(record_type):
-    provider = _build_provider(
-        record_type, {"@": [_address_value(record_type)]}, records_optional={}
-    )
+    provider = _build_provider(record_type, {"@": [_address_value(record_type)]}, optional={})
     checker = DNSChecker("example.com", provider, resolver=FakeResolver())
 
     result = getattr(checker, f"check_{record_type.lower()}_optional")()
@@ -171,9 +167,7 @@ def test_address_optional_no_records_passes(record_type):
 
 @pytest.mark.parametrize("record_type", ["A", "AAAA"])
 def test_address_optional_present_passes(record_type):
-    provider = _build_provider(
-        record_type, {}, records_optional={"@": [_address_value(record_type)]}
-    )
+    provider = _build_provider(record_type, {}, optional={"@": [_address_value(record_type)]})
     domain = "example.com"
     resolver = FakeResolver(
         **_resolver_kwargs(record_type, {domain: [_address_value(record_type)]})
@@ -188,9 +182,7 @@ def test_address_optional_present_passes(record_type):
 
 @pytest.mark.parametrize("record_type", ["A", "AAAA"])
 def test_address_optional_extra_fails(record_type):
-    provider = _build_provider(
-        record_type, {}, records_optional={"@": [_address_value(record_type)]}
-    )
+    provider = _build_provider(record_type, {}, optional={"@": [_address_value(record_type)]})
     domain = "example.com"
     resolver = FakeResolver(
         **_resolver_kwargs(record_type, {domain: [_address_value(record_type), "192.0.2.2"]})
@@ -213,9 +205,7 @@ def test_address_optional_lookup_error_returns_unknown(record_type):
         def get_aaaa(self, name: str):
             raise DnsLookupError("AAAA", name, RuntimeError("timeout"))
 
-    provider = _build_provider(
-        record_type, {}, records_optional={"@": [_address_value(record_type)]}
-    )
+    provider = _build_provider(record_type, {}, optional={"@": [_address_value(record_type)]})
     checker = DNSChecker("example.com", provider, resolver=FailingResolver())
 
     result = getattr(checker, f"check_{record_type.lower()}_optional")()
@@ -321,9 +311,7 @@ def test_run_checks_includes_address(record_type):
 
 @pytest.mark.parametrize("record_type", ["A", "AAAA"])
 def test_run_checks_includes_optional_address(record_type):
-    provider = _build_provider(
-        record_type, {}, records_optional={"@": [_address_value(record_type)]}
-    )
+    provider = _build_provider(record_type, {}, optional={"@": [_address_value(record_type)]})
     domain = "example.com"
     resolver = FakeResolver(
         **_resolver_kwargs(record_type, {domain: [_address_value(record_type)]})

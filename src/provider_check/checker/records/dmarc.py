@@ -22,7 +22,7 @@ class DmarcChecksMixin:
             return []
         if self._dmarc_rua_override:
             return list(self.dmarc_rua_mailto)
-        return self._normalize_mailto_list(self.provider.dmarc.required_rua)
+        return self._normalize_mailto_list(self.provider.dmarc.required.rua)
 
     def _effective_required_ruf(self) -> List[str]:
         """Determine the required ruf mailto values.
@@ -34,7 +34,7 @@ class DmarcChecksMixin:
             return []
         if self._dmarc_ruf_override:
             return list(self.dmarc_ruf_mailto)
-        return self._normalize_mailto_list(self.provider.dmarc.required_ruf)
+        return self._normalize_mailto_list(self.provider.dmarc.required.ruf)
 
     def _rua_required(self, required_rua: List[str]) -> bool:
         """Check whether rua values must be present.
@@ -49,7 +49,7 @@ class DmarcChecksMixin:
             return False
         if self._dmarc_rua_override:
             return True
-        return self.provider.dmarc.rua_required or bool(required_rua)
+        return self.provider.dmarc.settings.rua_required or bool(required_rua)
 
     def _ruf_required(self, required_ruf: List[str]) -> bool:
         """Check whether ruf values must be present.
@@ -64,7 +64,7 @@ class DmarcChecksMixin:
             return False
         if self._dmarc_ruf_override:
             return True
-        return self.provider.dmarc.ruf_required or bool(required_ruf)
+        return self.provider.dmarc.settings.ruf_required or bool(required_ruf)
 
     def _expected_dmarc_value(
         self,

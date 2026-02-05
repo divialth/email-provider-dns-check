@@ -25,7 +25,7 @@ class SrvChecksMixin:
 
         try:
             missing, mismatched, extra, expected, found = self._evaluate_srv_records(
-                self.provider.srv.records
+                self.provider.srv.required
             )
         except DnsLookupError as err:
             return RecordCheck.unknown("SRV", "DNS lookup failed", {"error": str(err)})
@@ -168,8 +168,8 @@ class SrvChecksMixin:
         if not self.provider.srv:
             raise ValueError("SRV configuration not available for provider")
 
-        records_optional = self.provider.srv.records_optional
-        if not records_optional:
+        optional_records = self.provider.srv.optional
+        if not optional_records:
             return RecordCheck.pass_(
                 "SRV",
                 "No optional SRV records required",
@@ -179,7 +179,7 @@ class SrvChecksMixin:
 
         try:
             missing, mismatched, extra, expected, found = self._evaluate_srv_records(
-                records_optional
+                optional_records
             )
         except DnsLookupError as err:
             return RecordCheck.unknown(

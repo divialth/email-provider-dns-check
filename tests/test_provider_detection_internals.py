@@ -3,7 +3,9 @@ from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import (
     CNAMEConfig,
     DKIMConfig,
+    DKIMRequired,
     MXConfig,
+    MXRecord,
     ProviderConfig,
     ProviderVariable,
     SRVConfig,
@@ -115,7 +117,7 @@ def test_template_regex_and_match_infer_branches():
 
 def test_infer_provider_variables_handles_mx_error():
     provider = _provider(
-        mx=MXConfig(hosts=["{tenant}.mx.test."], priorities={}),
+        mx=MXConfig(required=[MXRecord(host="{tenant}.mx.test.")], optional=[]),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
     inferred = detection.infer_provider_variables(provider, "example.com", _FailingResolver())
@@ -124,7 +126,7 @@ def test_infer_provider_variables_handles_mx_error():
 
 def test_infer_provider_variables_from_mx_success():
     provider = _provider(
-        mx=MXConfig(hosts=["{tenant}.mx.test."], priorities={}),
+        mx=MXConfig(required=[MXRecord(host="{tenant}.mx.test.")], optional=[]),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
     resolver = _Resolver(mx={"example.com": [("acme.mx.test.", 10)]})
@@ -135,10 +137,12 @@ def test_infer_provider_variables_from_mx_success():
 def test_infer_provider_variables_from_dkim_cname():
     provider = _provider(
         dkim=DKIMConfig(
-            selectors=["selector1"],
-            record_type="cname",
-            target_template="{selector}.{tenant}.dkim.test.",
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["selector1"],
+                record_type="cname",
+                target_template="{selector}.{tenant}.dkim.test.",
+                txt_values={},
+            )
         ),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
@@ -150,10 +154,12 @@ def test_infer_provider_variables_from_dkim_cname():
 def test_infer_provider_variables_handles_missing_dkim_template():
     provider = _provider(
         dkim=DKIMConfig(
-            selectors=["selector1"],
-            record_type="cname",
-            target_template=None,
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["selector1"],
+                record_type="cname",
+                target_template=None,
+                txt_values={},
+            )
         ),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
@@ -164,8 +170,8 @@ def test_infer_provider_variables_handles_missing_dkim_template():
 
 def test_infer_provider_variables_from_cname_and_srv():
     provider = _provider(
-        cname=CNAMEConfig(records={"mail": "{tenant}.cname.test."}),
-        srv=SRVConfig(records={"_sip._tls": [SRVRecord(1, 1, 443, "{tenant}.srv.test.")]}),
+        cname=CNAMEConfig(required={"mail": "{tenant}.cname.test."}),
+        srv=SRVConfig(required={"_sip._tls": [SRVRecord(1, 1, 443, "{tenant}.srv.test.")]}),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
     resolver = _Resolver(
@@ -178,8 +184,8 @@ def test_infer_provider_variables_from_cname_and_srv():
 
 def test_infer_provider_variables_skips_unresolved_names():
     provider = _provider(
-        cname=CNAMEConfig(records={"{tenant}": "{tenant}.cname.test."}),
-        srv=SRVConfig(records={"{tenant}": [SRVRecord(1, 1, 443, "{tenant}.srv.test.")]}),
+        cname=CNAMEConfig(required={"{tenant}": "{tenant}.cname.test."}),
+        srv=SRVConfig(required={"{tenant}": [SRVRecord(1, 1, 443, "{tenant}.srv.test.")]}),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
     resolver = _Resolver()
@@ -190,10 +196,12 @@ def test_infer_provider_variables_skips_unresolved_names():
 def test_infer_provider_variables_handles_dkim_lookup_error():
     provider = _provider(
         dkim=DKIMConfig(
-            selectors=["selector1"],
-            record_type="cname",
-            target_template="{selector}.{tenant}.dkim.test.",
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["selector1"],
+                record_type="cname",
+                target_template="{selector}.{tenant}.dkim.test.",
+                txt_values={},
+            )
         ),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
@@ -204,10 +212,12 @@ def test_infer_provider_variables_handles_dkim_lookup_error():
 def test_infer_provider_variables_skips_missing_dkim_target():
     provider = _provider(
         dkim=DKIMConfig(
-            selectors=["selector1"],
-            record_type="cname",
-            target_template="{selector}.{tenant}.dkim.test.",
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["selector1"],
+                record_type="cname",
+                target_template="{selector}.{tenant}.dkim.test.",
+                txt_values={},
+            )
         ),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
@@ -218,7 +228,7 @@ def test_infer_provider_variables_skips_missing_dkim_target():
 
 def test_infer_provider_variables_handles_cname_lookup_error():
     provider = _provider(
-        cname=CNAMEConfig(records={"mail": "{tenant}.cname.test."}),
+        cname=CNAMEConfig(required={"mail": "{tenant}.cname.test."}),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
     inferred = detection.infer_provider_variables(provider, "example.com", _FailingResolver())
@@ -227,7 +237,7 @@ def test_infer_provider_variables_handles_cname_lookup_error():
 
 def test_infer_provider_variables_skips_missing_cname_target():
     provider = _provider(
-        cname=CNAMEConfig(records={"mail": "{tenant}.cname.test."}),
+        cname=CNAMEConfig(required={"mail": "{tenant}.cname.test."}),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
     resolver = _Resolver(cname={"mail.example.com": None})
@@ -237,7 +247,7 @@ def test_infer_provider_variables_skips_missing_cname_target():
 
 def test_infer_provider_variables_handles_srv_lookup_error():
     provider = _provider(
-        srv=SRVConfig(records={"_sip._tls": [SRVRecord(1, 1, 443, "{tenant}.srv.test.")]}),
+        srv=SRVConfig(required={"_sip._tls": [SRVRecord(1, 1, 443, "{tenant}.srv.test.")]}),
         variables={"tenant": ProviderVariable(name="tenant", required=False)},
     )
     inferred = detection.infer_provider_variables(provider, "example.com", _FailingResolver())
@@ -255,7 +265,7 @@ def test_detect_providers_ignores_optional_results(monkeypatch):
     provider = _provider(
         provider_id="optional",
         name="Optional Provider",
-        mx=MXConfig(hosts=["mx.optional.test."], priorities={}),
+        mx=MXConfig(required=[MXRecord(host="mx.optional.test.")], optional=[]),
     )
 
     class _Checker:

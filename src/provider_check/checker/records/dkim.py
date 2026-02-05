@@ -29,9 +29,10 @@ class DkimChecksMixin:
         selectors_map: Dict[str, str] = {}
         expected_selectors: List[str] = []
         found_selectors: List[str] = []
-        if self.provider.dkim.record_type == "cname":
-            template = self.provider.dkim.target_template
-            for selector in self.provider.dkim.selectors:
+        dkim_required = self.provider.dkim.required
+        if dkim_required.record_type == "cname":
+            template = dkim_required.target_template
+            for selector in dkim_required.selectors:
                 name = f"{selector}._domainkey.{self.domain}"
                 expected_target = template.format(selector=selector)
                 expected_target = self._normalize_host(expected_target)
@@ -52,9 +53,9 @@ class DkimChecksMixin:
                 found_selectors.append(name)
         else:
             expected_values = {
-                selector: value for selector, value in self.provider.dkim.txt_values.items()
+                selector: value for selector, value in dkim_required.txt_values.items()
             }
-            for selector in self.provider.dkim.selectors:
+            for selector in dkim_required.selectors:
                 name = f"{selector}._domainkey.{self.domain}"
                 expected_selectors.append(name)
                 expected_value = expected_values.get(selector)

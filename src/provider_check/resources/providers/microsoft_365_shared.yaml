@@ -19,17 +19,28 @@ variables:
     description: "Dynamic DKIM partition character from Microsoft (e.g., n or r)."
 records:
   mx:
-    hosts:
-      - "{custom_domain_dashes}.mail.protection.outlook.com."
+    required:
+      - host: "{custom_domain_dashes}.mail.protection.outlook.com."
+    optional: []
   spf:
-    required_includes:
-      - spf.protection.outlook.com
-    strict_record: "v=spf1 include:spf.protection.outlook.com -all"
+    required:
+      record: "v=spf1 include:spf.protection.outlook.com -all"
+      includes:
+        - spf.protection.outlook.com
+      mechanisms: []
+      modifiers: {}
+    optional:
+      mechanisms: []
+      modifiers: {}
   cname:
-    records_optional:
+    required: {}
+    optional:
       msoid: clientconfig.microsoftonline-p.net.
   txt:
-    # Provider requires a user-supplied TXT record for domain verification.
-    # Users must provide the name/value via --txt-verification.
-    # Example: --txt-verification @=MS=ms...
-    verification_required: true
+    required: {}
+    optional: {}
+    settings:
+      # Provider requires a user-supplied TXT record for domain verification.
+      # Users must provide the name/value via --txt-verification.
+      # Example: --txt-verification @=MS=ms...
+      verification_required: true

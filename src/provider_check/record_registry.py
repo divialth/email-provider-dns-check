@@ -62,7 +62,7 @@ def _has_required_records(value: Optional[object]) -> bool:
         bool: True if required records are present.
     """
 
-    return bool(value and getattr(value, "records", None))
+    return bool(value and getattr(value, "required", None))
 
 
 def _has_optional_records(value: Optional[object]) -> bool:
@@ -75,7 +75,7 @@ def _has_optional_records(value: Optional[object]) -> bool:
         bool: True if optional records are present.
     """
 
-    return bool(value and getattr(value, "records_optional", None))
+    return bool(value and getattr(value, "optional", None))
 
 
 def _enabled_mx(checker: _CheckerView) -> bool:
@@ -89,6 +89,19 @@ def _enabled_mx(checker: _CheckerView) -> bool:
     """
 
     return bool(getattr(checker.provider, "mx", None))
+
+
+def _enabled_mx_optional(checker: _CheckerView) -> bool:
+    """Enable optional MX checks when optional MX records are present.
+
+    Args:
+        checker (_CheckerView): Checker instance to inspect.
+
+    Returns:
+        bool: True if optional MX checks should run.
+    """
+
+    return _has_optional_records(getattr(checker.provider, "mx", None))
 
 
 def _enabled_spf(checker: _CheckerView) -> bool:
@@ -292,6 +305,7 @@ def _enabled_dmarc(checker: _CheckerView) -> bool:
 
 CHECK_SPECS: tuple[CheckSpec, ...] = (
     CheckSpec("MX", "check_mx", _enabled_mx),
+    CheckSpec("MX", "check_mx_optional", _enabled_mx_optional),
     CheckSpec("SPF", "check_spf", _enabled_spf),
     CheckSpec("DKIM", "check_dkim", _enabled_dkim),
     CheckSpec("A", "check_a", _enabled_a),

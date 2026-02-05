@@ -8,9 +8,10 @@ long_description: |
   SRV record for SIP federation.
 records:
   srv:
-    records:
+    required:
       _sipfederationtls._tcp:
         - priority: 100
           weight: 1
           port: 5061
           target: sipfed.online.lync.com.
+    optional: {}

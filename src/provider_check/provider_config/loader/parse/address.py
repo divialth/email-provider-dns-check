@@ -45,14 +45,12 @@ def _parse_a(provider_id: str, records: dict) -> AddressConfig | None:
         return None
 
     a_section = _require_mapping(provider_id, "a", records.get("a"))
-    _reject_unknown_keys(provider_id, "a", a_section, {"records", "records_optional"})
-    a_records_raw = _require_mapping(provider_id, "a records", a_section.get("records", {}))
-    a_optional_raw = _require_mapping(
-        provider_id, "a records_optional", a_section.get("records_optional", {})
-    )
-    a_records = _parse_address_records(provider_id, "a records", a_records_raw)
-    a_optional_records = _parse_address_records(provider_id, "a records_optional", a_optional_raw)
-    return AddressConfig(records=a_records, records_optional=a_optional_records)
+    _reject_unknown_keys(provider_id, "a", a_section, {"required", "optional"})
+    a_required_raw = _require_mapping(provider_id, "a required", a_section.get("required", {}))
+    a_optional_raw = _require_mapping(provider_id, "a optional", a_section.get("optional", {}))
+    a_required = _parse_address_records(provider_id, "a required", a_required_raw)
+    a_optional = _parse_address_records(provider_id, "a optional", a_optional_raw)
+    return AddressConfig(required=a_required, optional=a_optional)
 
 
 def _parse_aaaa(provider_id: str, records: dict) -> AddressConfig | None:
@@ -69,15 +67,13 @@ def _parse_aaaa(provider_id: str, records: dict) -> AddressConfig | None:
         return None
 
     aaaa_section = _require_mapping(provider_id, "aaaa", records.get("aaaa"))
-    _reject_unknown_keys(provider_id, "aaaa", aaaa_section, {"records", "records_optional"})
-    aaaa_records_raw = _require_mapping(
-        provider_id, "aaaa records", aaaa_section.get("records", {})
+    _reject_unknown_keys(provider_id, "aaaa", aaaa_section, {"required", "optional"})
+    aaaa_required_raw = _require_mapping(
+        provider_id, "aaaa required", aaaa_section.get("required", {})
     )
     aaaa_optional_raw = _require_mapping(
-        provider_id, "aaaa records_optional", aaaa_section.get("records_optional", {})
+        provider_id, "aaaa optional", aaaa_section.get("optional", {})
     )
-    aaaa_records = _parse_address_records(provider_id, "aaaa records", aaaa_records_raw)
-    aaaa_optional_records = _parse_address_records(
-        provider_id, "aaaa records_optional", aaaa_optional_raw
-    )
-    return AddressConfig(records=aaaa_records, records_optional=aaaa_optional_records)
+    aaaa_required = _parse_address_records(provider_id, "aaaa required", aaaa_required_raw)
+    aaaa_optional = _parse_address_records(provider_id, "aaaa optional", aaaa_optional_raw)
+    return AddressConfig(required=aaaa_required, optional=aaaa_optional)

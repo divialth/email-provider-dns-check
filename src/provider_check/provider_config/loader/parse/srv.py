@@ -70,11 +70,13 @@ def _parse_srv(provider_id: str, records: dict) -> SRVConfig | None:
         return None
 
     srv_section = _require_mapping(provider_id, "srv", records.get("srv"))
-    _reject_unknown_keys(provider_id, "srv", srv_section, {"records", "records_optional"})
-    srv_records_raw = _require_mapping(provider_id, "srv records", srv_section.get("records", {}))
-    srv_optional_raw = _require_mapping(
-        provider_id, "srv records_optional", srv_section.get("records_optional", {})
+    _reject_unknown_keys(provider_id, "srv", srv_section, {"required", "optional"})
+    srv_required_raw = _require_mapping(
+        provider_id, "srv required", srv_section.get("required", {})
     )
-    srv_records = _parse_srv_records(provider_id, "srv records", srv_records_raw)
-    srv_optional_records = _parse_srv_records(provider_id, "srv records_optional", srv_optional_raw)
-    return SRVConfig(records=srv_records, records_optional=srv_optional_records)
+    srv_optional_raw = _require_mapping(
+        provider_id, "srv optional", srv_section.get("optional", {})
+    )
+    srv_required = _parse_srv_records(provider_id, "srv required", srv_required_raw)
+    srv_optional = _parse_srv_records(provider_id, "srv optional", srv_optional_raw)
+    return SRVConfig(required=srv_required, optional=srv_optional)

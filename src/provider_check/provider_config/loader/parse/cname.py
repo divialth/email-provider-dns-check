@@ -25,25 +25,25 @@ def _parse_cname(provider_id: str, records: dict) -> CNAMEConfig | None:
         return None
 
     cname_section = _require_mapping(provider_id, "cname", records.get("cname"))
-    _reject_unknown_keys(provider_id, "cname", cname_section, {"records", "records_optional"})
-    cname_records_raw = _require_mapping(
-        provider_id, "cname records", cname_section.get("records", {})
+    _reject_unknown_keys(provider_id, "cname", cname_section, {"required", "optional"})
+    cname_required_raw = _require_mapping(
+        provider_id, "cname required", cname_section.get("required", {})
     )
     cname_optional_raw = _require_mapping(
-        provider_id, "cname records_optional", cname_section.get("records_optional", {})
+        provider_id, "cname optional", cname_section.get("optional", {})
     )
-    cname_records: Dict[str, str] = {}
-    for name, target in cname_records_raw.items():
+    cname_required: Dict[str, str] = {}
+    for name, target in cname_required_raw.items():
         if target is None or isinstance(target, (dict, list)):
             raise ValueError(
-                f"Provider config {provider_id} cname record '{name}' must be a string"
+                f"Provider config {provider_id} cname required '{name}' must be a string"
             )
-        cname_records[str(name)] = str(target)
-    cname_optional_records: Dict[str, str] = {}
+        cname_required[str(name)] = str(target)
+    cname_optional: Dict[str, str] = {}
     for name, target in cname_optional_raw.items():
         if target is None or isinstance(target, (dict, list)):
             raise ValueError(
-                f"Provider config {provider_id} cname records_optional '{name}' must be a string"
+                f"Provider config {provider_id} cname optional '{name}' must be a string"
             )
-        cname_optional_records[str(name)] = str(target)
-    return CNAMEConfig(records=cname_records, records_optional=cname_optional_records)
+        cname_optional[str(name)] = str(target)
+    return CNAMEConfig(required=cname_required, optional=cname_optional)

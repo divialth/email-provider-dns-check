@@ -2,7 +2,7 @@ import pytest
 
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
-from provider_check.provider_config import DKIMConfig, ProviderConfig
+from provider_check.provider_config import DKIMConfig, DKIMRequired, ProviderConfig
 from provider_check.status import Status
 
 from tests.support import BASE_PROVIDER, FakeResolver
@@ -41,10 +41,12 @@ def test_dkim_txt_values_pass():
         mx=None,
         spf=None,
         dkim=DKIMConfig(
-            selectors=["s1"],
-            record_type="txt",
-            target_template=None,
-            txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="txt",
+                target_template=None,
+                txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+            )
         ),
         txt=None,
         dmarc=None,
@@ -71,10 +73,12 @@ def test_dkim_txt_values_mismatch_warns():
         mx=None,
         spf=None,
         dkim=DKIMConfig(
-            selectors=["s1"],
-            record_type="txt",
-            target_template=None,
-            txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="txt",
+                target_template=None,
+                txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+            )
         ),
         txt=None,
         dmarc=None,
@@ -123,10 +127,12 @@ def test_dkim_cname_lookup_error_returns_unknown():
         mx=None,
         spf=None,
         dkim=DKIMConfig(
-            selectors=["s1"],
-            record_type="cname",
-            target_template="{selector}._domainkey.example.test.",
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="cname",
+                target_template="{selector}._domainkey.example.test.",
+                txt_values={},
+            )
         ),
         txt=None,
         dmarc=None,
@@ -146,10 +152,12 @@ def test_dkim_cname_mismatch_warns():
         mx=None,
         spf=None,
         dkim=DKIMConfig(
-            selectors=["s1"],
-            record_type="cname",
-            target_template="{selector}._domainkey.example.test.",
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="cname",
+                target_template="{selector}._domainkey.example.test.",
+                txt_values={},
+            )
         ),
         txt=None,
         dmarc=None,
@@ -171,10 +179,12 @@ def test_dkim_txt_missing_selector_fails():
         mx=None,
         spf=None,
         dkim=DKIMConfig(
-            selectors=["s1"],
-            record_type="txt",
-            target_template=None,
-            txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="txt",
+                target_template=None,
+                txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+            )
         ),
         txt=None,
         dmarc=None,
@@ -196,10 +206,12 @@ def test_dkim_txt_without_expected_value_marks_present():
         mx=None,
         spf=None,
         dkim=DKIMConfig(
-            selectors=["s1"],
-            record_type="txt",
-            target_template=None,
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="txt",
+                target_template=None,
+                txt_values={},
+            )
         ),
         txt=None,
         dmarc=None,
@@ -225,10 +237,12 @@ def test_dkim_txt_lookup_error_returns_unknown():
         mx=None,
         spf=None,
         dkim=DKIMConfig(
-            selectors=["s1"],
-            record_type="txt",
-            target_template=None,
-            txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="txt",
+                target_template=None,
+                txt_values={"s1": "v=DKIM1; k=rsa; p=ABC123"},
+            )
         ),
         txt=None,
         dmarc=None,

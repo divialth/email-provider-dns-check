@@ -8,7 +8,7 @@ from provider_check.status import Status
 from tests.support import FakeResolver
 
 
-def _build_provider(records, records_optional=None):
+def _build_provider(records, optional=None):
     return ProviderConfig(
         provider_id="cname_provider",
         name="CNAME Provider",
@@ -16,7 +16,7 @@ def _build_provider(records, records_optional=None):
         mx=None,
         spf=None,
         dkim=None,
-        cname=CNAMEConfig(records=records, records_optional=records_optional or {}),
+        cname=CNAMEConfig(required=records, optional=optional or {}),
         txt=None,
         dmarc=None,
     )
@@ -82,7 +82,7 @@ def test_cname_lookup_error_returns_unknown():
 def test_cname_optional_missing_warns():
     provider = _build_provider(
         {"sip": "sip.provider.test."},
-        records_optional={"autoconfig": "autoconfig.provider.test."},
+        optional={"autoconfig": "autoconfig.provider.test."},
     )
     resolver = FakeResolver(cname={"sip.example.com": "sip.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
@@ -95,7 +95,7 @@ def test_cname_optional_missing_warns():
 
 
 def test_cname_optional_present_passes():
-    provider = _build_provider({}, records_optional={"autoconfig": "autoconfig.provider.test."})
+    provider = _build_provider({}, optional={"autoconfig": "autoconfig.provider.test."})
     resolver = FakeResolver(cname={"autoconfig.example.com": "autoconfig.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 
@@ -106,7 +106,7 @@ def test_cname_optional_present_passes():
 
 
 def test_cname_optional_mismatch_fails():
-    provider = _build_provider({}, records_optional={"autoconfig": "autoconfig.provider.test."})
+    provider = _build_provider({}, optional={"autoconfig": "autoconfig.provider.test."})
     resolver = FakeResolver(cname={"autoconfig.example.com": "wrong.example."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 
@@ -118,7 +118,7 @@ def test_cname_optional_mismatch_fails():
 
 
 def test_cname_optional_no_records_passes():
-    provider = _build_provider({"sip": "sip.provider.test."}, records_optional={})
+    provider = _build_provider({"sip": "sip.provider.test."}, optional={})
     checker = DNSChecker("example.com", provider, resolver=FakeResolver())
 
     result = checker.check_cname_optional()
@@ -132,7 +132,7 @@ def test_cname_optional_lookup_error_returns_unknown():
         def get_cname(self, name: str):
             raise DnsLookupError("CNAME", name, RuntimeError("timeout"))
 
-    provider = _build_provider({}, records_optional={"autoconfig": "autoconfig.provider.test."})
+    provider = _build_provider({}, optional={"autoconfig": "autoconfig.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=FailingResolver())
 
     result = checker.check_cname_optional()
@@ -160,7 +160,7 @@ def test_cname_optional_requires_config():
 
 
 def test_run_checks_includes_optional_cname():
-    provider = _build_provider({}, records_optional={"autoconfig": "autoconfig.provider.test."})
+    provider = _build_provider({}, optional={"autoconfig": "autoconfig.provider.test."})
     resolver = FakeResolver(cname={"autoconfig.example.com": "autoconfig.provider.test."})
     checker = DNSChecker("example.com", provider, resolver=resolver)
 

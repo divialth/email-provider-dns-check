@@ -1,16 +1,24 @@
 ---
 extends:
-  - microsoft_365_sfb_dkim_legacy
+  - microsoft_365_sfb
+  - microsoft_365_dkim_legacy
 name: Microsoft 365 (+ SfB / Teams + DKIM Legacy + DMARC)
 version: 1
-short_description: "Microsoft 365 email + SfB/Teams with legacy DKIM/DMARC."
+short_description: "Microsoft 365 email + SfB/Teams with legacy DKIM and DMARC."
 long_description: |
-  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM Legacy, plus SfB (Skype
-  for Business) CNAME and SRV records. These records are also valid for Teams
-  scenarios. DMARC validation is included with a default policy of
-  p=reject; rua/ruf are optional unless overridden.
+  Same MX/SPF/TXT/SfB/DKIM checks as Microsoft 365 SfB/Teams + DKIM Legacy,
+  plus DMARC validation. The DMARC policy defaults to p=reject; rua/ruf are
+  optional unless overridden.
 records:
   dmarc:
-    default_policy: reject
-    rua_required: false
-    ruf_required: false
+    required:
+      policy: reject
+      rua: []
+      ruf: []
+      tags: {}
+    optional:
+      rua: []
+      ruf: []
+    settings:
+      rua_required: false
+      ruf_required: false

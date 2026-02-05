@@ -20,8 +20,8 @@ class TxtChecksMixin:
         required: Dict[str, List[str]] = {}
         user_required = False
         if self.provider.txt:
-            required.update(self.provider.txt.records)
-            user_required = self.provider.txt.verification_required
+            required.update(self.provider.txt.required)
+            user_required = self.provider.txt.settings.verification_required
         for name, values in self.additional_txt.items():
             required.setdefault(name, []).extend(values)
         if not self.skip_txt_verification:
@@ -94,7 +94,7 @@ class TxtChecksMixin:
         if not self.provider.txt:
             raise ValueError("TXT configuration not available for provider")
 
-        optional_records = self.provider.txt.records_optional
+        optional_records = self.provider.txt.optional
         if not optional_records:
             return RecordCheck.pass_(
                 "TXT",

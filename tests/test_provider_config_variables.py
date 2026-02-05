@@ -3,17 +3,25 @@ import pytest
 from provider_check.provider_config import (
     AddressConfig,
     DKIMConfig,
+    DKIMRequired,
     DMARCConfig,
+    DMARCOptional,
+    DMARCRequired,
+    DMARCSettings,
     MXConfig,
+    MXRecord,
     ProviderConfig,
     ProviderVariable,
     SPFConfig,
+    SPFOptional,
+    SPFRequired,
     CAAConfig,
     CAARecord,
     CNAMEConfig,
     SRVConfig,
     SRVRecord,
     TXTConfig,
+    TXTSettings,
     resolve_provider_config,
 )
 
@@ -23,40 +31,47 @@ def test_resolve_provider_config_applies_variables_and_domain():
         provider_id="var_provider",
         name="Variable Provider",
         version="1",
-        mx=MXConfig(hosts=["{tenant}.mx.{region}.example.test."], priorities={}),
+        mx=MXConfig(
+            required=[MXRecord(host="{tenant}.mx.{region}.example.test.")],
+            optional=[],
+        ),
         spf=SPFConfig(
-            required_includes=["spf.{tenant}.example.test"],
-            strict_record="v=spf1 include:spf.{tenant}.example.test -all",
-            required_mechanisms=["exists:%{i}.spf.{tenant}.example.test"],
-            allowed_mechanisms=[],
-            required_modifiers={"redirect": "_spf.{tenant}.example.test"},
+            required=SPFRequired(
+                record="v=spf1 include:spf.{tenant}.example.test -all",
+                includes=["spf.{tenant}.example.test"],
+                mechanisms=["exists:%{i}.spf.{tenant}.example.test"],
+                modifiers={"redirect": "_spf.{tenant}.example.test"},
+            ),
+            optional=SPFOptional(mechanisms=[], modifiers={}),
         ),
         dkim=DKIMConfig(
-            selectors=["sel-{tenant}"],
-            record_type="cname",
-            target_template="{selector}._domainkey.{tenant}.example.test.",
-            txt_values={},
+            required=DKIMRequired(
+                selectors=["sel-{tenant}"],
+                record_type="cname",
+                target_template="{selector}._domainkey.{tenant}.example.test.",
+                txt_values={},
+            )
         ),
         a=AddressConfig(
-            records={"mail.{domain}": ["192.0.2.1"]},
-            records_optional={"autodiscover.{domain}": ["192.0.2.2"]},
+            required={"mail.{domain}": ["192.0.2.1"]},
+            optional={"autodiscover.{domain}": ["192.0.2.2"]},
         ),
         aaaa=AddressConfig(
-            records={"mail.{domain}": ["2001:db8::1"]},
-            records_optional={"autodiscover.{domain}": ["2001:db8::2"]},
+            required={"mail.{domain}": ["2001:db8::1"]},
+            optional={"autodiscover.{domain}": ["2001:db8::2"]},
         ),
         cname=CNAMEConfig(
-            records={"sip": "sip.{tenant}.example.test.", "discover": "webdir.{tenant}."},
-            records_optional={"autoconfig": "auto.{tenant}.example.test."},
+            required={"sip": "sip.{tenant}.example.test.", "discover": "webdir.{tenant}."},
+            optional={"autoconfig": "auto.{tenant}.example.test."},
         ),
         caa=CAAConfig(
-            records={"@": [CAARecord(flags=0, tag="issue", value="ca.{tenant}.example.test")]},
-            records_optional={
+            required={"@": [CAARecord(flags=0, tag="issue", value="ca.{tenant}.example.test")]},
+            optional={
                 "mail.{domain}": [CAARecord(flags=0, tag="iodef", value="mailto:security@{domain}")]
             },
         ),
         srv=SRVConfig(
-            records={
+            required={
                 "_sip._tls": [
                     SRVRecord(
                         priority=100,
@@ -66,7 +81,7 @@ def test_resolve_provider_config_applies_variables_and_domain():
                     )
                 ]
             },
-            records_optional={
+            optional={
                 "_autodiscover._tcp": [
                     SRVRecord(
                         priority=10,
@@ -78,14 +93,19 @@ def test_resolve_provider_config_applies_variables_and_domain():
             },
         ),
         txt=TXTConfig(
-            records={"_verify.{domain}": ["token-{tenant}"]},
-            verification_required=False,
+            required={"_verify.{domain}": ["token-{tenant}"]},
+            optional={},
+            settings=TXTSettings(verification_required=False),
         ),
         dmarc=DMARCConfig(
-            default_policy="reject",
-            required_rua=["mailto:dmarc@{domain}"],
-            required_ruf=["mailto:forensic@{domain}"],
-            required_tags={"pct": "100"},
+            required=DMARCRequired(
+                policy="reject",
+                rua=["mailto:dmarc@{domain}"],
+                ruf=["mailto:forensic@{domain}"],
+                tags={"pct": "100"},
+            ),
+            optional=DMARCOptional(rua=[], ruf=[]),
+            settings=DMARCSettings(rua_required=False, ruf_required=False),
         ),
         variables={
             "tenant": ProviderVariable(name="tenant", required=True),
@@ -99,33 +119,28 @@ def test_resolve_provider_config_applies_variables_and_domain():
         domain="example.test",
     )
 
-    assert resolved.mx.hosts == ["tenant-a.mx.us.example.test."]
-    assert resolved.spf.required_includes == ["spf.tenant-a.example.test"]
-    assert resolved.spf.strict_record == "v=spf1 include:spf.tenant-a.example.test -all"
-    assert resolved.spf.required_modifiers["redirect"] == "_spf.tenant-a.example.test"
-    assert resolved.dkim.selectors == ["sel-tenant-a"]
-    assert resolved.dkim.target_template == "{selector}._domainkey.tenant-a.example.test."
-    assert resolved.a.records == {"mail.example.test": ["192.0.2.1"]}
-    assert resolved.a.records_optional == {"autodiscover.example.test": ["192.0.2.2"]}
-    assert resolved.aaaa.records == {"mail.example.test": ["2001:db8::1"]}
-    assert resolved.aaaa.records_optional == {"autodiscover.example.test": ["2001:db8::2"]}
-    assert resolved.cname.records == {
+    assert [entry.host for entry in resolved.mx.required] == ["tenant-a.mx.us.example.test."]
+    assert resolved.spf.required.includes == ["spf.tenant-a.example.test"]
+    assert resolved.spf.required.record == "v=spf1 include:spf.tenant-a.example.test -all"
+    assert resolved.spf.required.modifiers["redirect"] == "_spf.tenant-a.example.test"
+    assert resolved.dkim.required.selectors == ["sel-tenant-a"]
+    assert resolved.dkim.required.target_template == "{selector}._domainkey.tenant-a.example.test."
+    assert resolved.a.required == {"mail.example.test": ["192.0.2.1"]}
+    assert resolved.a.optional == {"autodiscover.example.test": ["192.0.2.2"]}
+    assert resolved.aaaa.required == {"mail.example.test": ["2001:db8::1"]}
+    assert resolved.aaaa.optional == {"autodiscover.example.test": ["2001:db8::2"]}
+    assert resolved.cname.required == {
         "sip": "sip.tenant-a.example.test.",
         "discover": "webdir.tenant-a.",
     }
-    assert resolved.cname.records_optional == {"autoconfig": "auto.tenant-a.example.test."}
-    assert resolved.caa.records["@"][0].value == "ca.tenant-a.example.test"
-    assert resolved.caa.records_optional["mail.example.test"][0].value == (
-        "mailto:security@example.test"
-    )
-    assert resolved.srv.records["_sip._tls"][0].target == "sipdir.tenant-a.example.test."
-    assert (
-        resolved.srv.records_optional["_autodiscover._tcp"][0].target
-        == "auto.tenant-a.example.test."
-    )
-    assert resolved.txt.records == {"_verify.example.test": ["token-tenant-a"]}
-    assert resolved.dmarc.required_rua == ["mailto:dmarc@example.test"]
-    assert resolved.dmarc.required_ruf == ["mailto:forensic@example.test"]
+    assert resolved.cname.optional == {"autoconfig": "auto.tenant-a.example.test."}
+    assert resolved.caa.required["@"][0].value == "ca.tenant-a.example.test"
+    assert resolved.caa.optional["mail.example.test"][0].value == ("mailto:security@example.test")
+    assert resolved.srv.required["_sip._tls"][0].target == "sipdir.tenant-a.example.test."
+    assert resolved.srv.optional["_autodiscover._tcp"][0].target == "auto.tenant-a.example.test."
+    assert resolved.txt.required == {"_verify.example.test": ["token-tenant-a"]}
+    assert resolved.dmarc.required.rua == ["mailto:dmarc@example.test"]
+    assert resolved.dmarc.required.ruf == ["mailto:forensic@example.test"]
 
 
 def test_resolve_provider_config_missing_required_variable():
@@ -203,11 +218,13 @@ def test_resolve_provider_config_formats_none_values():
         version="1",
         mx=None,
         spf=SPFConfig(
-            required_includes=["include.{token}.example.test"],
-            strict_record=None,
-            required_mechanisms=[],
-            allowed_mechanisms=[],
-            required_modifiers={},
+            required=SPFRequired(
+                record=None,
+                includes=["include.{token}.example.test"],
+                mechanisms=[],
+                modifiers={},
+            ),
+            optional=SPFOptional(mechanisms=[], modifiers={}),
         ),
         dkim=None,
         txt=None,
@@ -217,4 +234,4 @@ def test_resolve_provider_config_formats_none_values():
 
     resolved = resolve_provider_config(provider, {"token": "value"})
 
-    assert resolved.spf.strict_record is None
+    assert resolved.spf.required.record is None

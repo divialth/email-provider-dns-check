@@ -42,9 +42,9 @@ def test_run_checks_includes_cname_and_srv():
         mx=None,
         spf=None,
         dkim=None,
-        cname=CNAMEConfig(records={"sip": "sip.provider.test."}),
+        cname=CNAMEConfig(required={"sip": "sip.provider.test."}),
         srv=SRVConfig(
-            records={
+            required={
                 "_sip._tls": [
                     SRVRecord(
                         priority=100,
@@ -82,10 +82,8 @@ def test_run_checks_includes_caa():
         dkim=None,
         cname=None,
         caa=CAAConfig(
-            records={"@": [CAARecord(flags=0, tag="issue", value="ca.example.test")]},
-            records_optional={
-                "mail": [CAARecord(flags=0, tag="issuewild", value="ca.example.test")]
-            },
+            required={"@": [CAARecord(flags=0, tag="issue", value="ca.example.test")]},
+            optional={"mail": [CAARecord(flags=0, tag="issuewild", value="ca.example.test")]},
         ),
         srv=None,
         txt=None,

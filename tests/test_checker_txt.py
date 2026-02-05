@@ -2,7 +2,7 @@ import pytest
 
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
-from provider_check.provider_config import ProviderConfig, TXTConfig
+from provider_check.provider_config import ProviderConfig, TXTConfig, TXTSettings
 from provider_check.status import Status
 
 from tests.support import FakeResolver
@@ -16,7 +16,7 @@ def test_txt_required_values_pass():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={"_verify": ["token=one", "token=two"]}),
+        txt=TXTConfig(required={"_verify": ["token=one", "token=two"]}),
         dmarc=None,
     )
     domain = "example.test"
@@ -41,7 +41,7 @@ def test_txt_missing_values_fail():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={"_verify": ["token=one", "token=two"]}),
+        txt=TXTConfig(required={"_verify": ["token=one", "token=two"]}),
         dmarc=None,
     )
     domain = "example.test"
@@ -66,7 +66,7 @@ def test_txt_optional_missing_warns():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={}, records_optional={"_verify": ["token=one"]}),
+        txt=TXTConfig(required={}, optional={"_verify": ["token=one"]}),
         dmarc=None,
     )
     domain = "example.test"
@@ -88,7 +88,7 @@ def test_txt_optional_missing_values_warns():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={}, records_optional={"_verify": ["token=one", "token=two"]}),
+        txt=TXTConfig(required={}, optional={"_verify": ["token=one", "token=two"]}),
         dmarc=None,
     )
     domain = "example.test"
@@ -110,7 +110,7 @@ def test_txt_optional_present_passes():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={}, records_optional={"_verify": ["token=one"]}),
+        txt=TXTConfig(required={}, optional={"_verify": ["token=one"]}),
         dmarc=None,
     )
     domain = "example.test"
@@ -131,7 +131,7 @@ def test_txt_optional_no_records_passes():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={}, records_optional={}),
+        txt=TXTConfig(required={}, optional={}),
         dmarc=None,
     )
     checker = DNSChecker("example.test", provider, resolver=FakeResolver(), strict=False)
@@ -154,7 +154,7 @@ def test_txt_optional_lookup_error_returns_unknown():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={}, records_optional={"_verify": ["token=one"]}),
+        txt=TXTConfig(required={}, optional={"_verify": ["token=one"]}),
         dmarc=None,
     )
 
@@ -191,8 +191,8 @@ def test_run_checks_includes_optional_txt():
         spf=None,
         dkim=None,
         txt=TXTConfig(
-            records={"_verify": ["token=one"]},
-            records_optional={"_optional": ["token=two"]},
+            required={"_verify": ["token=one"]},
+            optional={"_optional": ["token=two"]},
         ),
         dmarc=None,
     )
@@ -280,7 +280,7 @@ def test_txt_verification_required_warns_without_user_input():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={}, verification_required=True),
+        txt=TXTConfig(required={}, settings=TXTSettings(verification_required=True)),
         dmarc=None,
     )
     domain = "example.test"
@@ -301,7 +301,7 @@ def test_txt_verification_required_can_be_skipped():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={}, verification_required=True),
+        txt=TXTConfig(required={}, settings=TXTSettings(verification_required=True)),
         dmarc=None,
     )
     domain = "example.test"
@@ -369,7 +369,7 @@ def test_txt_lookup_error_returns_unknown():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={"_verify": ["token=one"]}),
+        txt=TXTConfig(required={"_verify": ["token=one"]}),
         dmarc=None,
     )
     checker = DNSChecker("example.test", provider, resolver=FailingResolver())
@@ -387,7 +387,7 @@ def test_txt_missing_records_reports_missing_names():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={"_verify": ["token=one"], "_verify2": ["token=two"]}),
+        txt=TXTConfig(required={"_verify": ["token=one"], "_verify2": ["token=two"]}),
         dmarc=None,
     )
     resolver = FakeResolver(txt={})
@@ -408,7 +408,9 @@ def test_txt_missing_records_include_verification_required():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={"_verify": ["token=one"]}, verification_required=True),
+        txt=TXTConfig(
+            required={"_verify": ["token=one"]}, settings=TXTSettings(verification_required=True)
+        ),
         dmarc=None,
     )
     resolver = FakeResolver(txt={})
@@ -429,7 +431,9 @@ def test_txt_verification_warning_with_required_values():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(records={"_verify": ["token=one"]}, verification_required=True),
+        txt=TXTConfig(
+            required={"_verify": ["token=one"]}, settings=TXTSettings(verification_required=True)
+        ),
         dmarc=None,
     )
     resolver = FakeResolver(txt={"_verify.example.test": ["token=one"]})

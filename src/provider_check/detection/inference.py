@@ -41,7 +41,10 @@ def _infer_from_mx(
         LOGGER.debug("MX lookup failed during detection for %s: %s", domain, err)
         return
     samples = [_normalize_host(host) for host, _pref in mx_records]
-    templates = [_normalize_host_template(host) for host in provider.mx.hosts]
+    templates = [
+        _normalize_host_template(entry.host)
+        for entry in [*provider.mx.required, *provider.mx.optional]
+    ]
     for template in templates:
         _match_and_infer(template, samples, known_vars, inferred_vars, provider.variables)
 
@@ -62,12 +65,12 @@ def _infer_from_dkim(
         known_vars (Dict[str, str]): Variables with fixed values.
         inferred_vars (Dict[str, str]): Output mapping to update in place.
     """
-    if not provider.dkim or provider.dkim.record_type != "cname":
+    if not provider.dkim or provider.dkim.required.record_type != "cname":
         return
-    template = provider.dkim.target_template
+    template = provider.dkim.required.target_template
     if not template:
         return
-    for selector in provider.dkim.selectors:
+    for selector in provider.dkim.required.selectors:
         name = f"{selector}._domainkey.{domain}"
         try:
             target = resolver.get_cname(name)
@@ -107,7 +110,7 @@ def _infer_from_cname(
     """
     if not provider.cname:
         return
-    for name, target_template in provider.cname.records.items():
+    for name, target_template in provider.cname.required.items():
         lookup_name = _normalize_record_name(name, domain)
         if "{" in lookup_name or "}" in lookup_name:
             continue
@@ -147,7 +150,7 @@ def _infer_from_srv(
     """
     if not provider.srv:
         return
-    for name, entries in provider.srv.records.items():
+    for name, entries in provider.srv.required.items():
         lookup_name = _normalize_record_name(name, domain)
         if "{" in lookup_name or "}" in lookup_name:
             continue

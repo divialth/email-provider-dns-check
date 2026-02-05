@@ -25,19 +25,19 @@ class SpfChecksMixin:
             raise ValueError("SPF configuration not available for provider")
 
         spf_config = self.provider.spf
-        if self.strict and spf_config.strict_record:
-            return spf_config.strict_record
+        if self.strict and spf_config.required.record:
+            return spf_config.required.record
 
         tokens: List[str] = ["v=spf1"]
-        tokens.extend(f"include:{value}" for value in spf_config.required_includes)
-        tokens.extend(spf_config.required_mechanisms)
+        tokens.extend(f"include:{value}" for value in spf_config.required.includes)
+        tokens.extend(spf_config.required.mechanisms)
         if not self.strict:
             tokens.extend(f"include:{value}" for value in self.additional_spf_includes)
             tokens.extend(f"ip4:{value}" for value in self.additional_spf_ip4)
             tokens.extend(f"ip6:{value}" for value in self.additional_spf_ip6)
-        if spf_config.required_modifiers:
-            for key in sorted(spf_config.required_modifiers.keys()):
-                tokens.append(f"{key}={spf_config.required_modifiers[key]}")
+        if spf_config.required.modifiers:
+            for key in sorted(spf_config.required.modifiers.keys()):
+                tokens.append(f"{key}={spf_config.required.modifiers[key]}")
         policy_token = "-all" if self.spf_policy == "hardfail" else "~all"
         tokens.append(policy_token)
         return " ".join(tokens)
@@ -91,7 +91,7 @@ class SpfChecksMixin:
                 {"expected": expected, "found": record},
             )
 
-        required_includes = {f"include:{value.lower()}" for value in spf_config.required_includes}
+        required_includes = {f"include:{value.lower()}" for value in spf_config.required.includes}
         allowed_includes = required_includes | {
             f"include:{value.lower()}" for value in self.additional_spf_includes
         }
@@ -126,10 +126,10 @@ class SpfChecksMixin:
         policy_required_token = "-all" if self.spf_policy == "hardfail" else "~all"
         policy_ok = policy_required_token in mechanisms
 
-        required_mechanisms = [value.lower() for value in spf_config.required_mechanisms]
-        allowed_mechanisms = [value.lower() for value in spf_config.allowed_mechanisms]
+        required_mechanisms = [value.lower() for value in spf_config.required.mechanisms]
+        allowed_mechanisms = [value.lower() for value in spf_config.optional.mechanisms]
         required_modifiers = {
-            key.lower(): value.lower() for key, value in spf_config.required_modifiers.items()
+            key.lower(): value.lower() for key, value in spf_config.required.modifiers.items()
         }
         advanced_checks = bool(required_mechanisms or allowed_mechanisms)
 

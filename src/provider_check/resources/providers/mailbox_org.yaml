@@ -10,26 +10,38 @@ long_description: |
   mailbox.org instructions.
 records:
   mx:
-    hosts:
-      - mxext1.mailbox.org.
-      - mxext2.mailbox.org.
-      - mxext3.mailbox.org.
+    required:
+      - host: mxext1.mailbox.org.
+      - host: mxext2.mailbox.org.
+      - host: mxext3.mailbox.org.
+    optional: []
   spf:
-    required_includes:
-      - mailbox.org
-    strict_record: "v=spf1 include:mailbox.org -all"
+    required:
+      record: "v=spf1 include:mailbox.org -all"
+      includes:
+        - mailbox.org
+      mechanisms: []
+      modifiers: {}
+    optional:
+      mechanisms: []
+      modifiers: {}
   dkim:
-    selectors:
-      - MBO0001
-      - MBO0002
-      - MBO0003
-      - MBO0004
-    target_template: "{selector}._domainkey.mailbox.org."
+    required:
+      selectors:
+        - MBO0001
+        - MBO0002
+        - MBO0003
+        - MBO0004
+      record_type: cname
+      target_template: "{selector}._domainkey.mailbox.org."
+      txt_values: {}
   cname:
-    records_optional:
+    required: {}
+    optional:
       autoconfig: auto.mailbox.org.
   srv:
-    records_optional:
+    required: {}
+    optional:
       _autodiscover._tcp:
         - priority: 0
           weight: 0
@@ -41,11 +53,22 @@ records:
           port: 443
           target: pgp.mailbox.org.
   txt:
-    # Provider requires a user-supplied TXT record for domain verification.
-    # Users must provide the name/value via --txt-verification.
-    verification_required: true
+    required: {}
+    optional: {}
+    settings:
+      # Provider requires a user-supplied TXT record for domain verification.
+      # Users must provide the name/value via --txt-verification.
+      verification_required: true
   dmarc:
-    default_policy: reject
-    rua_required: true
-    required_rua:
-      - mailto:postmaster@{domain}
+    required:
+      policy: reject
+      rua:
+        - mailto:postmaster@{domain}
+      ruf: []
+      tags: {}
+    optional:
+      rua: []
+      ruf: []
+    settings:
+      rua_required: true
+      ruf_required: false

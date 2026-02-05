@@ -29,13 +29,14 @@ def test_extends_merges_and_ignores_base_enabled(monkeypatch, tmp_path):
             description: base token
         records:
           mx:
-            hosts:
-              - mx.base.test.
+            required:
+              - host: mx.base.test.
           dkim:
-            selectors:
-              - SEL1
-            record_type: cname
-            target_template: "{selector}.base.test."
+            required:
+              selectors:
+                - SEL1
+              record_type: cname
+              target_template: "{selector}.base.test."
         """,
     )
     _write_provider(
@@ -50,10 +51,12 @@ def test_extends_merges_and_ignores_base_enabled(monkeypatch, tmp_path):
             required: false
         records:
           dkim:
-            target_template: "{selector}.child.test."
+            required:
+              target_template: "{selector}.child.test."
           spf:
-            required_includes:
-              - spf.child.test
+            required:
+              includes:
+                - spf.child.test
         """,
     )
     import provider_check.provider_config.loader as provider_config
@@ -68,9 +71,9 @@ def test_extends_merges_and_ignores_base_enabled(monkeypatch, tmp_path):
     assert "child" in provider_ids
 
     child = load_provider_config("child")
-    assert child.mx.hosts == ["mx.base.test."]
-    assert child.dkim.target_template == "{selector}.child.test."
-    assert child.spf.required_includes == ["spf.child.test"]
+    assert [entry.host for entry in child.mx.required] == ["mx.base.test."]
+    assert child.dkim.required.target_template == "{selector}.child.test."
+    assert child.spf.required.includes == ["spf.child.test"]
 
 
 def test_extends_allows_removal_with_null(monkeypatch, tmp_path):
@@ -82,10 +85,11 @@ def test_extends_allows_removal_with_null(monkeypatch, tmp_path):
         version: 1
         records:
           dkim:
-            selectors:
-              - SEL1
-            record_type: cname
-            target_template: "{selector}.base.test."
+            required:
+              selectors:
+                - SEL1
+              record_type: cname
+              target_template: "{selector}.base.test."
         """,
     )
     _write_provider(
@@ -119,8 +123,9 @@ def test_extends_multiple_bases(monkeypatch, tmp_path):
         version: 1
         records:
           spf:
-            required_includes:
-              - spf.one.test
+            required:
+              includes:
+                - spf.one.test
         """,
     )
     _write_provider(
@@ -131,8 +136,8 @@ def test_extends_multiple_bases(monkeypatch, tmp_path):
         version: 1
         records:
           mx:
-            hosts:
-              - mx.two.test.
+            required:
+              - host: mx.two.test.
         """,
     )
     _write_provider(
@@ -154,8 +159,8 @@ def test_extends_multiple_bases(monkeypatch, tmp_path):
 
     provider = load_provider_config("child")
 
-    assert provider.spf.required_includes == ["spf.one.test"]
-    assert provider.mx.hosts == ["mx.two.test."]
+    assert provider.spf.required.includes == ["spf.one.test"]
+    assert [entry.host for entry in provider.mx.required] == ["mx.two.test."]
 
 
 def test_extends_invalid_types():

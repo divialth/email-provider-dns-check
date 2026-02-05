@@ -17,8 +17,8 @@ def _write_dummy_provider(tmp_path: Path) -> Path:
                 "name: Dummy Provider",
                 "records:",
                 "  mx:",
-                "    hosts:",
-                "      - mx1.dummy.test.",
+                "    required:",
+                "      - host: mx1.dummy.test.",
             ]
         )
         + "\n",

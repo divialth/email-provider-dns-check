@@ -54,31 +54,30 @@ def test_load_provider_records_optional():
 def test_load_provider_mx_record_requires_mapping():
     data = {
         "version": "1",
-        "records": {"mx": {"hosts": ["mx.example."], "records": ["not-a-map"]}},
+        "records": {"mx": {"required": ["not-a-map"]}},
     }
 
     with pytest.raises(ValueError):
         provider_config._load_provider_from_data("bad", data)
 
 
-def test_load_provider_mx_record_requires_host_and_priority():
+def test_load_provider_mx_record_requires_host():
     data = {
         "version": "1",
-        "records": {"mx": {"hosts": ["mx.example."], "records": [{"host": "mx.example."}]}},
+        "records": {"mx": {"required": [{}]}},
     }
 
     with pytest.raises(ValueError):
         provider_config._load_provider_from_data("bad", data)
 
 
-def test_load_provider_mx_hosts_added_from_records_and_priorities():
+def test_load_provider_mx_records_parsed():
     data = {
         "version": "1",
         "records": {
             "mx": {
-                "hosts": [],
-                "records": [{"host": "mx1.example.", "priority": 10}],
-                "priorities": {"mx2.example.": 20},
+                "required": [{"host": "mx1.example.", "priority": 10}],
+                "optional": [{"host": "mx2.example."}],
             }
         },
     }
@@ -86,66 +85,86 @@ def test_load_provider_mx_hosts_added_from_records_and_priorities():
     config = provider_config._load_provider_from_data("mx", data)
 
     assert config.mx is not None
-    assert "mx1.example." in config.mx.hosts
-    assert "mx2.example." in config.mx.hosts
+    assert config.mx.required[0].host == "mx1.example."
+    assert config.mx.required[0].priority == 10
+    assert config.mx.optional[0].host == "mx2.example."
+    assert config.mx.optional[0].priority is None
+
+
+def test_load_provider_spf_record_requires_string():
+    data = {
+        "version": "1",
+        "records": {"spf": {"required": {"record": 123}}},
+    }
+
+    with pytest.raises(ValueError, match="spf required record must be a string"):
+        provider_config._load_provider_from_data("bad", data)
 
 
 def test_load_provider_dkim_record_type_invalid():
     data = {
         "version": "1",
-        "records": {"dkim": {"selectors": ["s1"], "record_type": "invalid"}},
+        "records": {"dkim": {"required": {"selectors": ["s1"], "record_type": "invalid"}}},
     }
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="dkim record_type must be cname or txt"):
         provider_config._load_provider_from_data("bad", data)
 
 
 def test_load_provider_dkim_cname_requires_target_template():
     data = {
         "version": "1",
-        "records": {"dkim": {"selectors": ["s1"], "record_type": "cname"}},
+        "records": {"dkim": {"required": {"selectors": ["s1"], "record_type": "cname"}}},
     }
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="dkim requires target_template for cname"):
+        provider_config._load_provider_from_data("bad", data)
+
+
+def test_load_provider_dmarc_policy_requires_string():
+    data = {
+        "version": "1",
+        "records": {"dmarc": {"required": {"policy": 123}}},
+    }
+
+    with pytest.raises(ValueError, match="dmarc required policy must be a string"):
         provider_config._load_provider_from_data("bad", data)
 
 
 def test_load_provider_cname_optional_requires_string():
     data = {
         "version": "1",
-        "records": {"cname": {"records_optional": {"autoconfig": {"bad": "value"}}}},
+        "records": {"cname": {"optional": {"autoconfig": {"bad": "value"}}}},
     }
 
-    with pytest.raises(ValueError, match="cname records_optional"):
+    with pytest.raises(ValueError, match="cname optional 'autoconfig' must be a string"):
         provider_config._load_provider_from_data("bad", data)
 
 
 def test_load_provider_srv_optional_requires_mapping_entries():
     data = {
         "version": "1",
-        "records": {"srv": {"records_optional": {"_autodiscover._tcp": ["not-a-map"]}}},
+        "records": {"srv": {"optional": {"_autodiscover._tcp": ["not-a-map"]}}},
     }
 
-    with pytest.raises(ValueError, match="srv records_optional._autodiscover._tcp entries"):
+    with pytest.raises(ValueError, match="srv optional._autodiscover._tcp entries"):
         provider_config._load_provider_from_data("bad", data)
 
 
 def test_load_provider_srv_optional_requires_priority_fields():
     data = {
         "version": "1",
-        "records": {
-            "srv": {"records_optional": {"_autodiscover._tcp": [{"priority": 0, "weight": 0}]}}
-        },
+        "records": {"srv": {"optional": {"_autodiscover._tcp": [{"priority": 0, "weight": 0}]}}},
     }
 
-    with pytest.raises(ValueError, match="srv records_optional._autodiscover._tcp entries require"):
+    with pytest.raises(ValueError, match="srv optional._autodiscover._tcp entries require"):
         provider_config._load_provider_from_data("bad", data)
 
 
 def test_load_provider_records_unknown_type_rejected():
     data = {
         "version": "1",
-        "records": {"bogus": {"records": {}}},
+        "records": {"bogus": {}},
     }
 
     with pytest.raises(ValueError, match="records has unknown keys: bogus"):
@@ -155,19 +174,19 @@ def test_load_provider_records_unknown_type_rejected():
 def test_load_provider_txt_records_loaded():
     data = {
         "version": "1",
-        "records": {"txt": {"records": {"_verify": ["token-1", "token-2"]}}},
+        "records": {"txt": {"required": {"_verify": ["token-1", "token-2"]}}},
     }
 
     config = provider_config._load_provider_from_data("txt", data)
 
     assert config.txt is not None
-    assert config.txt.records == {"_verify": ["token-1", "token-2"]}
+    assert config.txt.required == {"_verify": ["token-1", "token-2"]}
 
 
 def test_load_provider_txt_unknown_key_rejected():
     data = {
         "version": "1",
-        "records": {"txt": {"records": {"_verify": ["token-1"]}, "extra": True}},
+        "records": {"txt": {"required": {"_verify": ["token-1"]}, "extra": True}},
     }
 
     with pytest.raises(ValueError, match="txt has unknown keys: extra"):
@@ -179,8 +198,8 @@ def test_load_provider_txt_optional_records_loaded():
         "version": "1",
         "records": {
             "txt": {
-                "records": {"_verify": ["token-1"]},
-                "records_optional": {"_optional": ["token-2"]},
+                "required": {"_verify": ["token-1"]},
+                "optional": {"_optional": ["token-2"]},
             }
         },
     }
@@ -188,7 +207,7 @@ def test_load_provider_txt_optional_records_loaded():
     config = provider_config._load_provider_from_data("txt", data)
 
     assert config.txt is not None
-    assert config.txt.records_optional == {"_optional": ["token-2"]}
+    assert config.txt.optional == {"_optional": ["token-2"]}
 
 
 def test_load_provider_variable_unknown_key_rejected():
@@ -206,12 +225,12 @@ def test_load_provider_address_records_loaded():
         "version": "1",
         "records": {
             "a": {
-                "records": {"@": ["192.0.2.1"]},
-                "records_optional": {"autodiscover": ["192.0.2.2"]},
+                "required": {"@": ["192.0.2.1"]},
+                "optional": {"autodiscover": ["192.0.2.2"]},
             },
             "aaaa": {
-                "records": {"@": ["2001:db8::1"]},
-                "records_optional": {"autodiscover": ["2001:db8::2"]},
+                "required": {"@": ["2001:db8::1"]},
+                "optional": {"autodiscover": ["2001:db8::2"]},
             },
         },
     }
@@ -219,11 +238,11 @@ def test_load_provider_address_records_loaded():
     config = provider_config._load_provider_from_data("address", data)
 
     assert config.a is not None
-    assert config.a.records == {"@": ["192.0.2.1"]}
-    assert config.a.records_optional == {"autodiscover": ["192.0.2.2"]}
+    assert config.a.required == {"@": ["192.0.2.1"]}
+    assert config.a.optional == {"autodiscover": ["192.0.2.2"]}
     assert config.aaaa is not None
-    assert config.aaaa.records == {"@": ["2001:db8::1"]}
-    assert config.aaaa.records_optional == {"autodiscover": ["2001:db8::2"]}
+    assert config.aaaa.required == {"@": ["2001:db8::1"]}
+    assert config.aaaa.optional == {"autodiscover": ["2001:db8::2"]}
 
 
 def test_load_provider_config_requires_selection():

@@ -40,7 +40,8 @@ def test_invalid_spf_list_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           spf:
-            required_includes: example.test
+            required:
+              includes: example.test
         """,
     )
     import provider_check.provider_config.loader as provider_config
@@ -60,7 +61,8 @@ def test_invalid_txt_verification_flag_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           txt:
-            verification_required: "false"
+            settings:
+              verification_required: "false"
         """,
     )
     import provider_check.provider_config.loader as provider_config
@@ -80,7 +82,7 @@ def test_invalid_txt_records_values_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           txt:
-            records:
+            required:
               _verify: token
         """,
     )
@@ -101,7 +103,7 @@ def test_invalid_txt_optional_values_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           txt:
-            records_optional:
+            optional:
               _verify: token
         """,
     )
@@ -122,7 +124,7 @@ def test_invalid_a_records_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           a:
-            records:
+            required:
               "@": 192.0.2.1
         """,
     )
@@ -143,7 +145,7 @@ def test_invalid_aaaa_records_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           aaaa:
-            records:
+            required:
               "@": 2001:db8::1
         """,
     )
@@ -409,7 +411,7 @@ def test_invalid_cname_records_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           cname:
-            records:
+            required:
               - not-a-map
         """,
     )
@@ -430,7 +432,7 @@ def test_invalid_cname_value_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           cname:
-            records:
+            required:
               sip:
                 target: sip.provider.test.
         """,
@@ -452,7 +454,7 @@ def test_invalid_srv_records_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           srv:
-            records:
+            required:
               _sip._tls: invalid
         """,
     )
@@ -473,7 +475,7 @@ def test_invalid_srv_entry_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           srv:
-            records:
+            required:
               _sip._tls:
                 - target: sip.provider.test.
         """,
@@ -495,7 +497,7 @@ def test_invalid_srv_entry_type_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           srv:
-            records:
+            required:
               _sip._tls:
                 - not-a-map
         """,
@@ -517,7 +519,8 @@ def test_invalid_dmarc_rua_required_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           dmarc:
-            rua_required: "false"
+            settings:
+              rua_required: "false"
         """,
     )
     import provider_check.provider_config.loader as provider_config
@@ -537,7 +540,8 @@ def test_invalid_dmarc_ruf_required_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           dmarc:
-            ruf_required: "false"
+            settings:
+              ruf_required: "false"
         """,
     )
     import provider_check.provider_config.loader as provider_config

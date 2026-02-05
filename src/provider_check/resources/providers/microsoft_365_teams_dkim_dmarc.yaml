@@ -1,15 +1,24 @@
 ---
 extends:
-  - microsoft_365_teams_dkim
+  - microsoft_365_teams
+  - microsoft_365_dkim
 name: Microsoft 365 (+ Teams + DKIM + DMARC)
 version: 1
-short_description: "Microsoft 365 email + Teams federation SRV with DKIM/DMARC."
+short_description: "Microsoft 365 email + Teams with DKIM and DMARC."
 long_description: |
-  Same MX/SPF/TXT/DKIM checks as Microsoft 365 DKIM, plus the Teams federation
-  SRV record and DMARC validation. The DMARC policy defaults to p=reject;
-  rua/ruf are optional unless overridden.
+  Same MX/SPF/TXT/Teams/DKIM checks as Microsoft 365 Teams + DKIM, plus
+  DMARC validation. The DMARC policy defaults to p=reject; rua/ruf are
+  optional unless overridden.
 records:
   dmarc:
-    default_policy: reject
-    rua_required: false
-    ruf_required: false
+    required:
+      policy: reject
+      rua: []
+      ruf: []
+      tags: {}
+    optional:
+      rua: []
+      ruf: []
+    settings:
+      rua_required: false
+      ruf_required: false

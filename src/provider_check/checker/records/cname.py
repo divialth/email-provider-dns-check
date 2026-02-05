@@ -60,7 +60,7 @@ class CnameChecksMixin:
 
         try:
             missing, mismatched, expected_targets, found_targets = self._evaluate_cname_records(
-                self.provider.cname.records
+                self.provider.cname.required
             )
         except DnsLookupError as err:
             return RecordCheck.unknown("CNAME", "DNS lookup failed", {"error": str(err)})
@@ -95,8 +95,8 @@ class CnameChecksMixin:
         if not self.provider.cname:
             raise ValueError("CNAME configuration not available for provider")
 
-        records_optional = self.provider.cname.records_optional
-        if not records_optional:
+        optional_records = self.provider.cname.optional
+        if not optional_records:
             return RecordCheck.pass_(
                 "CNAME",
                 "No optional CNAME records required",
@@ -106,7 +106,7 @@ class CnameChecksMixin:
 
         try:
             missing, mismatched, expected_targets, found_targets = self._evaluate_cname_records(
-                records_optional
+                optional_records
             )
         except DnsLookupError as err:
             return RecordCheck.unknown(

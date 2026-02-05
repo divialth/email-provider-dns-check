@@ -8,6 +8,14 @@ long_description: |
   The DMARC policy defaults to p=reject; rua/ruf are optional unless overridden.
 records:
   dmarc:
-    default_policy: reject
-    rua_required: false
-    ruf_required: false
+    required:
+      policy: reject
+      rua: []
+      ruf: []
+      tags: {}
+    optional:
+      rua: []
+      ruf: []
+    settings:
+      rua_required: false
+      ruf_required: false

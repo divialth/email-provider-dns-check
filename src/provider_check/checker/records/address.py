@@ -72,7 +72,7 @@ class AddressChecksMixin:
 
         try:
             missing, extra, expected, found = self._evaluate_address_records(
-                self.provider.a.records, self.resolver.get_a
+                self.provider.a.required, self.resolver.get_a
             )
         except DnsLookupError as err:
             return RecordCheck.unknown("A", "DNS lookup failed", {"error": str(err)})
@@ -126,8 +126,8 @@ class AddressChecksMixin:
         if not self.provider.a:
             raise ValueError("A configuration not available for provider")
 
-        records_optional = self.provider.a.records_optional
-        if not records_optional:
+        optional_records = self.provider.a.optional
+        if not optional_records:
             return RecordCheck.pass_(
                 "A",
                 "No optional A records required",
@@ -137,7 +137,7 @@ class AddressChecksMixin:
 
         try:
             missing, extra, expected, found = self._evaluate_address_records(
-                records_optional, self.resolver.get_a
+                optional_records, self.resolver.get_a
             )
         except DnsLookupError as err:
             return RecordCheck.unknown(
@@ -185,7 +185,7 @@ class AddressChecksMixin:
 
         try:
             missing, extra, expected, found = self._evaluate_address_records(
-                self.provider.aaaa.records, self.resolver.get_aaaa
+                self.provider.aaaa.required, self.resolver.get_aaaa
             )
         except DnsLookupError as err:
             return RecordCheck.unknown("AAAA", "DNS lookup failed", {"error": str(err)})
@@ -239,8 +239,8 @@ class AddressChecksMixin:
         if not self.provider.aaaa:
             raise ValueError("AAAA configuration not available for provider")
 
-        records_optional = self.provider.aaaa.records_optional
-        if not records_optional:
+        optional_records = self.provider.aaaa.optional
+        if not optional_records:
             return RecordCheck.pass_(
                 "AAAA",
                 "No optional AAAA records required",
@@ -250,7 +250,7 @@ class AddressChecksMixin:
 
         try:
             missing, extra, expected, found = self._evaluate_address_records(
-                records_optional, self.resolver.get_aaaa
+                optional_records, self.resolver.get_aaaa
             )
         except DnsLookupError as err:
             return RecordCheck.unknown(

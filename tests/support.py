@@ -1,36 +1,56 @@
 from provider_check.provider_config import (
     DKIMConfig,
+    DKIMRequired,
     DMARCConfig,
+    DMARCOptional,
+    DMARCRequired,
+    DMARCSettings,
     MXConfig,
+    MXRecord,
     ProviderConfig,
     SPFConfig,
+    SPFOptional,
+    SPFRequired,
 )
 
 BASE_PROVIDER = ProviderConfig(
     provider_id="dummy_provider",
     name="Dummy Provider",
     version="1",
-    mx=MXConfig(hosts=["mx1.dummy.test.", "mx2.dummy.test."], priorities={}),
+    mx=MXConfig(
+        required=[
+            MXRecord(host="mx1.dummy.test."),
+            MXRecord(host="mx2.dummy.test."),
+        ],
+        optional=[],
+    ),
     spf=SPFConfig(
-        required_includes=["dummy.test"],
-        strict_record="v=spf1 include:dummy.test -all",
-        required_mechanisms=[],
-        allowed_mechanisms=[],
-        required_modifiers={},
+        required=SPFRequired(
+            record="v=spf1 include:dummy.test -all",
+            includes=["dummy.test"],
+            mechanisms=[],
+            modifiers={},
+        ),
+        optional=SPFOptional(mechanisms=[], modifiers={}),
     ),
     dkim=DKIMConfig(
-        selectors=["DUMMY1", "DUMMY2", "DUMMY3", "DUMMY4"],
-        record_type="cname",
-        target_template="{selector}._domainkey.dummy.test.",
-        txt_values={},
+        required=DKIMRequired(
+            selectors=["DUMMY1", "DUMMY2", "DUMMY3", "DUMMY4"],
+            record_type="cname",
+            target_template="{selector}._domainkey.dummy.test.",
+            txt_values={},
+        )
     ),
     txt=None,
     dmarc=DMARCConfig(
-        default_policy="reject",
-        required_rua=["mailto:postmaster@{domain}"],
-        required_ruf=[],
-        required_tags={},
-        rua_required=True,
+        required=DMARCRequired(
+            policy="reject",
+            rua=["mailto:postmaster@{domain}"],
+            ruf=[],
+            tags={},
+        ),
+        optional=DMARCOptional(rua=[], ruf=[]),
+        settings=DMARCSettings(rua_required=True, ruf_required=False),
     ),
 )
 

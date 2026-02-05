@@ -82,7 +82,7 @@ class DNSChecker(RecordsMixin):
 
         dmarc_default_policy = "reject"
         if provider.dmarc:
-            dmarc_default_policy = provider.dmarc.default_policy
+            dmarc_default_policy = provider.dmarc.required.policy
 
         self.dmarc_policy = (dmarc_policy or dmarc_default_policy).lower()
         self.dmarc_rua_mailto = self._normalize_mailto_list(dmarc_rua_mailto or [])
@@ -92,7 +92,7 @@ class DNSChecker(RecordsMixin):
         self.dmarc_required_tags: Dict[str, str] = {}
         if provider.dmarc:
             self.dmarc_required_tags = {
-                str(key).lower(): str(value) for key, value in provider.dmarc.required_tags.items()
+                str(key).lower(): str(value) for key, value in provider.dmarc.required.tags.items()
             }
         if dmarc_required_tags:
             for key, value in dmarc_required_tags.items():

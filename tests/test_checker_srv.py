@@ -8,7 +8,7 @@ from provider_check.status import Status
 from tests.support import FakeResolver
 
 
-def _build_provider(records, records_optional=None):
+def _build_provider(records, optional=None):
     return ProviderConfig(
         provider_id="srv_provider",
         name="SRV Provider",
@@ -16,7 +16,7 @@ def _build_provider(records, records_optional=None):
         mx=None,
         spf=None,
         dkim=None,
-        srv=SRVConfig(records=records, records_optional=records_optional or {}),
+        srv=SRVConfig(required=records, optional=optional or {}),
         txt=None,
         dmarc=None,
     )
@@ -285,7 +285,7 @@ def test_srv_optional_missing_warns():
                 SRVRecord(priority=100, weight=1, port=443, target="srv.primary.provider.test.")
             ]
         },
-        records_optional={
+        optional={
             "_autodiscover._tcp": [
                 SRVRecord(priority=0, weight=0, port=443, target="autodiscover.provider.test.")
             ]
@@ -308,7 +308,7 @@ def test_srv_optional_missing_warns():
 def test_srv_optional_present_passes():
     provider = _build_provider(
         {},
-        records_optional={
+        optional={
             "_autodiscover._tcp": [
                 SRVRecord(priority=0, weight=0, port=443, target="autodiscover.provider.test.")
             ]
@@ -328,7 +328,7 @@ def test_srv_optional_present_passes():
 def test_srv_optional_mismatch_fails():
     provider = _build_provider(
         {},
-        records_optional={
+        optional={
             "_autodiscover._tcp": [
                 SRVRecord(priority=0, weight=0, port=443, target="autodiscover.provider.test.")
             ]
@@ -355,7 +355,7 @@ def test_srv_optional_no_records_passes():
                 SRVRecord(priority=100, weight=1, port=443, target="srv.primary.provider.test.")
             ]
         },
-        records_optional={},
+        optional={},
     )
     checker = DNSChecker("example.com", provider, resolver=FakeResolver())
 
@@ -372,7 +372,7 @@ def test_srv_optional_lookup_error_returns_unknown():
 
     provider = _build_provider(
         {},
-        records_optional={
+        optional={
             "_autodiscover._tcp": [
                 SRVRecord(priority=0, weight=0, port=443, target="autodiscover.provider.test.")
             ]
@@ -407,7 +407,7 @@ def test_srv_optional_requires_config():
 def test_run_checks_includes_optional_srv():
     provider = _build_provider(
         {},
-        records_optional={
+        optional={
             "_autodiscover._tcp": [
                 SRVRecord(priority=0, weight=0, port=443, target="autodiscover.provider.test.")
             ]

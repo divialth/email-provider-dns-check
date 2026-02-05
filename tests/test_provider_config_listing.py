@@ -61,8 +61,8 @@ def test_external_providers_override_packaged(monkeypatch, tmp_path):
         version: 9
         records:
           mx:
-            hosts:
-              - mx.override.test.
+            required:
+              - host: mx.override.test.
         """).strip()
     (provider_dir / f"{provider_id}.yaml").write_text(override, encoding="utf-8")
 

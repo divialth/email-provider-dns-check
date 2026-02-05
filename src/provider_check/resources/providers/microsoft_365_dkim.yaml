@@ -14,8 +14,10 @@ variables:
     required: true
 records:
   dkim:
-    selectors:
-      - selector1
-      - selector2
-    record_type: cname
-    target_template: "{selector}-{custom_domain_dashes}._domainkey.{initial_domain_prefix}.{dkim_partition}-v1.dkim.mail.microsoft."
+    required:
+      selectors:
+        - selector1
+        - selector2
+      record_type: cname
+      target_template: "{selector}-{custom_domain_dashes}._domainkey.{initial_domain_prefix}.{dkim_partition}-v1.dkim.mail.microsoft."
+      txt_values: {}

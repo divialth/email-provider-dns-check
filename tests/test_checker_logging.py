@@ -1,7 +1,7 @@
 import logging
 
 from provider_check.checker import DNSChecker
-from provider_check.provider_config import MXConfig, ProviderConfig
+from provider_check.provider_config import MXConfig, MXRecord, ProviderConfig
 from provider_check.status import Status
 
 from tests.support import FakeResolver
@@ -12,7 +12,7 @@ def _provider_with_mx() -> ProviderConfig:
         provider_id="dummy_provider",
         name="Dummy Provider",
         version="1",
-        mx=MXConfig(hosts=["mx1.example.test."], priorities={}),
+        mx=MXConfig(required=[MXRecord(host="mx1.example.test.")], optional=[]),
         spf=None,
         dkim=None,
         txt=None,
