@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
+from ...status import Status
+
 
 def _build_txt_rows(result: dict) -> List[dict]:
     """Build expected/found rows for TXT results.
@@ -68,7 +70,9 @@ def _build_txt_rows(result: dict) -> List[dict]:
                             "message": f"TXT {name}",
                             "item": name,
                             "expected": str(value),
-                            "found": str(value) if result["status"] == "PASS" else "(missing)",
+                            "found": (
+                                str(value) if result["status"] == Status.PASS.value else "(missing)"
+                            ),
                         }
                     )
             else:
@@ -78,7 +82,9 @@ def _build_txt_rows(result: dict) -> List[dict]:
                         "message": f"TXT {name}",
                         "item": name,
                         "expected": str(values),
-                        "found": str(values) if result["status"] == "PASS" else "(missing)",
+                        "found": (
+                            str(values) if result["status"] == Status.PASS.value else "(missing)"
+                        ),
                     }
                 )
     elif required:
@@ -88,7 +94,7 @@ def _build_txt_rows(result: dict) -> List[dict]:
                 "message": "TXT requirement",
                 "item": "required",
                 "expected": str(required),
-                "found": str(required) if result["status"] == "PASS" else "(missing)",
+                "found": str(required) if result["status"] == Status.PASS.value else "(missing)",
             }
         )
 

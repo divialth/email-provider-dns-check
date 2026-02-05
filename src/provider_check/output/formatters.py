@@ -6,6 +6,7 @@ import json
 from typing import Callable, List, Optional
 
 from ..checker import RecordCheck
+from ..status import Status
 from .serialize import _serialize_results
 from .tables import (
     _build_table_rows,
@@ -265,13 +266,13 @@ def summarize_status(results: List[RecordCheck]) -> str:
     Returns:
         str: Summary status (FAIL, WARN, UNKNOWN, or PASS).
     """
-    fail = any(r.status == "FAIL" for r in results)
-    warn = any(r.status == "WARN" for r in results)
-    unknown = any(r.status == "UNKNOWN" for r in results)
+    fail = any(r.status == Status.FAIL.value for r in results)
+    warn = any(r.status == Status.WARN.value for r in results)
+    unknown = any(r.status == Status.UNKNOWN.value for r in results)
     if fail:
-        return "FAIL"
+        return Status.FAIL.value
     if warn:
-        return "WARN"
+        return Status.WARN.value
     if unknown:
-        return "UNKNOWN"
-    return "PASS"
+        return Status.UNKNOWN.value
+    return Status.PASS.value

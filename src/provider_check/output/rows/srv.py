@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Iterable, List
 
+from ...status import Status
+
 
 def _format_srv_entry(entry: Iterable[object]) -> str:
     """Format an SRV entry tuple.
@@ -35,7 +37,7 @@ def _build_srv_rows(result: dict) -> List[dict]:
     extra = details.get("extra", {})
     rows: List[dict] = []
 
-    if not found and result["status"] == "PASS" and expected:
+    if not found and result["status"] == Status.PASS.value and expected:
         found = expected
 
     for name in sorted(expected.keys()):
@@ -56,7 +58,7 @@ def _build_srv_rows(result: dict) -> List[dict]:
                 found_value = _format_srv_entry(mismatched_entries[entry_tuple])
             else:
                 found_value = expected_value if entry_tuple in found_entries else "(missing)"
-                status = "PASS" if found_value != "(missing)" else result["status"]
+                status = Status.PASS.value if found_value != "(missing)" else result["status"]
             rows.append(
                 {
                     "status": status,

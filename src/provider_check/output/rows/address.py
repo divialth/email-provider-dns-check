@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
+from ...status import Status
+
 
 def _build_address_rows(result: dict) -> List[dict]:
     """Build expected/found rows for A/AAAA results.
@@ -21,7 +23,7 @@ def _build_address_rows(result: dict) -> List[dict]:
     extra = details.get("extra", {})
     rows: List[dict] = []
 
-    if not found and result["status"] == "PASS" and expected:
+    if not found and result["status"] == Status.PASS.value and expected:
         found = expected
 
     record_label = result["record_type"]
@@ -34,7 +36,7 @@ def _build_address_rows(result: dict) -> List[dict]:
                 status = result["status"]
                 found_value = "(missing)"
             elif value in found_values:
-                status = "PASS"
+                status = Status.PASS.value
                 found_value = value
             else:
                 status = result["status"]

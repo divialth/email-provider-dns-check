@@ -1,4 +1,5 @@
 from provider_check import api
+from provider_check import status
 from provider_check import runner
 
 
@@ -9,6 +10,9 @@ def test_api_exports_runner_objects() -> None:
     assert api.CheckResult is runner.CheckResult
     assert api.DetectionRequest is runner.DetectionRequest
     assert api.DetectionResult is runner.DetectionResult
+    assert api.ExitCodes is status.ExitCodes
+    assert api.Status is status.Status
+    assert api.exit_code_for_status is status.exit_code_for_status
 
 
 def test_api_all_exports() -> None:
@@ -23,6 +27,9 @@ def test_api_all_exports() -> None:
         "CachingResolver",
         "DnsLookupError",
         "ProviderConfig",
+        "ExitCodes",
+        "Status",
+        "exit_code_for_status",
         "list_providers",
         "load_provider_config",
         "resolve_provider_config",

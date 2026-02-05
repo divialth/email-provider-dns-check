@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
+from ...status import Status
+
 
 def _build_cname_rows(result: dict) -> List[dict]:
     """Build expected/found rows for CNAME results.
@@ -23,7 +25,7 @@ def _build_cname_rows(result: dict) -> List[dict]:
 
     for name in sorted(expected.keys()):
         expected_target = expected[name]
-        status = "PASS"
+        status = Status.PASS.value
         if name in mismatched:
             status = result["status"]
             found_target = mismatched[name]

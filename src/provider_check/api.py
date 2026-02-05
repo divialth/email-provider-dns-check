@@ -17,6 +17,7 @@ from .runner import (
     run_checks,
     run_detection,
 )
+from .status import ExitCodes, Status, exit_code_for_status
 
 __all__ = [
     "CachingResolver",
@@ -26,7 +27,10 @@ __all__ = [
     "DetectionResult",
     "DnsLookupError",
     "DnsResolver",
+    "ExitCodes",
     "ProviderConfig",
+    "Status",
+    "exit_code_for_status",
     "list_providers",
     "load_provider_config",
     "resolve_provider_config",

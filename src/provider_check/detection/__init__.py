@@ -8,6 +8,7 @@ from typing import List, Optional
 
 from ..checker import DNSChecker
 from ..dns_resolver import CachingResolver, DnsResolver
+from ..status import Status
 from ..provider_config import ProviderConfig, list_providers, resolve_provider_config
 from ..record_registry import CORE_RECORD_TYPES, TYPE_WEIGHTS
 from .inference import (
@@ -147,7 +148,7 @@ def detect_providers(
         ):
             ambiguous = True
             selected = None
-    status = "PASS" if selected and not ambiguous else "UNKNOWN"
+    status = Status.PASS.value if selected and not ambiguous else Status.UNKNOWN.value
     return DetectionReport(
         domain=normalized_domain,
         candidates=top_candidates,

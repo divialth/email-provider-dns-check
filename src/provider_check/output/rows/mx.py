@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import List
 
+from ...status import Status
+
 
 def _format_priority(value: object) -> str:
     """Format MX priority data.
@@ -53,15 +55,19 @@ def _build_mx_rows(result: dict) -> List[dict]:
 
     rows: List[dict] = []
     for host in expected:
-        status = "PASS"
+        status = Status.PASS.value
         expected_value = "present"
         found_value = "present"
         if host in mismatched:
-            status = "FAIL" if result["status"] == "FAIL" else "WARN"
+            status = (
+                Status.FAIL.value if result["status"] == Status.FAIL.value else Status.WARN.value
+            )
             expected_value = _format_priority(mismatched[host].get("expected"))
             found_value = _format_priority(mismatched[host].get("found"))
         elif host in missing:
-            status = "FAIL" if result["status"] == "FAIL" else "WARN"
+            status = (
+                Status.FAIL.value if result["status"] == Status.FAIL.value else Status.WARN.value
+            )
             expected_value = "present"
             found_value = "(missing)"
         rows.append(

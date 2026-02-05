@@ -15,6 +15,7 @@ from .detection.formatting import build_detection_payload, format_detection_repo
 from .dns_resolver import DnsResolver
 from .output import build_json_payload, summarize_status, to_human, to_json, to_text
 from .provider_config import load_provider_config, resolve_provider_config
+from .status import Status, exit_code_for_status
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,24 +29,6 @@ def _default_report_time() -> str:
         str: Timestamp in YYYY-MM-DD HH:MM format (UTC).
     """
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-
-
-def _exit_code_for_status(status: str) -> int:
-    """Map a summary status string to an exit code.
-
-    Args:
-        status (str): Summary status (PASS, WARN, FAIL, or UNKNOWN).
-
-    Returns:
-        int: Exit code compatible with CLI expectations.
-    """
-    if status == "PASS":
-        return 0
-    if status == "WARN":
-        return 1
-    if status == "FAIL":
-        return 2
-    return 3
 
 
 def _validate_output_format(output: str) -> None:
@@ -228,7 +211,7 @@ def run_checks(request: CheckRequest) -> CheckResult:
     )
     results = checker.run_checks()
     status = summarize(results)
-    exit_code = _exit_code_for_status(status)
+    exit_code = exit_code_for_status(status)
 
     if request.output == "json":
         rendered = to_json(results, request.domain, report_time, provider.name, provider.version)
@@ -402,9 +385,13 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
                 results, request.domain, report_time, provider.name, provider.version
             )
             status = summarize(results)
-            exit_code = _exit_code_for_status(status)
+            exit_code = exit_code_for_status(status)
         else:
-            exit_code = 0 if report.status == "PASS" and not report.ambiguous else 3
+            exit_code = (
+                exit_code_for_status(Status.PASS.value)
+                if report.status == Status.PASS.value and not report.ambiguous
+                else exit_code_for_status(Status.UNKNOWN.value)
+            )
         rendered = json.dumps(detection_payload, indent=2)
         return DetectionResult(
             output=rendered,
@@ -444,7 +431,7 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
         )
         results = checker.run_checks()
         status = summarize(results)
-        exit_code = _exit_code_for_status(status)
+        exit_code = exit_code_for_status(status)
         if request.output == "human":
             check_output = to_human(
                 results,
@@ -465,7 +452,11 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
             )
         rendered = f"{detection_output}\n\n{check_output}"
     else:
-        exit_code = 0 if report.status == "PASS" and not report.ambiguous else 3
+        exit_code = (
+            exit_code_for_status(Status.PASS.value)
+            if report.status == Status.PASS.value and not report.ambiguous
+            else exit_code_for_status(Status.UNKNOWN.value)
+        )
         rendered = detection_output
 
     return DetectionResult(

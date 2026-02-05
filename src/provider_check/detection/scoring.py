@@ -6,9 +6,15 @@ from typing import Dict, List
 
 from ..checker import RecordCheck
 from ..record_registry import CORE_RECORD_TYPES, TYPE_WEIGHTS
+from ..status import Status
 from .report import DetectionCandidate
 
-STATUS_SCORES = {"PASS": 2, "WARN": 1, "FAIL": 0, "UNKNOWN": 0}
+STATUS_SCORES = {
+    Status.PASS.value: 2,
+    Status.WARN.value: 1,
+    Status.FAIL.value: 0,
+    Status.UNKNOWN.value: 0,
+}
 
 
 def _score_results(results: List[RecordCheck]) -> tuple[int, int, float, List[str], Dict[str, int]]:
@@ -23,14 +29,19 @@ def _score_results(results: List[RecordCheck]) -> tuple[int, int, float, List[st
     """
     score = 0
     max_score = 0
-    status_counts = {"PASS": 0, "WARN": 0, "FAIL": 0, "UNKNOWN": 0}
+    status_counts = {
+        Status.PASS.value: 0,
+        Status.WARN.value: 0,
+        Status.FAIL.value: 0,
+        Status.UNKNOWN.value: 0,
+    }
     core_pass_records: List[str] = []
     for result in results:
         status_counts[result.status] = status_counts.get(result.status, 0) + 1
         weight = TYPE_WEIGHTS.get(result.record_type, 1)
-        max_score += weight * STATUS_SCORES["PASS"]
+        max_score += weight * STATUS_SCORES[Status.PASS.value]
         score += weight * STATUS_SCORES.get(result.status, 0)
-        if result.record_type in CORE_RECORD_TYPES and result.status == "PASS":
+        if result.record_type in CORE_RECORD_TYPES and result.status == Status.PASS.value:
             core_pass_records.append(result.record_type)
     ratio = score / max_score if max_score else 0
     return score, max_score, ratio, core_pass_records, status_counts
@@ -46,7 +57,9 @@ def _optional_bonus(results: List[RecordCheck]) -> int:
         int: Optional bonus score.
     """
     return sum(
-        TYPE_WEIGHTS.get(result.record_type, 1) for result in results if result.status == "PASS"
+        TYPE_WEIGHTS.get(result.record_type, 1)
+        for result in results
+        if result.status == Status.PASS.value
     )
 
 

@@ -10,6 +10,7 @@ CODE:
 -  provide a stable programmatic API in `provider_check.runner` with typed request/response dataclasses for checks and detection
 -  centralize record-type metadata and check enablement in `provider_check.record_registry`
 -  expose a stable public API surface via `provider_check.api`
+-  centralize status constants and exit code mapping in `provider_check.status`
 
 PROJECT GOALS:
 -  Script for checking if the DNS records for a domain are correctly set up.

@@ -6,13 +6,15 @@ import os
 import re
 from typing import Callable, Mapping, TextIO
 
+from ..status import Status
+
 _ANSI_PATTERN = re.compile(r"\x1b\[[0-9;]*m")
 _ANSI_RESET = "\x1b[0m"
 _STATUS_COLORS = {
-    "PASS": "\x1b[32m",
-    "WARN": "\x1b[33m",
-    "FAIL": "\x1b[31m",
-    "UNKNOWN": "\x1b[34m",
+    Status.PASS.value: "\x1b[32m",
+    Status.WARN.value: "\x1b[33m",
+    Status.FAIL.value: "\x1b[31m",
+    Status.UNKNOWN.value: "\x1b[34m",
 }
 _FALSEY_ENV_VALUES = {"0", "false", "no", "off"}
 
