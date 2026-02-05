@@ -192,6 +192,7 @@ Provider definitions are YAML files. Packaged providers live in
 `src/provider_check/resources/providers/*.yaml`. Each file must include a version and can define any
 subset of MX/SPF/DKIM/CNAME/CAA/SRV/TXT/DMARC/A/AAAA. For a fully documented example, see
 `src/provider_check/resources/providers/example_do_not_use.yaml`.
+Record type definitions use `required`/`optional` (and `settings` where applicable) as shown below.
 
 ### Locations
 Add or override providers by dropping files into one of these locations (first match wins if
@@ -241,113 +242,117 @@ variables:
     description: "Tenant-specific prefix from the provider admin console."
 records:
   mx:
-    hosts:
-      - "{tenant}.mail.protection.outlook.com."
+    required:
+      - host: "{tenant}.mail.protection.outlook.com."
   dkim:
-    selectors:
-      - selector1
-      - selector2
-    record_type: cname
-    target_template: "{selector}._domainkey.{tenant}.onmicrosoft.com."
+    required:
+      selectors:
+        - selector1
+        - selector2
+      record_type: cname
+      target_template: "{selector}._domainkey.{tenant}.onmicrosoft.com."
 ```
 
 ### MX fields
-MX configs can validate hostnames and (optionally) priorities:
+MX configs validate hostnames and (optionally) priorities:
 
-| Field        | Description                                               |
-| ------------ | --------------------------------------------------------- |
-| `hosts`      | List of required MX hostnames.                            |
-| `records`    | List of `{host, priority}` entries to enforce priorities. |
-| `priorities` | Mapping of `host: priority` (alternate form).             |
+| Field      | Description                                                                |
+| ---------- | -------------------------------------------------------------------------- |
+| `required` | List of required `{host, priority}` entries (priority optional).           |
+| `optional` | List of optional `{host, priority}` entries (missing entries WARN).        |
 
 ### SPF fields
 SPF configs can include additional mechanisms and modifiers beyond includes and IP ranges:
 
-| Field                 | Description                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| `required_includes`   | List of required include values (without the `include:` prefix).                         |
-| `strict_record`       | Exact SPF string to enforce in strict mode.                                              |
-| `required_mechanisms` | Required SPF mechanism tokens (e.g., `a`, `mx:mail.example`, `exists:%{i}.spf.example`). |
-| `allowed_mechanisms`  | Additional mechanism tokens allowed in standard mode.                                    |
-| `required_modifiers`  | Mapping of SPF modifiers that must match exact values (e.g., `redirect`, `exp`).         |
+| Field                  | Description                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `required.record`      | Exact SPF string to enforce in strict mode.                                              |
+| `required.includes`    | List of required include values (without the `include:` prefix).                         |
+| `required.mechanisms`  | Required SPF mechanism tokens (e.g., `a`, `mx:mail.example`, `exists:%{i}.spf.example`). |
+| `required.modifiers`   | Mapping of SPF modifiers that must match exact values (e.g., `redirect`, `exp`).         |
+| `optional.mechanisms`  | Additional mechanism tokens allowed in standard mode.                                    |
+| `optional.modifiers`   | Additional modifiers allowed in standard mode.                                           |
 
 ### DMARC fields
 DMARC configs can optionally enforce more than just `p=` and `rua=`/`ruf=`:
 
-| Field            | Description                                                             |
-| ---------------- | ----------------------------------------------------------------------- |
-| `default_policy` | Default policy if `--dmarc-policy` is not provided.                     |
-| `required_rua`   | Required rua URIs (fixed aggregate destinations; `{domain}` supported). |
-| `required_ruf`   | Required ruf URIs (fixed forensic destinations; `{domain}` supported).  |
-| `required_tags`  | Mapping of additional DMARC tags that must match exact values.          |
-| `rua_required`   | Require a rua tag in DMARC records (default: false).                    |
-| `ruf_required`   | Require a ruf tag in DMARC records (default: false).                    |
+| Field                   | Description                                                             |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `required.policy`       | Default policy if `--dmarc-policy` is not provided.                     |
+| `required.rua`          | Required rua URIs (fixed aggregate destinations; `{domain}` supported). |
+| `required.ruf`          | Required ruf URIs (fixed forensic destinations; `{domain}` supported).  |
+| `required.tags`         | Mapping of additional DMARC tags that must match exact values.          |
+| `optional.rua`          | Optional rua URIs (accepted when present).                              |
+| `optional.ruf`          | Optional ruf URIs (accepted when present).                              |
+| `settings.rua_required` | Require a rua tag in DMARC records (default: false).                    |
+| `settings.ruf_required` | Require a ruf tag in DMARC records (default: false).                    |
 
 ### DKIM fields
 DKIM configs can validate either CNAME targets or TXT record values:
 
-| Field             | Description                                                      |
-| ----------------- | ---------------------------------------------------------------- |
-| `selectors`       | List of DKIM selectors to validate.                              |
-| `record_type`     | `cname` (hosted) or `txt` (self-hosted).                         |
-| `target_template` | CNAME target template (required when `record_type: cname`).      |
-| `txt_values`      | Mapping of `selector: value` to enforce when `record_type: txt`. |
+| Field                      | Description                                                      |
+| -------------------------- | ---------------------------------------------------------------- |
+| `required.selectors`       | List of DKIM selectors to validate.                              |
+| `required.record_type`     | `cname` (hosted) or `txt` (self-hosted).                         |
+| `required.target_template` | CNAME target template (required when `record_type: cname`).      |
+| `required.txt_values`      | Mapping of `selector: value` to enforce when `record_type: txt`. |
 
 ### A fields
 A configs validate IPv4 address records:
 
-| Field              | Description                                                                 |
-| ------------------ | --------------------------------------------------------------------------- |
-| `records`          | Mapping of `name: [values...]` for required A values.                       |
-| `records_optional` | Mapping of `name: [values...]` for optional A values (missing entries WARN). |
+| Field      | Description                                                                  |
+| ---------- | ---------------------------------------------------------------------------- |
+| `required` | Mapping of `name: [values...]` for required A values.                        |
+| `optional` | Mapping of `name: [values...]` for optional A values (missing entries WARN). |
 
 ### AAAA fields
 AAAA configs validate IPv6 address records:
 
-| Field              | Description                                                                  |
-| ------------------ | ---------------------------------------------------------------------------- |
-| `records`          | Mapping of `name: [values...]` for required AAAA values.                     |
-| `records_optional` | Mapping of `name: [values...]` for optional AAAA values (missing entries WARN). |
+| Field      | Description                                                                    |
+| ---------- | ------------------------------------------------------------------------------ |
+| `required` | Mapping of `name: [values...]` for required AAAA values.                       |
+| `optional` | Mapping of `name: [values...]` for optional AAAA values (missing entries WARN). |
 
 ### CNAME fields
 CNAME configs validate arbitrary CNAME records:
 
-| Field              | Description                                                                 |
-| ------------------ | --------------------------------------------------------------------------- |
-| `records`          | Mapping of `name: target` for required CNAME values.                        |
-| `records_optional` | Mapping of `name: target` for optional CNAME values (missing entries WARN; mismatches FAIL). |
+| Field      | Description                                                                   |
+| ---------- | ----------------------------------------------------------------------------- |
+| `required` | Mapping of `name: target` for required CNAME values.                          |
+| `optional` | Mapping of `name: target` for optional CNAME values (missing entries WARN; mismatches FAIL). |
 
 ### CAA fields
 CAA configs validate CA authorization records:
 
-| Field              | Description                                                                                        |
-| ------------------ | -------------------------------------------------------------------------------------------------- |
-| `records`          | Mapping of `name: [entries...]` (each entry requires `flags`, `tag`, `value`).                      |
-| `records_optional` | Mapping of `name: [entries...]` for optional CAA values (missing entries WARN).                    |
+| Field      | Description                                                                                         |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| `required` | Mapping of `name: [entries...]` (each entry requires `flags`, `tag`, `value`).                      |
+| `optional` | Mapping of `name: [entries...]` for optional CAA values (missing entries WARN).                    |
 
 ### SRV fields
 SRV configs validate required SRV records:
 
-| Field              | Description                                                                                   |
-| ------------------ | --------------------------------------------------------------------------------------------- |
-| `records`          | Mapping of `name: [entries...]` (each entry requires `priority`, `weight`, `port`, `target`). |
-| `records_optional` | Mapping of `name: [entries...]` for optional SRV values (missing entries WARN; mismatches FAIL). |
+| Field      | Description                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| `required` | Mapping of `name: [entries...]` (each entry requires `priority`, `weight`, `port`, `target`).  |
+| `optional` | Mapping of `name: [entries...]` for optional SRV values (missing entries WARN; mismatches FAIL). |
 
 In non-strict mode, SRV entries with the correct target/port but different priority or weight report as WARN.
 
 ### TXT fields
 TXT configs let providers require arbitrary validation records:
 
-| Field                   | Description                                                                                                      |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `required`              | Mapping of `name: [values...]` for required TXT values.                                                          |
-| `verification_required` | Whether a user-supplied TXT verification record is required (warns if missing unless `--skip-txt-verification`). |
+| Field                             | Description                                                                                                      |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `required`                        | Mapping of `name: [values...]` for required TXT values.                                                          |
+| `optional`                        | Mapping of `name: [values...]` for optional TXT values (missing entries WARN).                                  |
+| `settings.verification_required`  | Whether a user-supplied TXT verification record is required (warns if missing unless `--skip-txt-verification`). |
 
 ## Provider detection
 - `--provider-detect` inspects DNS and ranks the top matches; use `--provider-detect-limit` to change the default limit.
 - `--provider-autoselect` runs detection and then validates DNS with the single best match.
 - Detection infers provider variables from DNS templates when possible (for example, MX/DKIM/CNAME/SRV targets).
-- Optional records (`records_optional`) add a small tie-breaker bonus when present and appear as `*_OPT`
+- Optional records (from `optional` sections) add a small tie-breaker bonus when present and appear as `*_OPT`
   entries in detection record summaries.
 - If no match is found or the top candidates are tied, detection returns `UNKNOWN` (exit code 3).
 - JSON output includes a detection payload with candidates and scores; autoselect JSON also embeds the normal report.
