@@ -93,7 +93,7 @@ def test_invalid_txt_records_values_rejected(monkeypatch, tmp_path):
     assert "bad" not in {provider.provider_id for provider in providers}
 
 
-def test_invalid_txt_records_conflict_rejected(monkeypatch, tmp_path):
+def test_invalid_txt_required_key_rejected(monkeypatch, tmp_path):
     _write_external_provider(
         tmp_path,
         """
@@ -101,9 +101,6 @@ def test_invalid_txt_records_conflict_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           txt:
-            records:
-              _verify:
-                - token
             required:
               _legacy:
                 - token

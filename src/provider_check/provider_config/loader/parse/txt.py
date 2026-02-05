@@ -25,15 +25,11 @@ def _parse_txt(provider_id: str, records: dict) -> TXTConfig | None:
         return None
 
     txt_section = _require_mapping(provider_id, "txt", records.get("txt"))
-    records_raw = txt_section.get("records")
-    required_raw = txt_section.get("required")
-    if records_raw is not None and required_raw is not None:
+    if "required" in txt_section:
         raise ValueError(
-            f"Provider config {provider_id} txt may not define both records and required"
+            f"Provider config {provider_id} txt required is no longer supported; use records"
         )
-    if records_raw is None:
-        records_raw = required_raw or {}
-    records_raw = _require_mapping(provider_id, "txt records", records_raw)
+    records_raw = _require_mapping(provider_id, "txt records", txt_section.get("records", {}))
     records_required: Dict[str, List[str]] = {}
     for name, values in records_raw.items():
         values_list = _require_list(provider_id, f"txt records.{name}", values)
