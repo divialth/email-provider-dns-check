@@ -71,6 +71,13 @@ def main(argv: List[str] | None = None) -> int:
     color_enabled = resolve_color_enabled(args.color, sys.stdout)
     colorize_status = make_status_colorizer(color_enabled)
 
+    domain = args.domain
+    if args.domain_flag:
+        if args.domain:
+            parser.error("domain may be provided either as positional or via --domain")
+        domain = args.domain_flag
+    args.domain = domain
+
     if args.providers_list:
         LOGGER.info("Listing available providers")
         return handle_providers_list(list_providers)
@@ -87,7 +94,10 @@ def main(argv: List[str] | None = None) -> int:
         )
 
     if not args.domain:
-        parser.error("domain is required unless --providers-list or --provider-show is used")
+        parser.error(
+            "domain is required unless --providers-list or --provider-show is used "
+            "(use positional or --domain)"
+        )
 
     if args.provider_detect and args.provider_autoselect:
         parser.error("--provider-detect and --provider-autoselect are mutually exclusive")

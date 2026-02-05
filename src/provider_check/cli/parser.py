@@ -52,6 +52,12 @@ def build_parser() -> argparse.ArgumentParser:
     misc_group = parser.add_argument_group("Misc")
 
     target_group.add_argument("domain", nargs="?", help="Domain to validate")
+    target_group.add_argument(
+        "--domain",
+        dest="domain_flag",
+        metavar="DOMAIN",
+        help="Domain to validate (alias for positional argument)",
+    )
     provider_group.add_argument(
         "--provider",
         help="Provider configuration to use (see --providers-list)",

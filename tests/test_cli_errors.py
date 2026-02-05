@@ -84,6 +84,61 @@ def test_domain_required_without_list_providers(capsys):
     assert "domain is required" in err
 
 
+def test_domain_flag_used(monkeypatch, capsys):
+    import provider_check.cli as cli
+
+    provider = ProviderConfig(
+        provider_id="dummy",
+        name="Dummy",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    monkeypatch.setattr(cli, "load_provider_config", lambda _selection: provider)
+    _patch_fixed_datetime(monkeypatch)
+
+    class _DummyChecker:
+        def run_checks(self):
+            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+
+    monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
+    monkeypatch.setattr(cli, "summarize_status", lambda _results: "PASS")
+
+    code = main(["--domain", "example.com", "--provider", "dummy", "--output", "json"])
+    assert code == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["domain"] == "example.com"
+
+
+def test_domain_flag_conflicts_with_positional(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["example.com", "--domain", "other.com", "--provider", "dummy"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "positional or via --domain" in err
+
+
+def test_domain_flag_with_providers_list(monkeypatch):
+    import provider_check.cli as cli
+
+    monkeypatch.setattr(cli, "list_providers", lambda: [])
+
+    code = main(["--domain", "example.com", "--providers-list"])
+    assert code == 0
+
+
+def test_domain_flag_conflicts_with_positional_even_with_providers_list(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["example.com", "--domain", "other.com", "--providers-list"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "positional or via --domain" in err
+
+
 def test_invalid_provider_selection_reports_error(monkeypatch, capsys):
     import provider_check.cli as cli
 

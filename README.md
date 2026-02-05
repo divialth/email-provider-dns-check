@@ -71,6 +71,7 @@ provider-dns-check --providers-list
 Run checks:
 ```bash
 provider-dns-check example.com --provider dummy_provider
+provider-dns-check --domain example.com --provider dummy_provider
 provider-dns-check example.com --provider dummy_provider --strict
 ```
 
@@ -109,6 +110,12 @@ provider-dns-check --provider-show mailbox.org
 These are compatible with Nagios/Icinga plugin exit codes.
 
 ### Options
+
+#### Target
+```text
+DOMAIN                 domain to validate
+--domain DOMAIN         domain to validate (alias for positional argument)
+```
 
 #### Provider selection
 ```text
