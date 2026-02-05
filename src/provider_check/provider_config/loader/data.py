@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Iterable, List
 
 import yaml
 
@@ -47,8 +47,11 @@ def _is_enabled(data: dict) -> bool:
     raise ValueError("Provider config enabled must be a boolean")
 
 
-def _load_provider_data_map() -> Dict[str, dict]:
+def _load_provider_data_map(provider_dirs: Iterable[Path | str] | None = None) -> Dict[str, dict]:
     """Load provider configuration data from available sources.
+
+    Args:
+        provider_dirs (Iterable[Path | str] | None): Additional provider directories.
 
     Returns:
         Dict[str, dict]: Mapping of provider ID to raw config data.
@@ -56,7 +59,11 @@ def _load_provider_data_map() -> Dict[str, dict]:
     from . import _iter_provider_paths
 
     providers: Dict[str, dict] = {}
-    for path in _iter_provider_paths():
+    if provider_dirs is None:
+        paths = _iter_provider_paths()
+    else:
+        paths = _iter_provider_paths(provider_dirs)
+    for path in paths:
         provider_id = Path(path.name).stem
         if provider_id in providers:
             continue

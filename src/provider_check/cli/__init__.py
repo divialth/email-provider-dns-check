@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List
 
 from ..checker import DNSChecker
@@ -80,16 +81,40 @@ def main(argv: List[str] | None = None) -> int:
         domain = args.domain_flag
     args.domain = domain
 
+    provider_dirs: list[Path] = []
+    for entry in args.providers_dirs:
+        path = Path(entry).expanduser()
+        if path not in provider_dirs:
+            provider_dirs.append(path)
+
+    list_providers_fn = list_providers
+    load_provider_config_fn = load_provider_config
+    load_provider_config_data_fn = load_provider_config_data
+    detect_providers_fn = detect_providers
+    if provider_dirs:
+        list_providers_fn = lambda: list_providers(provider_dirs=provider_dirs)
+        load_provider_config_fn = lambda selection: load_provider_config(
+            selection, provider_dirs=provider_dirs
+        )
+        load_provider_config_data_fn = lambda selection: load_provider_config_data(
+            selection, provider_dirs=provider_dirs
+        )
+        detect_providers_fn = (
+            lambda domain, *, resolver=None, top_n=DEFAULT_TOP_N: detect_providers(
+                domain, resolver=resolver, top_n=top_n, provider_dirs=provider_dirs
+            )
+        )
+
     if args.providers_list:
         LOGGER.info("Listing available providers")
-        return handle_providers_list(list_providers)
+        return handle_providers_list(list_providers_fn)
 
     if args.provider_show:
         LOGGER.info("Showing provider configuration for %s", args.provider_show)
         return handle_provider_show(
             args.provider_show,
             parser,
-            load_provider_config_data=load_provider_config_data,
+            load_provider_config_data=load_provider_config_data_fn,
             literal_string_cls=_LiteralString,
             provider_show_dumper=_ProviderShowDumper,
             strip_long_description_indicator=_strip_long_description_indicator,
@@ -135,12 +160,12 @@ def main(argv: List[str] | None = None) -> int:
             parser,
             report_time,
             resolver=resolver,
-            detect_providers=detect_providers,
+            detect_providers=detect_providers_fn,
             default_top_n=DEFAULT_TOP_N,
             detect_limit=args.provider_detect_limit,
             format_detection_report=_format_detection_report,
             build_detection_payload=_build_detection_payload,
-            load_provider_config=load_provider_config,
+            load_provider_config=load_provider_config_fn,
             resolve_provider_config=resolve_provider_config,
             parse_txt_records=_parse_txt_records,
             dns_checker_cls=DNSChecker,
@@ -159,7 +184,7 @@ def main(argv: List[str] | None = None) -> int:
         parser,
         report_time,
         resolver=resolver,
-        load_provider_config=load_provider_config,
+        load_provider_config=load_provider_config_fn,
         resolve_provider_config=resolve_provider_config,
         parse_provider_vars=_parse_provider_vars,
         parse_txt_records=_parse_txt_records,

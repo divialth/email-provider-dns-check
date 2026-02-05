@@ -90,6 +90,32 @@ def test_provider_detect_limit_passed_to_detection(monkeypatch):
     assert captured["top_n"] == 5
 
 
+def test_provider_detect_passes_provider_dirs(monkeypatch, tmp_path):
+    candidate = _candidate()
+    captured = {}
+
+    def _fake_detect(_domain, *, resolver=None, top_n=None, provider_dirs=None):
+        captured["provider_dirs"] = provider_dirs
+        return _report(candidate, top_n=top_n)
+
+    import provider_check.cli as cli
+
+    monkeypatch.setattr(cli, "detect_providers", _fake_detect)
+
+    code = main(
+        [
+            "example.com",
+            "--provider-detect",
+            "--providers-dir",
+            str(tmp_path),
+            "--output",
+            "json",
+        ]
+    )
+    assert code == 0
+    assert captured["provider_dirs"] == [tmp_path]
+
+
 def test_format_detection_report_handles_empty_candidates():
     report = _report(None, status="UNKNOWN", ambiguous=False, selected=False)
     output = _format_detection_report(report, "2026-02-02 12:00")

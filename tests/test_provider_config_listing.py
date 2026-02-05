@@ -126,3 +126,11 @@ def test_packaged_provider_enabled_string_is_parsed(monkeypatch):
     packaged = _packaged_provider_ids()
 
     assert "string-disabled" in packaged["__disabled__"]
+
+
+def test_normalize_provider_dirs_dedupes(tmp_path):
+    from provider_check.provider_config.loader import paths
+
+    provider_dir = tmp_path / "providers"
+    normalized = paths._normalize_provider_dirs([provider_dir, str(provider_dir)])
+    assert normalized == [provider_dir]

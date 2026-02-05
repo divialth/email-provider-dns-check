@@ -66,6 +66,7 @@ installed in that environment.
 List providers:
 ```bash
 provider-dns-check --providers-list
+provider-dns-check --providers-list --providers-dir ./providers
 ```
 
 Run checks:
@@ -121,6 +122,7 @@ DOMAIN                 domain to validate
 #### Provider selection
 ```text
 --providers-list         list available provider configs and exit
+--providers-dir DIR      additional provider config directory (repeatable)
 --provider-show PROVIDER show provider configuration and exit
 --provider PROVIDER      provider configuration to use (required unless --providers-list)
 --provider-var NAME=VALUE provider variables (repeatable)
@@ -197,6 +199,9 @@ provider IDs overlap):
 - `${XDG_CONFIG_HOME:-$HOME/.config}/provider-dns-check/providers`
 - `/etc/provider-dns-check/providers`
 - `/usr/local/etc/provider-dns-check/providers`
+
+Use `--providers-dir DIR` to add additional lookup locations (repeatable; searched before the
+default directories).
 
 Drop a `*.yaml` or `*.yml` file into one of these locations and it will appear in
 `--providers-list`. Invalid provider configs are skipped with a warning.

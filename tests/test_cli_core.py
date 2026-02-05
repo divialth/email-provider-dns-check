@@ -4,6 +4,12 @@ from provider_check import __version__
 from provider_check.cli import main
 
 
+def _write_provider_config(path, provider_id, name="Custom Provider"):
+    payload = f"version: 1\nname: {name}\nrecords: {{}}\n"
+    path.write_text(payload, encoding="utf-8")
+    return provider_id
+
+
 def test_list_providers_outputs_entries(capsys):
     code = main(["--providers-list"])
     assert code == 0
@@ -21,6 +27,16 @@ def test_list_providers_handles_empty(capsys, monkeypatch):
     assert code == 0
     out = capsys.readouterr().out
     assert out == ""
+
+
+def test_providers_dir_used_for_list(capsys, tmp_path):
+    provider_id = "custom_provider"
+    _write_provider_config(tmp_path / f"{provider_id}.yaml", provider_id)
+
+    code = main(["--providers-list", "--providers-dir", str(tmp_path)])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert provider_id in out
 
 
 def test_provider_show_outputs_yaml(capsys, monkeypatch):
@@ -57,6 +73,16 @@ def test_provider_show_outputs_yaml(capsys, monkeypatch):
     assert "long_description:" in out
     assert "long_description: |" not in out
     assert "long_description:\n  Long description line 1." in out
+
+
+def test_providers_dir_used_for_provider_show(capsys, tmp_path):
+    provider_id = "custom_provider"
+    _write_provider_config(tmp_path / f"{provider_id}.yaml", provider_id)
+
+    code = main(["--providers-dir", str(tmp_path), "--provider-show", provider_id])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "name: Custom Provider" in out
 
 
 def test_provider_show_allows_domain_flag(capsys, monkeypatch):

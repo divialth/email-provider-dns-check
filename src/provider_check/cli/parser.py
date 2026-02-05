@@ -65,6 +65,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="List available providers and exit",
     )
     provider_group.add_argument(
+        "--providers-dir",
+        dest="providers_dirs",
+        action="append",
+        default=[],
+        metavar="DIR",
+        help="Additional provider config directory (repeatable)",
+    )
+    provider_group.add_argument(
         "--list-providers",
         dest="providers_list",
         action="store_true",

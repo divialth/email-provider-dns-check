@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import List, Optional
 
 from ..checker import DNSChecker
@@ -67,6 +68,7 @@ def detect_providers(
     *,
     resolver: Optional[DnsResolver] = None,
     top_n: int = DEFAULT_TOP_N,
+    provider_dirs: Optional[List[Path | str]] = None,
 ) -> DetectionReport:
     """Detect provider candidates by running DNS checks.
 
@@ -74,6 +76,7 @@ def detect_providers(
         domain (str): Domain to inspect.
         resolver (Optional[DnsResolver]): DNS resolver to use.
         top_n (int): Number of top candidates to return.
+        provider_dirs (Optional[List[Path | str]]): Additional provider directories.
 
     Returns:
         DetectionReport: Detection report containing candidates and selection.
@@ -81,7 +84,10 @@ def detect_providers(
     normalized_domain = domain.lower().strip()
     resolver = resolver or DnsResolver()
     candidates: List[DetectionCandidate] = []
-    for provider in list_providers():
+    providers = (
+        list_providers() if provider_dirs is None else list_providers(provider_dirs=provider_dirs)
+    )
+    for provider in providers:
         inferred_vars = infer_provider_variables(provider, normalized_domain, resolver)
         try:
             resolved_provider = resolve_provider_config(

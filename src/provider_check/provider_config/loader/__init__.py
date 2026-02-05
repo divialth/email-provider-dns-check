@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Iterable, List
 
 from ..models import (
     AddressConfig,
@@ -44,11 +44,14 @@ from .paths import (
 )
 
 
-def load_provider_config_data(selection: str) -> tuple[ProviderConfig, dict]:
+def load_provider_config_data(
+    selection: str, provider_dirs: Iterable[Path | str] | None = None
+) -> tuple[ProviderConfig, dict]:
     """Load a provider config and its resolved data mapping.
 
     Args:
         selection (str): Provider ID or name.
+        provider_dirs (Iterable[Path | str] | None): Additional provider directories.
 
     Returns:
         tuple[ProviderConfig, dict]: Provider config and resolved data mapping.
@@ -56,8 +59,12 @@ def load_provider_config_data(selection: str) -> tuple[ProviderConfig, dict]:
     Raises:
         ValueError: If the provider is unknown or disabled.
     """
-    provider = load_provider_config(selection)
-    data_map = _load_provider_data_map()
+    if provider_dirs is None:
+        provider = load_provider_config(selection)
+        data_map = _load_provider_data_map()
+    else:
+        provider = load_provider_config(selection, provider_dirs=provider_dirs)
+        data_map = _load_provider_data_map(provider_dirs=provider_dirs)
     cache: Dict[str, dict] = {}
     if provider.provider_id not in data_map:
         raise ValueError(f"Provider config source not found for '{provider.provider_id}'")
@@ -67,14 +74,20 @@ def load_provider_config_data(selection: str) -> tuple[ProviderConfig, dict]:
     return provider, data
 
 
-def list_providers() -> List[ProviderConfig]:
+def list_providers(provider_dirs: Iterable[Path | str] | None = None) -> List[ProviderConfig]:
     """List all available provider configurations.
+
+    Args:
+        provider_dirs (Iterable[Path | str] | None): Additional provider directories.
 
     Returns:
         List[ProviderConfig]: Sorted provider configurations.
     """
     providers: Dict[str, ProviderConfig] = {}
-    data_map = _load_provider_data_map()
+    if provider_dirs is None:
+        data_map = _load_provider_data_map()
+    else:
+        data_map = _load_provider_data_map(provider_dirs=provider_dirs)
     cache: Dict[str, dict] = {}
     for provider_id in data_map:
         try:
@@ -88,11 +101,14 @@ def list_providers() -> List[ProviderConfig]:
     return sorted(providers.values(), key=lambda item: item.provider_id)
 
 
-def load_provider_config(selection: str) -> ProviderConfig:
+def load_provider_config(
+    selection: str, provider_dirs: Iterable[Path | str] | None = None
+) -> ProviderConfig:
     """Load a single provider configuration by ID or name.
 
     Args:
         selection (str): Provider ID or name.
+        provider_dirs (Iterable[Path | str] | None): Additional provider directories.
 
     Returns:
         ProviderConfig: Matching provider configuration.
@@ -104,7 +120,10 @@ def load_provider_config(selection: str) -> ProviderConfig:
         raise ValueError("Provider selection is required")
 
     normalized = _normalize_key(selection)
-    candidates = list_providers()
+    if provider_dirs is None:
+        candidates = list_providers()
+    else:
+        candidates = list_providers(provider_dirs=provider_dirs)
     for provider in candidates:
         if _normalize_key(provider.provider_id) == normalized:
             return provider
