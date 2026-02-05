@@ -43,7 +43,7 @@ pip install -r requirements.txt
 ```bash
 pip install --user "git+https://github.com/divialth/email-provider-dns-check.git"
 # optional pin:
-pip install --user "git+https://github.com/divialth/email-provider-dns-check.git@v0.3.0"
+pip install --user "git+https://github.com/divialth/email-provider-dns-check.git@v0.4.0"
 ```
 
 ### Run from a checkout without installing
