@@ -8,7 +8,7 @@ import logging
 import time
 
 from .. import __version__
-from .parsing import _parse_dmarc_pct, _parse_positive_float
+from .parsing import _parse_dmarc_pct, _parse_positive_float, _parse_positive_int
 
 
 def _setup_logging(verbosity: int) -> None:
@@ -42,12 +42,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     target_group = parser.add_argument_group("Target")
     provider_group = parser.add_argument_group("Provider selection")
+    validation_group = parser.add_argument_group("Validation")
+    dmarc_group = parser.add_argument_group("DMARC overrides")
+    spf_group = parser.add_argument_group("SPF overrides")
+    txt_group = parser.add_argument_group("TXT overrides")
     output_group = parser.add_argument_group("Output")
     dns_group = parser.add_argument_group("DNS")
-    validation_group = parser.add_argument_group("Validation options")
-    dmarc_group = parser.add_argument_group("Validation options DMARC")
-    spf_group = parser.add_argument_group("SPF options")
-    txt_group = parser.add_argument_group("TXT options")
     logging_group = parser.add_argument_group("Logging")
     misc_group = parser.add_argument_group("Misc")
 
@@ -57,22 +57,6 @@ def build_parser() -> argparse.ArgumentParser:
         dest="domain_flag",
         metavar="DOMAIN",
         help="Domain to validate (alias for positional argument)",
-    )
-    provider_group.add_argument(
-        "--provider",
-        help="Provider configuration to use (see --providers-list)",
-    )
-    provider_group.add_argument(
-        "--provider-detect",
-        dest="provider_detect",
-        action="store_true",
-        help="Detect the closest matching provider and exit",
-    )
-    provider_group.add_argument(
-        "--provider-autoselect",
-        dest="provider_autoselect",
-        action="store_true",
-        help="Detect the closest matching provider and run checks",
     )
     provider_group.add_argument(
         "--providers-list",
@@ -93,17 +77,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show provider configuration and exit",
     )
     provider_group.add_argument(
+        "--provider",
+        help="Provider configuration to use (see --providers-list)",
+    )
+    provider_group.add_argument(
         "--provider-var",
         dest="provider_vars",
         action="append",
         default=[],
         help="Provider variables in name=value form (repeatable)",
     )
-    misc_group.add_argument(
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-        help="Show version and exit",
+    provider_group.add_argument(
+        "--provider-detect",
+        dest="provider_detect",
+        action="store_true",
+        help="Detect the closest matching provider and exit",
+    )
+    provider_group.add_argument(
+        "--provider-autoselect",
+        dest="provider_autoselect",
+        action="store_true",
+        help="Detect the closest matching provider and run checks",
+    )
+    provider_group.add_argument(
+        "--provider-detect-limit",
+        dest="provider_detect_limit",
+        type=functools.partial(_parse_positive_int, label="Provider detect limit"),
+        default=None,
+        help="Limit detection candidates (use with --provider-detect or --provider-autoselect)",
     )
     output_group.add_argument(
         "--output",
@@ -258,5 +259,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="count",
         default=0,
         help="Increase logging verbosity (use -vv for debug)",
+    )
+    misc_group.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="Show version and exit",
     )
     return parser

@@ -32,6 +32,7 @@ from .parser import _setup_logging, build_parser
 from .parsing import (
     _parse_dmarc_pct,
     _parse_positive_float,
+    _parse_positive_int,
     _parse_provider_vars,
     _parse_txt_records,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "_format_detection_report",
     "_parse_dmarc_pct",
     "_parse_positive_float",
+    "_parse_positive_int",
     "_parse_provider_vars",
     "_parse_txt_records",
     "_setup_logging",
@@ -110,6 +112,11 @@ def main(argv: List[str] | None = None) -> int:
             "--provider-var is not supported with --provider-detect or --provider-autoselect"
         )
 
+    if args.provider_detect_limit is not None and not (
+        args.provider_detect or args.provider_autoselect
+    ):
+        parser.error("--provider-detect-limit requires --provider-detect or --provider-autoselect")
+
     try:
         resolver = DnsResolver(
             nameservers=args.dns_servers,
@@ -130,6 +137,7 @@ def main(argv: List[str] | None = None) -> int:
             resolver=resolver,
             detect_providers=detect_providers,
             default_top_n=DEFAULT_TOP_N,
+            detect_limit=args.provider_detect_limit,
             format_detection_report=_format_detection_report,
             build_detection_payload=_build_detection_payload,
             load_provider_config=load_provider_config,

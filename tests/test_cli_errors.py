@@ -9,6 +9,7 @@ from provider_check.checker import RecordCheck
 from provider_check.cli import (
     _parse_dmarc_pct,
     _parse_positive_float,
+    _parse_positive_int,
     _parse_provider_vars,
     _parse_txt_records,
     _setup_logging,
@@ -76,6 +77,20 @@ def test_parse_positive_float_accepts_value():
     assert _parse_positive_float("1.5", label="DNS timeout") == 1.5
 
 
+def test_parse_positive_int_rejects_non_integer():
+    with pytest.raises(ArgumentTypeError):
+        _parse_positive_int("n/a", label="Provider detect limit")
+
+
+def test_parse_positive_int_rejects_non_positive():
+    with pytest.raises(ArgumentTypeError):
+        _parse_positive_int("0", label="Provider detect limit")
+
+
+def test_parse_positive_int_accepts_value():
+    assert _parse_positive_int("3", label="Provider detect limit") == 3
+
+
 def test_domain_required_without_list_providers(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--provider", "dummy"])
@@ -120,6 +135,14 @@ def test_domain_flag_conflicts_with_positional(capsys):
     assert exc.value.code == 2
     err = capsys.readouterr().err
     assert "positional or via --domain" in err
+
+
+def test_provider_detect_limit_requires_detection(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["example.com", "--provider", "dummy", "--provider-detect-limit", "5"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "--provider-detect-limit requires" in err
 
 
 def test_domain_flag_with_providers_list(monkeypatch):

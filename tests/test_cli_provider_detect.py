@@ -35,7 +35,7 @@ def _candidate(provider_id="dummy"):
     )
 
 
-def _report(candidate=None, *, status="PASS", ambiguous=False, selected=True):
+def _report(candidate=None, *, status="PASS", ambiguous=False, selected=True, top_n=3):
     candidates = [candidate] if candidate else []
     return DetectionReport(
         domain="example.com",
@@ -43,7 +43,7 @@ def _report(candidate=None, *, status="PASS", ambiguous=False, selected=True):
         selected=candidate if selected else None,
         ambiguous=ambiguous,
         status=status,
-        top_n=3,
+        top_n=top_n,
     )
 
 
@@ -62,6 +62,32 @@ def test_provider_detect_outputs_json(monkeypatch, capsys):
     assert payload["status"] == "PASS"
     assert payload["selected_provider"]["provider_id"] == "dummy"
     assert payload["candidates"][0]["provider_id"] == "dummy"
+
+
+def test_provider_detect_limit_passed_to_detection(monkeypatch):
+    candidate = _candidate()
+    captured = {}
+
+    def _fake_detect(_domain, *, resolver=None, top_n=None):
+        captured["top_n"] = top_n
+        return _report(candidate, top_n=top_n)
+
+    import provider_check.cli as cli
+
+    monkeypatch.setattr(cli, "detect_providers", _fake_detect)
+
+    code = main(
+        [
+            "example.com",
+            "--provider-detect",
+            "--provider-detect-limit",
+            "5",
+            "--output",
+            "json",
+        ]
+    )
+    assert code == 0
+    assert captured["top_n"] == 5
 
 
 def test_format_detection_report_handles_empty_candidates():

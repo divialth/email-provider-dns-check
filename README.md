@@ -83,6 +83,7 @@ provider-dns-check example.com --provider dummy_provider --output json
 Detect providers:
 ```bash
 provider-dns-check example.com --provider-detect
+provider-dns-check example.com --provider-detect --provider-detect-limit 5
 provider-dns-check example.com --provider-autoselect
 ```
 
@@ -119,19 +120,17 @@ DOMAIN                 domain to validate
 
 #### Provider selection
 ```text
---provider PROVIDER      provider configuration to use (required unless --providers-list)
 --providers-list         list available provider configs and exit
 --provider-show PROVIDER show provider configuration and exit
+--provider PROVIDER      provider configuration to use (required unless --providers-list)
 --provider-var NAME=VALUE provider variables (repeatable)
 --provider-detect        detect the closest matching provider and exit
 --provider-autoselect    detect the closest matching provider and run checks
+--provider-detect-limit N limit detection candidates (use with --provider-detect or --provider-autoselect)
 ```
 
-#### Output and strictness
+#### Validation
 ```text
---output {text,json,human}   choose output type (default: human; markdown table)
---color {auto,always,never}  colorize output (auto respects NO_COLOR)
---no-color                   disable colorized output
 --strict                     require exact provider configuration
 ```
 
@@ -161,7 +160,14 @@ DOMAIN                 domain to validate
 --skip-txt-verification       skip provider-required TXT verification checks
 ```
 
-#### DNS options
+#### Output
+```text
+--output {text,json,human}   choose output type (default: human; markdown table)
+--color {auto,always,never}  colorize output (auto respects NO_COLOR)
+--no-color                   disable colorized output
+```
+
+#### DNS
 ```text
 --dns-server SERVER   DNS server to use for lookups (repeatable; IP or hostname)
 --dns-timeout SECONDS per-query DNS timeout in seconds
@@ -169,10 +175,14 @@ DOMAIN                 domain to validate
 --dns-tcp             use TCP for DNS lookups
 ```
 
+#### Logging
+```text
+-v / -vv  increase logging verbosity
+```
+
 #### Misc
 ```text
 --version show the tool version and exit
--v / -vv  increase logging verbosity
 ```
 
 ## Provider configs
@@ -329,7 +339,7 @@ TXT configs let providers require arbitrary validation records:
 | `verification_required` | Whether a user-supplied TXT verification record is required (warns if missing unless `--skip-txt-verification`). |
 
 ## Provider detection
-- `--provider-detect` inspects DNS and ranks the top 3 matching providers; it does not run checks.
+- `--provider-detect` inspects DNS and ranks the top matches; use `--provider-detect-limit` to change the default limit.
 - `--provider-autoselect` runs detection and then validates DNS with the single best match.
 - Detection infers provider variables from DNS templates when possible (for example, MX/DKIM/CNAME/SRV targets).
 - Optional records (`records_optional`) add a small tie-breaker bonus when present and appear as `*_OPT`

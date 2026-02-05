@@ -99,3 +99,25 @@ def _parse_positive_float(value: str, *, label: str) -> float:
     if parsed <= 0:
         raise argparse.ArgumentTypeError(f"{label} must be a positive number")
     return parsed
+
+
+def _parse_positive_int(value: str, *, label: str) -> int:
+    """Parse a positive integer value from CLI input.
+
+    Args:
+        value (str): String value to parse.
+        label (str): Label used in error messages.
+
+    Returns:
+        int: Parsed positive integer value.
+
+    Raises:
+        argparse.ArgumentTypeError: If the value is invalid or non-positive.
+    """
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{label} must be a positive integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError(f"{label} must be a positive integer")
+    return parsed

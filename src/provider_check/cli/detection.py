@@ -18,6 +18,7 @@ def handle_detection(
     resolver: DnsResolver,
     detect_providers: Callable[..., object],
     default_top_n: int,
+    detect_limit: int | None,
     format_detection_report: Callable[[object, str], str],
     build_detection_payload: Callable[[object, str], dict],
     load_provider_config: Callable[[str], object],
@@ -39,6 +40,7 @@ def handle_detection(
         resolver (DnsResolver): DNS resolver to use for lookups.
         detect_providers (Callable[..., object]): Provider detection callback.
         default_top_n (int): Default number of candidates to return.
+        detect_limit (int | None): Optional detection candidate limit override.
         format_detection_report (Callable[[object, str], str]): Report formatter.
         build_detection_payload (Callable[[object, str], dict]): JSON payload builder.
         load_provider_config (Callable[[str], object]): Provider loader callback.
@@ -54,7 +56,8 @@ def handle_detection(
     Returns:
         int: Exit code.
     """
-    report = detect_providers(args.domain, resolver=resolver, top_n=default_top_n)
+    top_n = detect_limit if detect_limit is not None else default_top_n
+    report = detect_providers(args.domain, resolver=resolver, top_n=top_n)
     detection_output = format_detection_report(
         report,
         report_time,
