@@ -59,6 +59,41 @@ def test_provider_show_outputs_yaml(capsys, monkeypatch):
     assert "long_description:\n  Long description line 1." in out
 
 
+def test_provider_show_allows_domain_flag(capsys, monkeypatch):
+    import provider_check.cli as cli
+    from provider_check.provider_config import ProviderConfig
+
+    provider = ProviderConfig(
+        provider_id="dummy_provider",
+        name="Dummy Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    data = {
+        "name": "Dummy Provider",
+        "version": 1,
+        "records": {},
+    }
+    monkeypatch.setattr(cli, "load_provider_config_data", lambda _selection: (provider, data))
+
+    code = main(["--domain", "example.com", "--provider-show", "dummy_provider"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "name: Dummy Provider" in out
+
+
+def test_provider_show_domain_conflict_reports_error(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["example.com", "--domain", "other.com", "--provider-show", "dummy_provider"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "positional or via --domain" in err
+
+
 def test_provider_show_unknown_reports_error(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--provider-show", "missing-provider"])
