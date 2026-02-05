@@ -25,10 +25,6 @@ def _parse_txt(provider_id: str, records: dict) -> TXTConfig | None:
         return None
 
     txt_section = _require_mapping(provider_id, "txt", records.get("txt"))
-    if "required" in txt_section:
-        raise ValueError(
-            f"Provider config {provider_id} txt required is no longer supported; use records"
-        )
     records_raw = _require_mapping(provider_id, "txt records", txt_section.get("records", {}))
     records_required: Dict[str, List[str]] = {}
     for name, values in records_raw.items():

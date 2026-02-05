@@ -171,16 +171,6 @@ def test_load_provider_txt_optional_records_loaded():
     assert config.txt.records_optional == {"_optional": ["token-2"]}
 
 
-def test_load_provider_txt_required_key_rejected():
-    data = {
-        "version": "1",
-        "records": {"txt": {"required": {"_verify": ["token-1", "token-2"]}}},
-    }
-
-    with pytest.raises(ValueError, match="txt required is no longer supported"):
-        provider_config._load_provider_from_data("txt", data)
-
-
 def test_load_provider_address_records_loaded():
     data = {
         "version": "1",
