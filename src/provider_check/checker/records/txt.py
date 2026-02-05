@@ -20,7 +20,7 @@ class TxtChecksMixin:
         required: Dict[str, List[str]] = {}
         user_required = False
         if self.provider.txt:
-            required.update(self.provider.txt.required)
+            required.update(self.provider.txt.records)
             user_required = self.provider.txt.verification_required
         for name, values in self.additional_txt.items():
             required.setdefault(name, []).extend(values)
@@ -81,3 +81,71 @@ class TxtChecksMixin:
             )
 
         return RecordCheck.pass_("TXT", "TXT records present", {"required": required})
+
+    def check_txt_optional(self) -> RecordCheck:
+        """Validate optional TXT records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of the optional TXT validation.
+
+        Raises:
+            ValueError: If the provider does not define TXT requirements.
+        """
+        if not self.provider.txt:
+            raise ValueError("TXT configuration not available for provider")
+
+        optional_records = self.provider.txt.records_optional
+        if not optional_records:
+            return RecordCheck.pass_(
+                "TXT",
+                "No optional TXT records required",
+                {},
+                optional=True,
+            )
+
+        missing_names: List[str] = []
+        missing_values: Dict[str, List[str]] = {}
+        found_values: Dict[str, List[str]] = {}
+
+        for name, expected_values in optional_records.items():
+            lookup_name = self._normalize_txt_name(name)
+            try:
+                records = self.resolver.get_txt(lookup_name)
+            except DnsLookupError as err:
+                return RecordCheck.unknown(
+                    "TXT",
+                    "DNS lookup failed",
+                    {"error": str(err)},
+                    optional=True,
+                )
+            normalized_found = [" ".join(record.split()).lower() for record in records]
+            found_values[name] = records
+            if not records:
+                missing_names.append(name)
+                missing_values[name] = list(expected_values)
+                continue
+
+            for expected in expected_values:
+                normalized_expected = " ".join(str(expected).split()).lower()
+                if normalized_expected not in normalized_found:
+                    missing_values.setdefault(name, []).append(expected)
+
+        if missing_names or missing_values:
+            details: Dict[str, object] = {"missing": missing_values}
+            if missing_names:
+                details["missing_names"] = sorted(missing_names)
+            if found_values:
+                details["found"] = found_values
+            return RecordCheck.warn(
+                "TXT",
+                "Optional TXT records missing",
+                details,
+                optional=True,
+            )
+
+        return RecordCheck.pass_(
+            "TXT",
+            "Optional TXT records present",
+            {"required": optional_records},
+            optional=True,
+        )

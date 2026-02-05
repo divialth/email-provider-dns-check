@@ -78,7 +78,7 @@ def test_resolve_provider_config_applies_variables_and_domain():
             },
         ),
         txt=TXTConfig(
-            required={"_verify.{domain}": ["token-{tenant}"]},
+            records={"_verify.{domain}": ["token-{tenant}"]},
             verification_required=False,
         ),
         dmarc=DMARCConfig(
@@ -123,7 +123,7 @@ def test_resolve_provider_config_applies_variables_and_domain():
         resolved.srv.records_optional["_autodiscover._tcp"][0].target
         == "auto.tenant-a.example.test."
     )
-    assert resolved.txt.required == {"_verify.example.test": ["token-tenant-a"]}
+    assert resolved.txt.records == {"_verify.example.test": ["token-tenant-a"]}
     assert resolved.dmarc.required_rua == ["mailto:dmarc@example.test"]
     assert resolved.dmarc.required_ruf == ["mailto:forensic@example.test"]
 

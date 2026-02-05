@@ -72,7 +72,7 @@ def test_invalid_txt_verification_flag_rejected(monkeypatch, tmp_path):
     assert "bad" not in {provider.provider_id for provider in providers}
 
 
-def test_invalid_txt_required_values_rejected(monkeypatch, tmp_path):
+def test_invalid_txt_records_values_rejected(monkeypatch, tmp_path):
     _write_external_provider(
         tmp_path,
         """
@@ -80,7 +80,53 @@ def test_invalid_txt_required_values_rejected(monkeypatch, tmp_path):
         version: 1
         records:
           txt:
+            records:
+              _verify: token
+        """,
+    )
+    import provider_check.provider_config.loader as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_txt_records_conflict_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          txt:
+            records:
+              _verify:
+                - token
             required:
+              _legacy:
+                - token
+        """,
+    )
+    import provider_check.provider_config.loader as provider_config
+
+    monkeypatch.setattr(
+        provider_config, "_external_provider_dirs", lambda: [tmp_path / "providers"]
+    )
+    providers = list_providers()
+    assert "bad" not in {provider.provider_id for provider in providers}
+
+
+def test_invalid_txt_optional_values_rejected(monkeypatch, tmp_path):
+    _write_external_provider(
+        tmp_path,
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          txt:
+            records_optional:
               _verify: token
         """,
     )

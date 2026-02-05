@@ -144,11 +144,13 @@ class TXTConfig:
     """Define TXT record requirements for a provider.
 
     Attributes:
-        required (Dict[str, List[str]]): Required TXT values keyed by record name.
+        records (Dict[str, List[str]]): Required TXT values keyed by record name.
+        records_optional (Dict[str, List[str]]): Optional TXT values keyed by record name.
         verification_required (bool): Whether user verification TXT is required.
     """
 
-    required: Dict[str, List[str]]
+    records: Dict[str, List[str]]
+    records_optional: Dict[str, List[str]] = field(default_factory=dict)
     verification_required: bool = False
 
 

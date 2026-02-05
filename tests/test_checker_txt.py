@@ -16,7 +16,7 @@ def test_txt_required_values_pass():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(required={"_verify": ["token=one", "token=two"]}),
+        txt=TXTConfig(records={"_verify": ["token=one", "token=two"]}),
         dmarc=None,
     )
     domain = "example.test"
@@ -41,7 +41,7 @@ def test_txt_missing_values_fail():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(required={"_verify": ["token=one", "token=two"]}),
+        txt=TXTConfig(records={"_verify": ["token=one", "token=two"]}),
         dmarc=None,
     )
     domain = "example.test"
@@ -56,6 +56,158 @@ def test_txt_missing_values_fail():
 
     txt_result = next(r for r in results if r.record_type == "TXT")
     assert txt_result.status is Status.FAIL
+
+
+def test_txt_optional_missing_warns():
+    provider = ProviderConfig(
+        provider_id="txt_optional",
+        name="TXT Optional Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(records={}, records_optional={"_verify": ["token=one"]}),
+        dmarc=None,
+    )
+    domain = "example.test"
+    resolver = FakeResolver(txt={})
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    result = checker.check_txt_optional()
+
+    assert result.status is Status.WARN
+    assert result.optional is True
+    assert result.details["missing"]["_verify"] == ["token=one"]
+
+
+def test_txt_optional_missing_values_warns():
+    provider = ProviderConfig(
+        provider_id="txt_optional",
+        name="TXT Optional Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(records={}, records_optional={"_verify": ["token=one", "token=two"]}),
+        dmarc=None,
+    )
+    domain = "example.test"
+    resolver = FakeResolver(txt={f"_verify.{domain}": ["token=one"]})
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    result = checker.check_txt_optional()
+
+    assert result.status is Status.WARN
+    assert result.optional is True
+    assert result.details["missing"]["_verify"] == ["token=two"]
+
+
+def test_txt_optional_present_passes():
+    provider = ProviderConfig(
+        provider_id="txt_optional",
+        name="TXT Optional Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(records={}, records_optional={"_verify": ["token=one"]}),
+        dmarc=None,
+    )
+    domain = "example.test"
+    resolver = FakeResolver(txt={f"_verify.{domain}": ["token=one"]})
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    result = checker.check_txt_optional()
+
+    assert result.status is Status.PASS
+    assert result.optional is True
+
+
+def test_txt_optional_no_records_passes():
+    provider = ProviderConfig(
+        provider_id="txt_optional",
+        name="TXT Optional Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(records={}, records_optional={}),
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FakeResolver(), strict=False)
+
+    result = checker.check_txt_optional()
+
+    assert result.status is Status.PASS
+    assert result.optional is True
+
+
+def test_txt_optional_lookup_error_returns_unknown():
+    class FailingResolver(FakeResolver):
+        def get_txt(self, domain: str):
+            raise DnsLookupError("TXT", domain, RuntimeError("timeout"))
+
+    provider = ProviderConfig(
+        provider_id="txt_optional",
+        name="TXT Optional Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(records={}, records_optional={"_verify": ["token=one"]}),
+        dmarc=None,
+    )
+
+    checker = DNSChecker("example.test", provider, resolver=FailingResolver())
+    result = checker.check_txt_optional()
+
+    assert result.status is Status.UNKNOWN
+    assert result.optional is True
+
+
+def test_txt_optional_requires_config():
+    provider = ProviderConfig(
+        provider_id="txt_optional",
+        name="TXT Optional Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FakeResolver())
+
+    with pytest.raises(ValueError, match="TXT configuration not available"):
+        checker.check_txt_optional()
+
+
+def test_run_checks_includes_optional_txt():
+    provider = ProviderConfig(
+        provider_id="txt_optional",
+        name="TXT Optional Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=TXTConfig(
+            records={"_verify": ["token=one"]},
+            records_optional={"_optional": ["token=two"]},
+        ),
+        dmarc=None,
+    )
+    domain = "example.test"
+    resolver = FakeResolver(
+        txt={
+            f"_verify.{domain}": ["token=one"],
+            f"_optional.{domain}": ["token=two"],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    assert any(result.record_type == "TXT" and result.optional for result in results)
 
 
 def test_additional_txt_without_provider_config():
@@ -128,7 +280,7 @@ def test_txt_verification_required_warns_without_user_input():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(required={}, verification_required=True),
+        txt=TXTConfig(records={}, verification_required=True),
         dmarc=None,
     )
     domain = "example.test"
@@ -149,7 +301,7 @@ def test_txt_verification_required_can_be_skipped():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(required={}, verification_required=True),
+        txt=TXTConfig(records={}, verification_required=True),
         dmarc=None,
     )
     domain = "example.test"
@@ -217,7 +369,7 @@ def test_txt_lookup_error_returns_unknown():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(required={"_verify": ["token=one"]}),
+        txt=TXTConfig(records={"_verify": ["token=one"]}),
         dmarc=None,
     )
     checker = DNSChecker("example.test", provider, resolver=FailingResolver())
@@ -235,7 +387,7 @@ def test_txt_missing_records_reports_missing_names():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(required={"_verify": ["token=one"], "_verify2": ["token=two"]}),
+        txt=TXTConfig(records={"_verify": ["token=one"], "_verify2": ["token=two"]}),
         dmarc=None,
     )
     resolver = FakeResolver(txt={})
@@ -256,7 +408,7 @@ def test_txt_missing_records_include_verification_required():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(required={"_verify": ["token=one"]}, verification_required=True),
+        txt=TXTConfig(records={"_verify": ["token=one"]}, verification_required=True),
         dmarc=None,
     )
     resolver = FakeResolver(txt={})
@@ -277,7 +429,7 @@ def test_txt_verification_warning_with_required_values():
         mx=None,
         spf=None,
         dkim=None,
-        txt=TXTConfig(required={"_verify": ["token=one"]}, verification_required=True),
+        txt=TXTConfig(records={"_verify": ["token=one"]}, verification_required=True),
         dmarc=None,
     )
     resolver = FakeResolver(txt={"_verify.example.test": ["token=one"]})

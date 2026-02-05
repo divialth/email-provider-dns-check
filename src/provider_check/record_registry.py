@@ -264,6 +264,19 @@ def _enabled_txt(checker: _CheckerView) -> bool:
     )
 
 
+def _enabled_txt_optional(checker: _CheckerView) -> bool:
+    """Enable optional TXT checks when optional TXT records are present.
+
+    Args:
+        checker (_CheckerView): Checker instance to inspect.
+
+    Returns:
+        bool: True if optional TXT checks should run.
+    """
+
+    return _has_optional_records(getattr(checker.provider, "txt", None))
+
+
 def _enabled_dmarc(checker: _CheckerView) -> bool:
     """Enable DMARC checks when the provider defines DMARC rules.
 
@@ -292,6 +305,7 @@ CHECK_SPECS: tuple[CheckSpec, ...] = (
     CheckSpec("SRV", "check_srv", _enabled_srv),
     CheckSpec("SRV", "check_srv_optional", _enabled_srv_optional),
     CheckSpec("TXT", "check_txt", _enabled_txt),
+    CheckSpec("TXT", "check_txt_optional", _enabled_txt_optional),
     CheckSpec("DMARC", "check_dmarc", _enabled_dmarc),
 )
 

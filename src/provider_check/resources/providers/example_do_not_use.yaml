@@ -186,7 +186,7 @@ records:
     # Names may be relative (appended to the domain) or fully-qualified.
     # "_provider-token" is just an example name; any TXT record name can be used.
     # "@" means the zone apex (the bare domain itself).
-    required:
+    records:
       _provider-token:
         - "provisioning-key=abc123"
         - "activation-hint=def456"
@@ -194,6 +194,10 @@ records:
         - "v=example-domain-txt; flag=enabled"
       "validation.example-provider.test.":
         - "v=custom-validation; token=xyz"
+    # Optional TXT records that can be present if supported (name -> list of expected values).
+    records_optional:
+      _provider-optional:
+        - "optional-flag=true"
     # When true, the provider requires a user-supplied TXT verification record.
     # The user must pass it via --txt-verification. If omitted, the result is WARN (unless skipped).
     verification_required: true

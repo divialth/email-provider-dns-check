@@ -246,9 +246,11 @@ def resolve_provider_config(
 
     txt = None
     if provider.txt:
-        required_txt = _format_list_mapping(provider.txt.required, resolved)
+        required_txt = _format_list_mapping(provider.txt.records, resolved)
+        optional_txt = _format_list_mapping(provider.txt.records_optional, resolved)
         txt = TXTConfig(
-            required=required_txt,
+            records=required_txt,
+            records_optional=optional_txt,
             verification_required=provider.txt.verification_required,
         )
 

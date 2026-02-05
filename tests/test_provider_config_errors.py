@@ -142,7 +142,36 @@ def test_load_provider_srv_optional_requires_priority_fields():
         provider_config._load_provider_from_data("bad", data)
 
 
-def test_load_provider_txt_required_values_loaded():
+def test_load_provider_txt_records_loaded():
+    data = {
+        "version": "1",
+        "records": {"txt": {"records": {"_verify": ["token-1", "token-2"]}}},
+    }
+
+    config = provider_config._load_provider_from_data("txt", data)
+
+    assert config.txt is not None
+    assert config.txt.records == {"_verify": ["token-1", "token-2"]}
+
+
+def test_load_provider_txt_optional_records_loaded():
+    data = {
+        "version": "1",
+        "records": {
+            "txt": {
+                "records": {"_verify": ["token-1"]},
+                "records_optional": {"_optional": ["token-2"]},
+            }
+        },
+    }
+
+    config = provider_config._load_provider_from_data("txt", data)
+
+    assert config.txt is not None
+    assert config.txt.records_optional == {"_optional": ["token-2"]}
+
+
+def test_load_provider_txt_required_alias_loaded():
     data = {
         "version": "1",
         "records": {"txt": {"required": {"_verify": ["token-1", "token-2"]}}},
@@ -151,7 +180,7 @@ def test_load_provider_txt_required_values_loaded():
     config = provider_config._load_provider_from_data("txt", data)
 
     assert config.txt is not None
-    assert config.txt.required == {"_verify": ["token-1", "token-2"]}
+    assert config.txt.records == {"_verify": ["token-1", "token-2"]}
 
 
 def test_load_provider_address_records_loaded():

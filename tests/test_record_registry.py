@@ -69,7 +69,11 @@ def _build_provider() -> ProviderConfig:
                 "_sip._udp": [SRVRecord(priority=1, weight=1, port=5060, target="sip.test.")]
             },
         ),
-        txt=TXTConfig(required={"@": ["value"]}, verification_required=False),
+        txt=TXTConfig(
+            records={"@": ["value"]},
+            records_optional={"@": ["optional"]},
+            verification_required=False,
+        ),
         dmarc=DMARCConfig(
             default_policy="reject",
             required_rua=[],
