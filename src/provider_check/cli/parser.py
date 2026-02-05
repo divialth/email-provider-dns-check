@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import logging
 import time
 
 from .. import __version__
-from .parsing import _parse_dmarc_pct
+from .parsing import _parse_dmarc_pct, _parse_positive_float
 
 
 def _setup_logging(verbosity: int) -> None:
@@ -42,6 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     target_group = parser.add_argument_group("Target")
     provider_group = parser.add_argument_group("Provider selection")
     output_group = parser.add_argument_group("Output")
+    dns_group = parser.add_argument_group("DNS")
     validation_group = parser.add_argument_group("Validation options")
     dmarc_group = parser.add_argument_group("Validation options DMARC")
     spf_group = parser.add_argument_group("SPF options")
@@ -115,6 +117,33 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_const",
         const="never",
         help="Disable colorized output",
+    )
+    dns_group.add_argument(
+        "--dns-server",
+        dest="dns_servers",
+        action="append",
+        default=[],
+        help="DNS server to use for lookups (repeatable; IP or hostname)",
+    )
+    dns_group.add_argument(
+        "--dns-timeout",
+        dest="dns_timeout",
+        type=functools.partial(_parse_positive_float, label="DNS timeout"),
+        default=None,
+        help="Per-query DNS timeout in seconds",
+    )
+    dns_group.add_argument(
+        "--dns-lifetime",
+        dest="dns_lifetime",
+        type=functools.partial(_parse_positive_float, label="DNS lifetime"),
+        default=None,
+        help="Total DNS query lifetime in seconds",
+    )
+    dns_group.add_argument(
+        "--dns-tcp",
+        dest="dns_tcp",
+        action="store_true",
+        help="Use TCP for DNS lookups",
     )
     validation_group.add_argument(
         "--strict",

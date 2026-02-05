@@ -11,6 +11,7 @@ validated domain, provider name, provider version, and a report timestamp (UTC).
 - Strict mode for exact matches; standard mode warns when extras are present
 - Validates A/AAAA address records when configured
 - Configurable DMARC policy/RUA/RUF destinations and SPF policy/includes/IP entries
+- Optional custom DNS servers for lookups
 - Human, text, and JSON output; logging with UTC timestamps
 - Tested with Python 3.11+; formatted with `black`
 
@@ -151,6 +152,14 @@ These are compatible with Nagios/Icinga plugin exit codes.
 --txt NAME=VALUE              require TXT record values (repeatable)
 --txt-verification NAME=VALUE require TXT verification record values (repeatable)
 --skip-txt-verification       skip provider-required TXT verification checks
+```
+
+#### DNS options
+```text
+--dns-server SERVER   DNS server to use for lookups (repeatable; IP or hostname)
+--dns-timeout SECONDS per-query DNS timeout in seconds
+--dns-lifetime SECONDS total DNS query lifetime in seconds
+--dns-tcp             use TCP for DNS lookups
 ```
 
 #### Misc

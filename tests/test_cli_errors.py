@@ -8,6 +8,7 @@ import pytest
 from provider_check.checker import RecordCheck
 from provider_check.cli import (
     _parse_dmarc_pct,
+    _parse_positive_float,
     _parse_provider_vars,
     _parse_txt_records,
     _setup_logging,
@@ -59,6 +60,20 @@ def test_parse_dmarc_pct_rejects_non_integer():
 def test_parse_dmarc_pct_rejects_out_of_range():
     with pytest.raises(ArgumentTypeError):
         _parse_dmarc_pct("101")
+
+
+def test_parse_positive_float_rejects_non_number():
+    with pytest.raises(ArgumentTypeError):
+        _parse_positive_float("n/a", label="DNS timeout")
+
+
+def test_parse_positive_float_rejects_non_positive():
+    with pytest.raises(ArgumentTypeError):
+        _parse_positive_float("0", label="DNS timeout")
+
+
+def test_parse_positive_float_accepts_value():
+    assert _parse_positive_float("1.5", label="DNS timeout") == 1.5
 
 
 def test_domain_required_without_list_providers(capsys):

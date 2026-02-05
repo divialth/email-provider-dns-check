@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Callable
 
+from ..dns_resolver import DnsResolver
+
 from .shared import _build_dmarc_required_tags, _parse_txt_inputs
 
 
@@ -12,6 +14,7 @@ def handle_checks(
     parser: object,
     report_time: str,
     *,
+    resolver: DnsResolver,
     load_provider_config: Callable[[str], object],
     resolve_provider_config: Callable[..., object],
     parse_provider_vars: Callable[[list[str] | None], dict],
@@ -30,6 +33,7 @@ def handle_checks(
         args (object): Parsed CLI arguments.
         parser (object): Argument parser with an error() method.
         report_time (str): Report timestamp.
+        resolver (DnsResolver): DNS resolver to use for lookups.
         load_provider_config (Callable[[str], object]): Provider loader callback.
         resolve_provider_config (Callable[..., object]): Provider resolver callback.
         parse_provider_vars (Callable[[list[str] | None], dict]): Variable parser callback.
@@ -57,11 +61,16 @@ def handle_checks(
         provider.version,
     )
     logger.debug(
-        "Options: strict=%s output=%s spf_policy=%s skip_txt_verification=%s",
+        "Options: strict=%s output=%s spf_policy=%s skip_txt_verification=%s "
+        "dns_servers=%s dns_timeout=%s dns_lifetime=%s dns_tcp=%s",
         args.strict,
         args.output,
         args.spf_policy,
         args.skip_txt_verification,
+        args.dns_servers,
+        args.dns_timeout,
+        args.dns_lifetime,
+        args.dns_tcp,
     )
 
     txt_records, txt_verification_records = _parse_txt_inputs(
@@ -79,6 +88,7 @@ def handle_checks(
     checker = dns_checker_cls(
         args.domain,
         provider,
+        resolver=resolver,
         strict=args.strict,
         dmarc_rua_mailto=args.dmarc_rua_mailto,
         dmarc_ruf_mailto=args.dmarc_ruf_mailto,
