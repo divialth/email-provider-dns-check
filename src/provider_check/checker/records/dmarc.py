@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
+from ...status import Status
 from .models import RecordCheck
 
 
@@ -194,7 +195,9 @@ class DmarcChecksMixin:
         try:
             txt_records = self.resolver.get_txt(name)
         except DnsLookupError as err:
-            return RecordCheck("DMARC", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+            return RecordCheck(
+                "DMARC", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
+            )
 
         required_rua = self._effective_required_rua()
         rua_required = self._rua_required(required_rua)
@@ -206,7 +209,7 @@ class DmarcChecksMixin:
         if not txt_records:
             return RecordCheck(
                 "DMARC",
-                "FAIL",
+                Status.FAIL.value,
                 "No DMARC record found",
                 {"expected": expected},
             )
@@ -252,7 +255,7 @@ class DmarcChecksMixin:
                     continue
                 return RecordCheck(
                     "DMARC",
-                    "PASS",
+                    Status.PASS.value,
                     "DMARC record matches strict configuration",
                     {"record": record},
                 )
@@ -290,7 +293,7 @@ class DmarcChecksMixin:
             if missing_tags:
                 continue
 
-            status = "PASS"
+            status = Status.PASS.value
             message = (
                 "DMARC policy present"
                 if not rua_entries and not ruf_entries
@@ -301,7 +304,7 @@ class DmarcChecksMixin:
 
         return RecordCheck(
             "DMARC",
-            "FAIL",
+            Status.FAIL.value,
             "DMARC record does not meet guidance",
             {"expected": expected, "found": txt_records},
         )

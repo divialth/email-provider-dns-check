@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
+from ...status import Status
 from .models import RecordCheck
 
 
@@ -75,7 +76,7 @@ class AddressChecksMixin:
                 self.provider.a.records, self.resolver.get_a
             )
         except DnsLookupError as err:
-            return RecordCheck("A", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+            return RecordCheck("A", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)})
 
         if self.strict:
             if missing or extra:
@@ -86,13 +87,13 @@ class AddressChecksMixin:
                     details["extra"] = extra
                 return RecordCheck(
                     "A",
-                    "FAIL",
+                    Status.FAIL.value,
                     "A records do not exactly match required configuration",
                     details,
                 )
             return RecordCheck(
                 "A",
-                "PASS",
+                Status.PASS.value,
                 "A records match required configuration",
                 {"records": expected},
             )
@@ -100,21 +101,21 @@ class AddressChecksMixin:
         if missing:
             return RecordCheck(
                 "A",
-                "FAIL",
+                Status.FAIL.value,
                 "Missing required A records",
                 {"missing": missing, "expected": expected, "found": found},
             )
         if extra:
             return RecordCheck(
                 "A",
-                "WARN",
+                Status.WARN.value,
                 "Additional A records present; required values found",
                 {"extra": extra, "found": found, "expected": expected},
             )
 
         return RecordCheck(
             "A",
-            "PASS",
+            Status.PASS.value,
             "Required A records present",
             {"records": expected},
         )
@@ -135,7 +136,7 @@ class AddressChecksMixin:
         if not records_optional:
             return RecordCheck(
                 "A",
-                "PASS",
+                Status.PASS.value,
                 "No optional A records required",
                 {},
                 optional=True,
@@ -148,7 +149,7 @@ class AddressChecksMixin:
         except DnsLookupError as err:
             return RecordCheck(
                 "A",
-                "UNKNOWN",
+                Status.UNKNOWN.value,
                 "DNS lookup failed",
                 {"error": str(err)},
                 optional=True,
@@ -159,7 +160,7 @@ class AddressChecksMixin:
         if has_mismatch:
             return RecordCheck(
                 "A",
-                "FAIL",
+                Status.FAIL.value,
                 "A optional records mismatched",
                 {"missing": missing, "extra": extra, "found": found, "expected": expected},
                 optional=True,
@@ -167,7 +168,7 @@ class AddressChecksMixin:
         if missing:
             return RecordCheck(
                 "A",
-                "WARN",
+                Status.WARN.value,
                 "A optional records missing",
                 {"missing": missing, "found": found, "expected": expected},
                 optional=True,
@@ -175,7 +176,7 @@ class AddressChecksMixin:
 
         return RecordCheck(
             "A",
-            "PASS",
+            Status.PASS.value,
             "A optional records present",
             {"records": expected},
             optional=True,
@@ -198,7 +199,9 @@ class AddressChecksMixin:
                 self.provider.aaaa.records, self.resolver.get_aaaa
             )
         except DnsLookupError as err:
-            return RecordCheck("AAAA", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+            return RecordCheck(
+                "AAAA", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
+            )
 
         if self.strict:
             if missing or extra:
@@ -209,13 +212,13 @@ class AddressChecksMixin:
                     details["extra"] = extra
                 return RecordCheck(
                     "AAAA",
-                    "FAIL",
+                    Status.FAIL.value,
                     "AAAA records do not exactly match required configuration",
                     details,
                 )
             return RecordCheck(
                 "AAAA",
-                "PASS",
+                Status.PASS.value,
                 "AAAA records match required configuration",
                 {"records": expected},
             )
@@ -223,21 +226,21 @@ class AddressChecksMixin:
         if missing:
             return RecordCheck(
                 "AAAA",
-                "FAIL",
+                Status.FAIL.value,
                 "Missing required AAAA records",
                 {"missing": missing, "expected": expected, "found": found},
             )
         if extra:
             return RecordCheck(
                 "AAAA",
-                "WARN",
+                Status.WARN.value,
                 "Additional AAAA records present; required values found",
                 {"extra": extra, "found": found, "expected": expected},
             )
 
         return RecordCheck(
             "AAAA",
-            "PASS",
+            Status.PASS.value,
             "Required AAAA records present",
             {"records": expected},
         )
@@ -258,7 +261,7 @@ class AddressChecksMixin:
         if not records_optional:
             return RecordCheck(
                 "AAAA",
-                "PASS",
+                Status.PASS.value,
                 "No optional AAAA records required",
                 {},
                 optional=True,
@@ -271,7 +274,7 @@ class AddressChecksMixin:
         except DnsLookupError as err:
             return RecordCheck(
                 "AAAA",
-                "UNKNOWN",
+                Status.UNKNOWN.value,
                 "DNS lookup failed",
                 {"error": str(err)},
                 optional=True,
@@ -282,7 +285,7 @@ class AddressChecksMixin:
         if has_mismatch:
             return RecordCheck(
                 "AAAA",
-                "FAIL",
+                Status.FAIL.value,
                 "AAAA optional records mismatched",
                 {"missing": missing, "extra": extra, "found": found, "expected": expected},
                 optional=True,
@@ -290,7 +293,7 @@ class AddressChecksMixin:
         if missing:
             return RecordCheck(
                 "AAAA",
-                "WARN",
+                Status.WARN.value,
                 "AAAA optional records missing",
                 {"missing": missing, "found": found, "expected": expected},
                 optional=True,
@@ -298,7 +301,7 @@ class AddressChecksMixin:
 
         return RecordCheck(
             "AAAA",
-            "PASS",
+            Status.PASS.value,
             "AAAA optional records present",
             {"records": expected},
             optional=True,

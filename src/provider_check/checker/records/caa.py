@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
+from ...status import Status
 from .models import RecordCheck
 
 
@@ -97,7 +98,9 @@ class CaaChecksMixin:
                 self.provider.caa.records, strict=self.strict
             )
         except DnsLookupError as err:
-            return RecordCheck("CAA", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+            return RecordCheck(
+                "CAA", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
+            )
 
         if self.strict and (missing or extra):
             details: Dict[str, object] = {"expected": expected, "found": found}
@@ -107,7 +110,7 @@ class CaaChecksMixin:
                 details["extra"] = extra
             return RecordCheck(
                 "CAA",
-                "FAIL",
+                Status.FAIL.value,
                 "CAA records do not exactly match required configuration",
                 details,
             )
@@ -115,14 +118,14 @@ class CaaChecksMixin:
         if missing:
             return RecordCheck(
                 "CAA",
-                "FAIL",
+                Status.FAIL.value,
                 "Missing required CAA records",
                 {"missing": missing, "expected": expected, "found": found},
             )
 
         return RecordCheck(
             "CAA",
-            "PASS",
+            Status.PASS.value,
             "Required CAA records present",
             {"records": expected},
         )
@@ -143,7 +146,7 @@ class CaaChecksMixin:
         if not records_optional:
             return RecordCheck(
                 "CAA",
-                "PASS",
+                Status.PASS.value,
                 "No optional CAA records required",
                 {},
                 optional=True,
@@ -156,7 +159,7 @@ class CaaChecksMixin:
         except DnsLookupError as err:
             return RecordCheck(
                 "CAA",
-                "UNKNOWN",
+                Status.UNKNOWN.value,
                 "DNS lookup failed",
                 {"error": str(err)},
                 optional=True,
@@ -165,7 +168,7 @@ class CaaChecksMixin:
         if missing:
             return RecordCheck(
                 "CAA",
-                "WARN",
+                Status.WARN.value,
                 "CAA optional records missing",
                 {"missing": missing, "expected": expected, "found": found},
                 optional=True,
@@ -173,7 +176,7 @@ class CaaChecksMixin:
 
         return RecordCheck(
             "CAA",
-            "PASS",
+            Status.PASS.value,
             "CAA optional records present",
             {"records": expected},
             optional=True,

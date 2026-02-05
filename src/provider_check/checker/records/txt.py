@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
+from ...status import Status
 from .models import RecordCheck
 
 
@@ -38,11 +39,11 @@ class TxtChecksMixin:
             if verification_warning:
                 return RecordCheck(
                     "TXT",
-                    "WARN",
+                    Status.WARN.value,
                     "TXT record required for domain verification",
                     {"required": "user-supplied TXT verification value"},
                 )
-            return RecordCheck("TXT", "PASS", "No TXT records required", {})
+            return RecordCheck("TXT", Status.PASS.value, "No TXT records required", {})
 
         missing_names: List[str] = []
         missing_values: Dict[str, List[str]] = {}
@@ -53,7 +54,9 @@ class TxtChecksMixin:
             try:
                 records = self.resolver.get_txt(lookup_name)
             except DnsLookupError as err:
-                return RecordCheck("TXT", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+                return RecordCheck(
+                    "TXT", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
+                )
             normalized_found = [" ".join(record.split()).lower() for record in records]
             found_values[name] = records
             if not records:
@@ -72,14 +75,16 @@ class TxtChecksMixin:
                 details["missing_names"] = sorted(missing_names)
             if verification_warning:
                 details["verification_required"] = "user-supplied TXT verification value"
-            return RecordCheck("TXT", "FAIL", "TXT records missing required values", details)
+            return RecordCheck(
+                "TXT", Status.FAIL.value, "TXT records missing required values", details
+            )
 
         if verification_warning:
             return RecordCheck(
                 "TXT",
-                "WARN",
+                Status.WARN.value,
                 "TXT record required for domain verification",
                 {"required": "user-supplied TXT verification value"},
             )
 
-        return RecordCheck("TXT", "PASS", "TXT records present", {"required": required})
+        return RecordCheck("TXT", Status.PASS.value, "TXT records present", {"required": required})

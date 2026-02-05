@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
+from ...status import Status
 from .models import RecordCheck
 
 
@@ -40,7 +41,9 @@ class DkimChecksMixin:
                 try:
                     target = self.resolver.get_cname(name)
                 except DnsLookupError as err:
-                    return RecordCheck("DKIM", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+                    return RecordCheck(
+                        "DKIM", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
+                    )
                 if target is None:
                     missing.append(name)
                     continue
@@ -61,7 +64,9 @@ class DkimChecksMixin:
                 try:
                     txt_records = self.resolver.get_txt(name)
                 except DnsLookupError as err:
-                    return RecordCheck("DKIM", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+                    return RecordCheck(
+                        "DKIM", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
+                    )
                 if not txt_records:
                     missing.append(name)
                     continue
@@ -77,7 +82,7 @@ class DkimChecksMixin:
                     selectors_map[name] = "present"
 
         if missing or wrong_target:
-            status = "FAIL" if self.strict or missing else "WARN"
+            status = Status.FAIL.value if self.strict or missing else Status.WARN.value
             return RecordCheck(
                 "DKIM",
                 status,
@@ -93,7 +98,7 @@ class DkimChecksMixin:
 
         return RecordCheck(
             "DKIM",
-            "PASS",
+            Status.PASS.value,
             "All DKIM selectors configured",
             {"selectors": selectors_map},
         )

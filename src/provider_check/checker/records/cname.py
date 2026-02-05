@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
+from ...status import Status
 from .models import RecordCheck
 
 
@@ -62,12 +63,14 @@ class CnameChecksMixin:
                 self.provider.cname.records
             )
         except DnsLookupError as err:
-            return RecordCheck("CNAME", "UNKNOWN", "DNS lookup failed", {"error": str(err)})
+            return RecordCheck(
+                "CNAME", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
+            )
 
         if missing or mismatched:
             return RecordCheck(
                 "CNAME",
-                "FAIL",
+                Status.FAIL.value,
                 "CNAME records do not match required configuration",
                 {
                     "missing": missing,
@@ -79,7 +82,7 @@ class CnameChecksMixin:
 
         return RecordCheck(
             "CNAME",
-            "PASS",
+            Status.PASS.value,
             "Required CNAME records present",
             {"records": expected_targets},
         )
@@ -100,7 +103,7 @@ class CnameChecksMixin:
         if not records_optional:
             return RecordCheck(
                 "CNAME",
-                "PASS",
+                Status.PASS.value,
                 "No optional CNAME records required",
                 {},
                 optional=True,
@@ -113,14 +116,14 @@ class CnameChecksMixin:
         except DnsLookupError as err:
             return RecordCheck(
                 "CNAME",
-                "UNKNOWN",
+                Status.UNKNOWN.value,
                 "DNS lookup failed",
                 {"error": str(err)},
                 optional=True,
             )
 
         if missing or mismatched:
-            status = "FAIL" if mismatched else "WARN"
+            status = Status.FAIL.value if mismatched else Status.WARN.value
             message = (
                 "CNAME optional records mismatched"
                 if mismatched
@@ -141,7 +144,7 @@ class CnameChecksMixin:
 
         return RecordCheck(
             "CNAME",
-            "PASS",
+            Status.PASS.value,
             "CNAME optional records present",
             {"records": expected_targets},
             optional=True,
