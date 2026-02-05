@@ -91,6 +91,40 @@ def test_parse_positive_int_accepts_value():
     assert _parse_positive_int("3", label="Provider detect limit") == 3
 
 
+def test_verbose_flag_sets_info_logging(monkeypatch):
+    import provider_check.cli as cli
+
+    captured = {}
+
+    def _fake_basic_config(**kwargs):
+        captured["level"] = kwargs.get("level")
+
+    monkeypatch.setattr(cli.logging, "basicConfig", _fake_basic_config)
+    provider = ProviderConfig(
+        provider_id="dummy",
+        name="Dummy",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=None,
+        txt=None,
+        dmarc=None,
+    )
+    monkeypatch.setattr(cli, "load_provider_config", lambda _selection: provider)
+    monkeypatch.setattr(cli, "resolve_provider_config", lambda prov, *_args, **_kwargs: prov)
+
+    class _DummyChecker:
+        def run_checks(self):
+            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+
+    monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
+    monkeypatch.setattr(cli, "summarize_status", lambda _results: "PASS")
+
+    code = main(["example.com", "--provider", "dummy", "--verbose", "--output", "json"])
+    assert code == 0
+    assert captured["level"] == cli.logging.INFO
+
+
 def test_domain_required_without_list_providers(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--provider", "dummy"])

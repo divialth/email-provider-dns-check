@@ -29,6 +29,17 @@ def test_list_providers_handles_empty(capsys, monkeypatch):
     assert out == ""
 
 
+def test_list_providers_alias_works(capsys, monkeypatch):
+    import provider_check.cli as cli
+
+    monkeypatch.setattr(cli, "list_providers", lambda: [])
+
+    code = main(["--list-providers"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert out == ""
+
+
 def test_providers_dir_used_for_list(capsys, tmp_path):
     provider_id = "custom_provider"
     _write_provider_config(tmp_path / f"{provider_id}.yaml", provider_id)

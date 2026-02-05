@@ -46,3 +46,25 @@ def test_no_color_overrides_always(monkeypatch, capsys):
     assert code == 0
     out = capsys.readouterr().out
     assert "\x1b[" not in out
+
+
+def test_no_color_flag_disables_color(monkeypatch, capsys):
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    _patch_provider_and_checker(monkeypatch)
+
+    code = main(["example.com", "--provider", "dummy", "--output", "text", "--no-color"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "\x1b[" not in out
+
+
+def test_color_never_disables_color(monkeypatch, capsys):
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    _patch_provider_and_checker(monkeypatch)
+
+    code = main(["example.com", "--provider", "dummy", "--output", "text", "--color", "never"])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "\x1b[" not in out
