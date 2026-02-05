@@ -17,6 +17,7 @@ PROJECT GOALS:
 -  Provider configs must include a version tag and can define any subset of record types.
 -  Validate only the record types present in the selected provider config.
 -  Provide a stable runner API via `run_checks(CheckRequest) -> CheckResult` and `run_detection(DetectionRequest) -> DetectionResult`.
+-  Use cached DNS lookups during provider detection to avoid redundant queries.
 -  Allow users to specify the domain to check via command-line arguments.
 -  Allow users to specify verbosity level for logging output.
 -  Provide a help message for command-line usage.

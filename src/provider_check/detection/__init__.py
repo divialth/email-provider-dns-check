@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from ..checker import DNSChecker
-from ..dns_resolver import DnsResolver
+from ..dns_resolver import CachingResolver, DnsResolver
 from ..provider_config import ProviderConfig, list_providers, resolve_provider_config
 from ..record_registry import CORE_RECORD_TYPES, TYPE_WEIGHTS
 from .inference import (
@@ -85,6 +85,8 @@ def detect_providers(
     """
     normalized_domain = domain.lower().strip()
     resolver = resolver or DnsResolver()
+    if not isinstance(resolver, CachingResolver):
+        resolver = CachingResolver(resolver)
     candidates: List[DetectionCandidate] = []
     providers = (
         list_providers() if provider_dirs is None else list_providers(provider_dirs=provider_dirs)
