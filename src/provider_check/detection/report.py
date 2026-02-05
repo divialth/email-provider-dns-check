@@ -5,6 +5,8 @@ from __future__ import annotations
 import dataclasses
 from typing import Dict, List, Optional
 
+from ..status import Status
+
 DEFAULT_TOP_N = 3
 
 
@@ -48,7 +50,7 @@ class DetectionReport:
         candidates (List[DetectionCandidate]): Top candidate matches.
         selected (Optional[DetectionCandidate]): Selected provider if unambiguous.
         ambiguous (bool): Whether the top candidates are tied.
-        status (str): Overall detection status.
+        status (Status): Overall detection status.
         top_n (int): Number of candidates requested.
     """
 
@@ -56,5 +58,5 @@ class DetectionReport:
     candidates: List[DetectionCandidate]
     selected: Optional[DetectionCandidate]
     ambiguous: bool
-    status: str
+    status: Status
     top_n: int = DEFAULT_TOP_N

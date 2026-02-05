@@ -5,7 +5,7 @@ from provider_check.output import to_json
 
 
 def test_to_json_includes_provider_and_domain():
-    results = [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+    results = [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
 
     payload = json.loads(to_json(results, "example.com", "2026-01-31 19:37", "dummy-provider", "9"))
 

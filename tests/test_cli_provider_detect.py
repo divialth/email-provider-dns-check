@@ -7,6 +7,7 @@ from provider_check.checker import RecordCheck
 from provider_check.detection import DetectionCandidate, DetectionReport
 from provider_check.provider_config import ProviderConfig
 from provider_check.cli import _build_detection_payload, _format_detection_report, main
+from provider_check.status import Status
 
 
 def _patch_fixed_datetime(monkeypatch):
@@ -35,7 +36,14 @@ def _candidate(provider_id="dummy"):
     )
 
 
-def _report(candidate=None, *, status="PASS", ambiguous=False, selected=True, top_n=3):
+def _report(
+    candidate=None,
+    *,
+    status: Status = Status.PASS,
+    ambiguous: bool = False,
+    selected: bool = True,
+    top_n: int = 3,
+):
     candidates = [candidate] if candidate else []
     return DetectionReport(
         domain="example.com",
@@ -117,7 +125,7 @@ def test_provider_detect_passes_provider_dirs(monkeypatch, tmp_path):
 
 
 def test_format_detection_report_handles_empty_candidates():
-    report = _report(None, status="UNKNOWN", ambiguous=False, selected=False)
+    report = _report(None, status=Status.UNKNOWN, ambiguous=False, selected=False)
     output = _format_detection_report(report, "2026-02-02 12:00")
     assert "No matching providers detected." in output
 
@@ -135,7 +143,7 @@ def test_format_detection_report_includes_vars_and_na_score():
         record_statuses={},
         core_pass_records=[],
     )
-    report = _report(candidate, status="UNKNOWN", ambiguous=False, selected=False)
+    report = _report(candidate, status=Status.UNKNOWN, ambiguous=False, selected=False)
     output = _format_detection_report(report, "2026-02-02 12:00")
     assert "score n/a" in output
     assert "vars: tenant=acme" in output
@@ -155,14 +163,14 @@ def test_format_detection_report_includes_optional_bonus():
         core_pass_records=["MX"],
         optional_bonus=3,
     )
-    report = _report(candidate, status="PASS", ambiguous=False, selected=True)
+    report = _report(candidate, status=Status.PASS, ambiguous=False, selected=True)
     output = _format_detection_report(report, "2026-02-02 12:00")
 
     assert "optional bonus: 3" in output
 
 
 def test_build_detection_payload_without_selected_provider():
-    report = _report(None, status="UNKNOWN", ambiguous=False, selected=False)
+    report = _report(None, status=Status.UNKNOWN, ambiguous=False, selected=False)
     payload = _build_detection_payload(report, "2026-02-02 12:00")
     assert payload["selected_provider"] is None
 
@@ -174,7 +182,7 @@ def test_provider_autoselect_ambiguous_returns_unknown(monkeypatch, capsys):
         candidates=[_candidate("a"), _candidate("b")],
         selected=None,
         ambiguous=True,
-        status="UNKNOWN",
+        status=Status.UNKNOWN,
         top_n=3,
     )
     import provider_check.cli as cli
@@ -210,7 +218,7 @@ def test_provider_autoselect_runs_checks(monkeypatch, capsys):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+            return [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
 
@@ -243,7 +251,7 @@ def test_provider_autoselect_warn_exit(monkeypatch):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "WARN", "warn", {"found": ["mx"]})]
+            return [RecordCheck.warn("MX", "warn", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
 
@@ -288,7 +296,7 @@ def test_provider_autoselect_human_fail(monkeypatch):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "FAIL", "fail", {"found": ["mx"]})]
+            return [RecordCheck.fail("MX", "fail", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
 
@@ -317,13 +325,17 @@ def test_provider_autoselect_json_statuses(monkeypatch, capsys):
     monkeypatch.setattr(cli, "resolve_provider_config", lambda prov, *_args, **_kwargs: prov)
 
     class _DummyChecker:
-        def __init__(self, status):
+        def __init__(self, status: Status):
             self.status = status
 
         def run_checks(self):
-            return [RecordCheck("MX", self.status, "status", {"found": ["mx"]})]
+            return [RecordCheck.with_status("MX", self.status, "status", {"found": ["mx"]})]
 
-    for status, expected_code in [("PASS", 0), ("WARN", 1), ("FAIL", 2)]:
+    for status, expected_code in [
+        (Status.PASS, 0),
+        (Status.WARN, 1),
+        (Status.FAIL, 2),
+    ]:
         monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker(status))
         code = main(
             [
@@ -368,10 +380,10 @@ def test_provider_autoselect_json_unknown(monkeypatch, capsys):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+            return [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
-    monkeypatch.setattr(cli, "summarize_status", lambda _results: "UNKNOWN")
+    monkeypatch.setattr(cli, "summarize_status", lambda _results: Status.UNKNOWN)
 
     code = main(["example.com", "--provider-autoselect", "--output", "json"])
     assert code == 3
@@ -487,10 +499,10 @@ def test_provider_autoselect_text_unknown(monkeypatch):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+            return [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
-    monkeypatch.setattr(cli, "summarize_status", lambda _results: "UNKNOWN")
+    monkeypatch.setattr(cli, "summarize_status", lambda _results: Status.UNKNOWN)
 
     code = main(["example.com", "--provider-autoselect", "--output", "text"])
     assert code == 3

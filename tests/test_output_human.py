@@ -4,10 +4,9 @@ from provider_check.output import to_human
 
 def test_to_human_renders_table():
     results = [
-        RecordCheck("MX", "PASS", "ok", {"found": ["mx"]}),
-        RecordCheck(
+        RecordCheck.pass_("MX", "ok", {"found": ["mx"]}),
+        RecordCheck.warn(
             "SPF",
-            "WARN",
             "extra",
             {"record": "v=spf1 include:example.test ~all", "extras": ["include:other"]},
         ),
@@ -32,9 +31,7 @@ def test_to_human_includes_dkim_selectors():
         "SEL1._domainkey.example.com": "SEL1._domainkey.provider.test.",
         "SEL2._domainkey.example.com": "SEL2._domainkey.provider.test.",
     }
-    results = [
-        RecordCheck("DKIM", "PASS", "All DKIM selectors configured", {"selectors": selectors})
-    ]
+    results = [RecordCheck.pass_("DKIM", "All DKIM selectors configured", {"selectors": selectors})]
 
     table = to_human(results, "example.com", "2026-01-31 19:37", "dummy-provider", "9")
 
@@ -48,9 +45,8 @@ def test_dkim_human_summary_details_blank():
         "SEL1._domainkey.example.com": "SEL1._domainkey.provider.test.",
         "SEL2._domainkey.example.com": "SEL2._domainkey.provider.test.",
     }
-    result = RecordCheck(
+    result = RecordCheck.fail(
         "DKIM",
-        "FAIL",
         "DKIM selectors not fully aligned",
         {
             "missing": ["SEL2._domainkey.example.com"],
@@ -79,7 +75,7 @@ def test_to_human_uses_custom_template(monkeypatch, tmp_path):
         encoding="utf-8",
     )
 
-    results = [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+    results = [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
     output = to_human(
         results,
         "example.com",

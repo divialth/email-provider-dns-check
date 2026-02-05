@@ -12,6 +12,7 @@ def test_api_exports_runner_objects() -> None:
     assert api.DetectionResult is runner.DetectionResult
     assert api.ExitCodes is status.ExitCodes
     assert api.Status is status.Status
+    assert api.coerce_status is status.coerce_status
     assert api.exit_code_for_status is status.exit_code_for_status
 
 
@@ -29,6 +30,7 @@ def test_api_all_exports() -> None:
         "ProviderConfig",
         "ExitCodes",
         "Status",
+        "coerce_status",
         "exit_code_for_status",
         "list_providers",
         "load_provider_config",

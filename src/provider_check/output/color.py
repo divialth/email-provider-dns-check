@@ -43,24 +43,25 @@ def visible_len(value: str) -> int:
     return len(strip_ansi(value))
 
 
-def make_status_colorizer(enabled: bool) -> Callable[[str], str]:
+def make_status_colorizer(enabled: bool) -> Callable[[str | Status], str]:
     """Build a status colorizer based on a flag.
 
     Args:
         enabled (bool): Whether ANSI colors should be applied.
 
     Returns:
-        Callable[[str], str]: Colorizer function that is safe for any string.
+        Callable[[str | Status], str]: Colorizer function that is safe for any string.
     """
     if not enabled:
         return lambda text: text
 
-    def _colorize(text: str) -> str:
-        """Colorize a status string when it matches a known status."""
-        code = _STATUS_COLORS.get(text)
+    def _colorize(text: str | Status) -> str:
+        """Colorize a status value when it matches a known status."""
+        status_value = text.value if isinstance(text, Status) else text
+        code = _STATUS_COLORS.get(status_value)
         if not code:
-            return text
-        return f"{code}{text}{_ANSI_RESET}"
+            return status_value
+        return f"{code}{status_value}{_ANSI_RESET}"
 
     return _colorize
 

@@ -17,7 +17,7 @@ def _build_cname_rows(result: dict) -> List[dict]:
         List[dict]: Row dicts for output.
     """
     details = result["details"]
-    expected = details.get("expected") or details.get("records") or {}
+    expected = details.get("expected") or {}
     found = details.get("found", {})
     missing = set(details.get("missing", []))
     mismatched = details.get("mismatched", {})

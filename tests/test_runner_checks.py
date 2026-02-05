@@ -4,6 +4,7 @@ import pytest
 
 from provider_check.provider_config import ProviderConfig
 from provider_check.runner import CheckRequest, run_checks
+from provider_check.status import Status
 from tests.support import FakeResolver
 
 
@@ -43,7 +44,7 @@ def test_run_checks_success(tmp_path: Path) -> None:
         )
     )
     assert result.exit_code == 0
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert "report for domain example.com" in result.output
 
 

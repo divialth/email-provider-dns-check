@@ -21,6 +21,7 @@ def _serialize_results(results: List[RecordCheck]) -> List[dict]:
     """
     serialized: List[dict] = []
     for result in results:
+        status_value = result.status.value
         details = dict(result.details)
         selectors: dict = {}
         selector_rows: List[dict] = []
@@ -40,16 +41,12 @@ def _serialize_results(results: List[RecordCheck]) -> List[dict]:
                         row_details["expected"] = expected_targets[selector]
                     if selector in missing:
                         row_status = (
-                            Status.FAIL.value
-                            if result.status == Status.FAIL.value
-                            else Status.WARN.value
+                            Status.FAIL.value if result.status is Status.FAIL else Status.WARN.value
                         )
                         row_message = "DKIM selector missing"
                     elif selector in mismatched:
                         row_status = (
-                            Status.FAIL.value
-                            if result.status == Status.FAIL.value
-                            else Status.WARN.value
+                            Status.FAIL.value if result.status is Status.FAIL else Status.WARN.value
                         )
                         row_message = "DKIM selector mismatched"
                         row_details["found"] = mismatched[selector]
@@ -75,7 +72,7 @@ def _serialize_results(results: List[RecordCheck]) -> List[dict]:
                     )
         payload = {
             "record_type": result.record_type,
-            "status": result.status,
+            "status": status_value,
             "message": result.message,
             "details": details,
             "optional": result.optional,

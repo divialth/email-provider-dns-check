@@ -8,6 +8,7 @@ from provider_check.provider_config import (
     ProviderVariable,
     SPFConfig,
 )
+from provider_check.status import Status
 from tests.support import FakeResolver
 
 
@@ -33,7 +34,7 @@ def test_detect_providers_selects_best_match(monkeypatch):
 
     report = detect_providers("example.com", resolver=resolver, top_n=3)
 
-    assert report.status == "PASS"
+    assert report.status is Status.PASS
     assert report.selected is not None
     assert report.selected.provider_id == "alpha"
     assert report.candidates[0].provider_id == "alpha"
@@ -58,7 +59,7 @@ def test_detect_providers_supports_a_only(monkeypatch):
 
     report = detect_providers("example.com", resolver=resolver, top_n=3)
 
-    assert report.status == "PASS"
+    assert report.status is Status.PASS
     assert report.selected is not None
     assert report.selected.provider_id == "a_only"
 
@@ -82,7 +83,7 @@ def test_detect_providers_supports_aaaa_only(monkeypatch):
 
     report = detect_providers("example.com", resolver=resolver, top_n=3)
 
-    assert report.status == "PASS"
+    assert report.status is Status.PASS
     assert report.selected is not None
     assert report.selected.provider_id == "aaaa_only"
 
@@ -95,7 +96,7 @@ def test_detect_providers_marks_tie_as_ambiguous(monkeypatch):
 
     report = detect_providers("example.com", resolver=resolver, top_n=3)
 
-    assert report.status == "UNKNOWN"
+    assert report.status is Status.UNKNOWN
     assert report.selected is None
     assert report.ambiguous is True
     assert {candidate.provider_id for candidate in report.candidates} == {"alpha", "beta"}
@@ -128,7 +129,7 @@ def test_detect_providers_breaks_ratio_ties_by_score(monkeypatch):
 
     report = detect_providers("example.com", resolver=resolver, top_n=3)
 
-    assert report.status == "PASS"
+    assert report.status is Status.PASS
     assert report.ambiguous is False
     assert report.selected is not None
     assert report.selected.provider_id == "beta"
@@ -169,7 +170,7 @@ def test_detect_providers_breaks_ties_with_optional_bonus(monkeypatch):
 
     report = detect_providers("example.com", resolver=resolver, top_n=3)
 
-    assert report.status == "PASS"
+    assert report.status is Status.PASS
     assert report.selected is not None
     assert report.selected.provider_id == "alpha"
     assert report.ambiguous is False
@@ -189,7 +190,7 @@ def test_detect_providers_infers_variables(monkeypatch):
 
     report = detect_providers("example.com", resolver=resolver, top_n=3)
 
-    assert report.status == "PASS"
+    assert report.status is Status.PASS
     assert report.selected is not None
     assert report.selected.inferred_variables["custom_domain_dashes"] == "example-com"
 
@@ -202,6 +203,6 @@ def test_detect_providers_skips_missing_required_variables(monkeypatch):
 
     report = detect_providers("example.com", resolver=resolver, top_n=3)
 
-    assert report.status == "UNKNOWN"
+    assert report.status is Status.UNKNOWN
     assert report.selected is None
     assert report.candidates == []

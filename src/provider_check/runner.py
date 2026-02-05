@@ -15,7 +15,7 @@ from .detection.formatting import build_detection_payload, format_detection_repo
 from .dns_resolver import DnsResolver
 from .output import build_json_payload, summarize_status, to_human, to_json, to_text
 from .provider_config import load_provider_config, resolve_provider_config
-from .status import Status, exit_code_for_status
+from .status import Status, coerce_status, exit_code_for_status
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,17 +87,17 @@ class CheckRequest:
         additional_txt_verification (dict[str, list[str]]): Extra TXT verification values.
         skip_txt_verification (bool): Skip provider-required TXT verification checks.
         output (str): Output format (text, json, or human).
-        colorize_status (Callable[[str], str] | None): Status colorizer callback.
+        colorize_status (Callable[[str | Status], str] | None): Status colorizer callback.
         report_time (Optional[str]): Report timestamp (UTC).
         resolver (Optional[DnsResolver]): DNS resolver to use.
         load_provider_config_fn (Optional[Callable[..., object]]): Provider loader override.
         resolve_provider_config_fn (Optional[Callable[..., object]]): Provider resolver override.
         dns_checker_cls (Optional[type]): DNS checker class override.
-        summarize_status_fn (Optional[Callable[[List[RecordCheck]], str]]): Summary override.
+        summarize_status_fn (Optional[Callable[[List[RecordCheck]], Status | str]]): Summary override.
         load_provider_config_fn (Optional[Callable[..., object]]): Provider loader override.
         resolve_provider_config_fn (Optional[Callable[..., object]]): Provider resolver override.
         dns_checker_cls (Optional[type]): DNS checker class override.
-        summarize_status_fn (Optional[Callable[[List[RecordCheck]], str]]): Summary override.
+        summarize_status_fn (Optional[Callable[[List[RecordCheck]], Status | str]]): Summary override.
     """
 
     domain: str
@@ -117,17 +117,17 @@ class CheckRequest:
     additional_txt_verification: dict[str, list[str]] = field(default_factory=dict)
     skip_txt_verification: bool = False
     output: str = "human"
-    colorize_status: Optional[Callable[[str], str]] = None
+    colorize_status: Optional[Callable[[str | Status], str]] = None
     report_time: Optional[str] = None
     resolver: Optional[DnsResolver] = None
     load_provider_config_fn: Optional[Callable[..., object]] = None
     resolve_provider_config_fn: Optional[Callable[..., object]] = None
     dns_checker_cls: Optional[type] = None
-    summarize_status_fn: Optional[Callable[[List[RecordCheck]], str]] = None
+    summarize_status_fn: Optional[Callable[[List[RecordCheck]], Status | str]] = None
     load_provider_config_fn: Optional[Callable[..., object]] = None
     resolve_provider_config_fn: Optional[Callable[..., object]] = None
     dns_checker_cls: Optional[type] = None
-    summarize_status_fn: Optional[Callable[[List[RecordCheck]], str]] = None
+    summarize_status_fn: Optional[Callable[[List[RecordCheck]], Status | str]] = None
 
 
 @dataclass(frozen=True)
@@ -137,7 +137,7 @@ class CheckResult:
     Attributes:
         output (str): Rendered output string.
         exit_code (int): Exit code derived from summary status.
-        status (str): Summary status string.
+        status (Status): Summary status value.
         report_time (str): Report timestamp (UTC).
         provider_name (str): Provider display name.
         provider_version (str): Provider configuration version.
@@ -146,7 +146,7 @@ class CheckResult:
 
     output: str
     exit_code: int
-    status: str
+    status: Status
     report_time: str
     provider_name: str
     provider_version: str
@@ -210,7 +210,7 @@ def run_checks(request: CheckRequest) -> CheckResult:
         skip_txt_verification=request.skip_txt_verification,
     )
     results = checker.run_checks()
-    status = summarize(results)
+    status = coerce_status(summarize(results))
     exit_code = exit_code_for_status(status)
 
     if request.output == "json":
@@ -267,14 +267,14 @@ class DetectionRequest:
         additional_txt_verification (dict[str, list[str]]): Extra TXT verification values.
         skip_txt_verification (bool): Skip provider-required TXT verification checks.
         output (str): Output format (text, json, or human).
-        colorize_status (Callable[[str], str] | None): Status colorizer callback.
+        colorize_status (Callable[[str | Status], str] | None): Status colorizer callback.
         report_time (Optional[str]): Report timestamp (UTC).
         resolver (Optional[DnsResolver]): DNS resolver to use.
         detect_providers_fn (Optional[Callable[..., DetectionReport]]): Detection override.
         load_provider_config_fn (Optional[Callable[..., object]]): Provider loader override.
         resolve_provider_config_fn (Optional[Callable[..., object]]): Provider resolver override.
         dns_checker_cls (Optional[type]): DNS checker class override.
-        summarize_status_fn (Optional[Callable[[List[RecordCheck]], str]]): Summary override.
+        summarize_status_fn (Optional[Callable[[List[RecordCheck]], Status | str]]): Summary override.
     """
 
     domain: str
@@ -294,14 +294,14 @@ class DetectionRequest:
     additional_txt_verification: dict[str, list[str]] = field(default_factory=dict)
     skip_txt_verification: bool = False
     output: str = "human"
-    colorize_status: Optional[Callable[[str], str]] = None
+    colorize_status: Optional[Callable[[str | Status], str]] = None
     report_time: Optional[str] = None
     resolver: Optional[DnsResolver] = None
     detect_providers_fn: Optional[Callable[..., DetectionReport]] = None
     load_provider_config_fn: Optional[Callable[..., object]] = None
     resolve_provider_config_fn: Optional[Callable[..., object]] = None
     dns_checker_cls: Optional[type] = None
-    summarize_status_fn: Optional[Callable[[List[RecordCheck]], str]] = None
+    summarize_status_fn: Optional[Callable[[List[RecordCheck]], Status | str]] = None
 
 
 @dataclass(frozen=True)
@@ -311,7 +311,7 @@ class DetectionResult:
     Attributes:
         output (str): Rendered output string.
         exit_code (int): Exit code derived from detection or check status.
-        status (str): Summary status string.
+        status (Status): Summary status value.
         report_time (str): Report timestamp (UTC).
         report (DetectionReport): Detection report payload.
         results (Optional[List[RecordCheck]]): Check results when autoselect ran.
@@ -319,7 +319,7 @@ class DetectionResult:
 
     output: str
     exit_code: int
-    status: str
+    status: Status
     report_time: str
     report: DetectionReport
     results: Optional[List[RecordCheck]] = None
@@ -384,13 +384,13 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
             detection_payload["report"] = build_json_payload(
                 results, request.domain, report_time, provider.name, provider.version
             )
-            status = summarize(results)
+            status = coerce_status(summarize(results))
             exit_code = exit_code_for_status(status)
         else:
             exit_code = (
-                exit_code_for_status(Status.PASS.value)
-                if report.status == Status.PASS.value and not report.ambiguous
-                else exit_code_for_status(Status.UNKNOWN.value)
+                exit_code_for_status(Status.PASS)
+                if report.status is Status.PASS and not report.ambiguous
+                else exit_code_for_status(Status.UNKNOWN)
             )
         rendered = json.dumps(detection_payload, indent=2)
         return DetectionResult(
@@ -430,7 +430,7 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
             skip_txt_verification=request.skip_txt_verification,
         )
         results = checker.run_checks()
-        status = summarize(results)
+        status = coerce_status(summarize(results))
         exit_code = exit_code_for_status(status)
         if request.output == "human":
             check_output = to_human(
@@ -453,9 +453,9 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
         rendered = f"{detection_output}\n\n{check_output}"
     else:
         exit_code = (
-            exit_code_for_status(Status.PASS.value)
-            if report.status == Status.PASS.value and not report.ambiguous
-            else exit_code_for_status(Status.UNKNOWN.value)
+            exit_code_for_status(Status.PASS)
+            if report.status is Status.PASS and not report.ambiguous
+            else exit_code_for_status(Status.UNKNOWN)
         )
         rendered = detection_output
 

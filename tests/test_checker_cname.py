@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import CNAMEConfig, ProviderConfig
+from provider_check.status import Status
 
 from tests.support import FakeResolver
 
@@ -40,7 +41,7 @@ def test_cname_passes_when_records_match():
 
     result = checker.check_cname()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_cname_missing_records_fail():
@@ -50,7 +51,7 @@ def test_cname_missing_records_fail():
 
     result = checker.check_cname()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.details["missing"] == ["sip.example.com"]
 
 
@@ -61,7 +62,7 @@ def test_cname_mismatch_records_fail():
 
     result = checker.check_cname()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.details["mismatched"] == {"sip.example.com": "wrong.example."}
 
 
@@ -75,7 +76,7 @@ def test_cname_lookup_error_returns_unknown():
 
     result = checker.check_cname()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
 
 
 def test_cname_optional_missing_warns():
@@ -88,7 +89,7 @@ def test_cname_optional_missing_warns():
 
     result = checker.check_cname_optional()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.optional is True
     assert result.details["missing"] == ["autoconfig.example.com"]
 
@@ -100,7 +101,7 @@ def test_cname_optional_present_passes():
 
     result = checker.check_cname_optional()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.optional is True
 
 
@@ -111,7 +112,7 @@ def test_cname_optional_mismatch_fails():
 
     result = checker.check_cname_optional()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.optional is True
     assert result.details["mismatched"] == {"autoconfig.example.com": "wrong.example."}
 
@@ -122,7 +123,7 @@ def test_cname_optional_no_records_passes():
 
     result = checker.check_cname_optional()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.optional is True
 
 
@@ -136,7 +137,7 @@ def test_cname_optional_lookup_error_returns_unknown():
 
     result = checker.check_cname_optional()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
     assert result.optional is True
 
 

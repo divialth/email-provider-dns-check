@@ -7,6 +7,7 @@ from provider_check.provider_config import (
     SRVConfig,
     SRVRecord,
 )
+from provider_check.status import Status
 
 from tests.support import BASE_PROVIDER, FakeResolver
 
@@ -30,7 +31,7 @@ def test_strict_success():
     checker = DNSChecker(domain, BASE_PROVIDER, resolver=resolver, strict=True)
     results = checker.run_checks()
 
-    assert all(r.status == "PASS" for r in results)
+    assert all(r.status is Status.PASS for r in results)
 
 
 def test_run_checks_includes_cname_and_srv():

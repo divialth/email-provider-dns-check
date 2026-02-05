@@ -63,14 +63,11 @@ class CnameChecksMixin:
                 self.provider.cname.records
             )
         except DnsLookupError as err:
-            return RecordCheck(
-                "CNAME", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
-            )
+            return RecordCheck.unknown("CNAME", "DNS lookup failed", {"error": str(err)})
 
         if missing or mismatched:
-            return RecordCheck(
+            return RecordCheck.fail(
                 "CNAME",
-                Status.FAIL.value,
                 "CNAME records do not match required configuration",
                 {
                     "missing": missing,
@@ -80,11 +77,10 @@ class CnameChecksMixin:
                 },
             )
 
-        return RecordCheck(
+        return RecordCheck.pass_(
             "CNAME",
-            Status.PASS.value,
             "Required CNAME records present",
-            {"records": expected_targets},
+            {"expected": expected_targets},
         )
 
     def check_cname_optional(self) -> RecordCheck:
@@ -101,9 +97,8 @@ class CnameChecksMixin:
 
         records_optional = self.provider.cname.records_optional
         if not records_optional:
-            return RecordCheck(
+            return RecordCheck.pass_(
                 "CNAME",
-                Status.PASS.value,
                 "No optional CNAME records required",
                 {},
                 optional=True,
@@ -114,22 +109,21 @@ class CnameChecksMixin:
                 records_optional
             )
         except DnsLookupError as err:
-            return RecordCheck(
+            return RecordCheck.unknown(
                 "CNAME",
-                Status.UNKNOWN.value,
                 "DNS lookup failed",
                 {"error": str(err)},
                 optional=True,
             )
 
         if missing or mismatched:
-            status = Status.FAIL.value if mismatched else Status.WARN.value
+            status = Status.FAIL if mismatched else Status.WARN
             message = (
                 "CNAME optional records mismatched"
                 if mismatched
                 else "CNAME optional records missing"
             )
-            return RecordCheck(
+            return RecordCheck.with_status(
                 "CNAME",
                 status,
                 message,
@@ -142,10 +136,9 @@ class CnameChecksMixin:
                 optional=True,
             )
 
-        return RecordCheck(
+        return RecordCheck.pass_(
             "CNAME",
-            Status.PASS.value,
             "CNAME optional records present",
-            {"records": expected_targets},
+            {"expected": expected_targets},
             optional=True,
         )

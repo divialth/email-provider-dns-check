@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import AddressConfig, ProviderConfig
+from provider_check.status import Status
 
 from tests.support import FakeResolver
 
@@ -52,7 +53,7 @@ def test_address_records_pass_when_present(record_type, addresses):
 
     result = getattr(checker, f"check_{record_type.lower()}")()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 @pytest.mark.parametrize("record_type", ["A", "AAAA"])
@@ -62,7 +63,7 @@ def test_address_records_missing_fail(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}")()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.details["missing"] == {"example.com": [_address_value(record_type)]}
 
 
@@ -77,7 +78,7 @@ def test_address_records_extra_warn_in_non_strict(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}")()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.details["extra"] == {"example.com": ["192.0.2.2"]}
 
 
@@ -92,7 +93,7 @@ def test_address_records_extra_fail_in_strict(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}")()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.details["extra"] == {"example.com": ["192.0.2.2"]}
 
 
@@ -107,7 +108,7 @@ def test_address_records_strict_pass(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}")()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_address_records_canonicalize_ipv6():
@@ -117,7 +118,7 @@ def test_address_records_canonicalize_ipv6():
 
     result = checker.check_aaaa()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_address_records_fallback_normalization_for_invalid_values():
@@ -127,7 +128,7 @@ def test_address_records_fallback_normalization_for_invalid_values():
 
     result = checker.check_a()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 @pytest.mark.parametrize("record_type", ["A", "AAAA"])
@@ -137,7 +138,7 @@ def test_address_records_strict_missing_fails(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}")()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.details["missing"] == {"example.com": [_address_value(record_type)]}
 
 
@@ -150,7 +151,7 @@ def test_address_optional_missing_warns(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}_optional")()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.optional is True
     assert result.details["missing"] == {"example.com": [_address_value(record_type)]}
 
@@ -164,7 +165,7 @@ def test_address_optional_no_records_passes(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}_optional")()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.optional is True
 
 
@@ -181,7 +182,7 @@ def test_address_optional_present_passes(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}_optional")()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.optional is True
 
 
@@ -198,7 +199,7 @@ def test_address_optional_extra_fails(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}_optional")()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.optional is True
     assert result.details["extra"] == {"example.com": ["192.0.2.2"]}
 
@@ -219,7 +220,7 @@ def test_address_optional_lookup_error_returns_unknown(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}_optional")()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
     assert result.optional is True
 
 
@@ -237,7 +238,7 @@ def test_address_lookup_error_returns_unknown(record_type):
 
     result = getattr(checker, f"check_{record_type.lower()}")()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
 
 
 @pytest.mark.parametrize("record_type", ["A", "AAAA"])

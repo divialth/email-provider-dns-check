@@ -41,9 +41,7 @@ class DkimChecksMixin:
                 try:
                     target = self.resolver.get_cname(name)
                 except DnsLookupError as err:
-                    return RecordCheck(
-                        "DKIM", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
-                    )
+                    return RecordCheck.unknown("DKIM", "DNS lookup failed", {"error": str(err)})
                 if target is None:
                     missing.append(name)
                     continue
@@ -64,9 +62,7 @@ class DkimChecksMixin:
                 try:
                     txt_records = self.resolver.get_txt(name)
                 except DnsLookupError as err:
-                    return RecordCheck(
-                        "DKIM", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
-                    )
+                    return RecordCheck.unknown("DKIM", "DNS lookup failed", {"error": str(err)})
                 if not txt_records:
                     missing.append(name)
                     continue
@@ -82,8 +78,8 @@ class DkimChecksMixin:
                     selectors_map[name] = "present"
 
         if missing or wrong_target:
-            status = Status.FAIL.value if self.strict or missing else Status.WARN.value
-            return RecordCheck(
+            status = Status.FAIL if self.strict or missing else Status.WARN
+            return RecordCheck.with_status(
                 "DKIM",
                 status,
                 "DKIM selectors not fully aligned",
@@ -96,9 +92,8 @@ class DkimChecksMixin:
                 },
             )
 
-        return RecordCheck(
+        return RecordCheck.pass_(
             "DKIM",
-            Status.PASS.value,
             "All DKIM selectors configured",
             {"selectors": selectors_map},
         )

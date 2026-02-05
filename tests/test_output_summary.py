@@ -1,17 +1,18 @@
 from provider_check.checker import RecordCheck
 from provider_check.output import summarize_status
+from provider_check.status import Status
 
 
 def test_summarize_status():
     results = [
-        RecordCheck("MX", "PASS", "", {}),
-        RecordCheck("SPF", "WARN", "", {}),
+        RecordCheck.pass_("MX", "", {}),
+        RecordCheck.warn("SPF", "", {}),
     ]
 
-    assert summarize_status(results) == "WARN"
+    assert summarize_status(results) is Status.WARN
 
-    results[1].status = "FAIL"
-    assert summarize_status(results) == "FAIL"
+    results[1].status = Status.FAIL
+    assert summarize_status(results) is Status.FAIL
 
-    results[1].status = "UNKNOWN"
-    assert summarize_status(results) == "UNKNOWN"
+    results[1].status = Status.UNKNOWN
+    assert summarize_status(results) is Status.UNKNOWN

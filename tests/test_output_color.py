@@ -92,7 +92,7 @@ def test_resolve_color_enabled_requires_isatty():
 
 
 def test_to_text_applies_colorizer():
-    result = RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})
+    result = RecordCheck.pass_("MX", "ok", {"found": ["mx"]})
     colorize = make_status_colorizer(True)
 
     text = to_text(
@@ -109,7 +109,7 @@ def test_to_text_applies_colorizer():
 
 
 def test_to_human_applies_colorizer():
-    result = RecordCheck("MX", "WARN", "warn", {"found": ["mx"]})
+    result = RecordCheck.warn("MX", "warn", {"found": ["mx"]})
     colorize = make_status_colorizer(True)
 
     text = to_human(

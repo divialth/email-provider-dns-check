@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import ProviderConfig, TXTConfig
+from provider_check.status import Status
 
 from tests.support import FakeResolver
 
@@ -29,7 +30,7 @@ def test_txt_required_values_pass():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "PASS"
+    assert txt_result.status is Status.PASS
 
 
 def test_txt_missing_values_fail():
@@ -54,7 +55,7 @@ def test_txt_missing_values_fail():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "FAIL"
+    assert txt_result.status is Status.FAIL
 
 
 def test_additional_txt_without_provider_config():
@@ -85,7 +86,7 @@ def test_additional_txt_without_provider_config():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "PASS"
+    assert txt_result.status is Status.PASS
 
 
 def test_additional_txt_verification_without_provider_config():
@@ -116,7 +117,7 @@ def test_additional_txt_verification_without_provider_config():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "PASS"
+    assert txt_result.status is Status.PASS
 
 
 def test_txt_verification_required_warns_without_user_input():
@@ -137,7 +138,7 @@ def test_txt_verification_required_warns_without_user_input():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "WARN"
+    assert txt_result.status is Status.WARN
 
 
 def test_txt_verification_required_can_be_skipped():
@@ -160,7 +161,7 @@ def test_txt_verification_required_can_be_skipped():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "PASS"
+    assert txt_result.status is Status.PASS
 
 
 def test_txt_normalizes_names():
@@ -201,7 +202,7 @@ def test_txt_normalizes_names():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "PASS"
+    assert txt_result.status is Status.PASS
 
 
 def test_txt_lookup_error_returns_unknown():
@@ -223,7 +224,7 @@ def test_txt_lookup_error_returns_unknown():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "UNKNOWN"
+    assert txt_result.status is Status.UNKNOWN
 
 
 def test_txt_missing_records_reports_missing_names():
@@ -243,7 +244,7 @@ def test_txt_missing_records_reports_missing_names():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "FAIL"
+    assert txt_result.status is Status.FAIL
     assert "missing_names" in txt_result.details
 
 
@@ -264,7 +265,7 @@ def test_txt_missing_records_include_verification_required():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "FAIL"
+    assert txt_result.status is Status.FAIL
     assert "verification_required" in txt_result.details
 
 
@@ -285,4 +286,4 @@ def test_txt_verification_warning_with_required_values():
     results = checker.run_checks()
 
     txt_result = next(r for r in results if r.record_type == "TXT")
-    assert txt_result.status == "WARN"
+    assert txt_result.status is Status.WARN

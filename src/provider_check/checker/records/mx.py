@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
-from ...status import Status
 from .models import RecordCheck
 
 
@@ -27,7 +26,7 @@ class MxChecksMixin:
         try:
             mx_records = self.resolver.get_mx(self.domain)
         except DnsLookupError as err:
-            return RecordCheck("MX", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)})
+            return RecordCheck.unknown("MX", "DNS lookup failed", {"error": str(err)})
         expected = {self._normalize_host(host) for host in self.provider.mx.hosts}
         found: set[str] = set()
         found_priorities: Dict[str, List[int]] = {}
@@ -43,9 +42,8 @@ class MxChecksMixin:
                 found_priorities.setdefault(normalized, []).append(int(preference))
 
         if not found:
-            return RecordCheck(
+            return RecordCheck.fail(
                 "MX",
-                Status.FAIL.value,
                 "No MX records found",
                 {"expected": sorted(expected)},
             )
@@ -73,18 +71,16 @@ class MxChecksMixin:
                     details["mismatched"] = mismatched
                 if extra:
                     details["extra"] = sorted(extra)
-                return RecordCheck("MX", Status.FAIL.value, message, details)
-            return RecordCheck(
+                return RecordCheck.fail("MX", message, details)
+            return RecordCheck.pass_(
                 "MX",
-                Status.PASS.value,
                 "MX records match required configuration",
                 {"found": sorted(found)},
             )
 
         if missing:
-            return RecordCheck(
+            return RecordCheck.fail(
                 "MX",
-                Status.FAIL.value,
                 "Missing required MX host(s)",
                 {"missing": sorted(missing), "found": sorted(found)},
             )
@@ -92,16 +88,11 @@ class MxChecksMixin:
             details = {"mismatched": mismatched, "found": sorted(found)}
             if extra:
                 details["extra"] = sorted(extra)
-            return RecordCheck(
-                "MX", Status.WARN.value, "MX priorities differ from expected", details
-            )
+            return RecordCheck.warn("MX", "MX priorities differ from expected", details)
         if extra:
-            return RecordCheck(
+            return RecordCheck.warn(
                 "MX",
-                Status.WARN.value,
                 "Additional MX hosts present; required hosts found",
                 {"extra": sorted(extra), "found": sorted(found)},
             )
-        return RecordCheck(
-            "MX", Status.PASS.value, "Required MX records present", {"found": sorted(found)}
-        )
+        return RecordCheck.pass_("MX", "Required MX records present", {"found": sorted(found)})

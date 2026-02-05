@@ -17,7 +17,7 @@ from .runner import (
     run_checks,
     run_detection,
 )
-from .status import ExitCodes, Status, exit_code_for_status
+from .status import ExitCodes, Status, coerce_status, exit_code_for_status
 
 __all__ = [
     "CachingResolver",
@@ -30,6 +30,7 @@ __all__ = [
     "ExitCodes",
     "ProviderConfig",
     "Status",
+    "coerce_status",
     "exit_code_for_status",
     "list_providers",
     "load_provider_config",

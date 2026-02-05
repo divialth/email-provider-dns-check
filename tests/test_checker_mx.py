@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import MXConfig, ProviderConfig
+from provider_check.status import Status
 
 from tests.support import BASE_PROVIDER, FakeResolver
 
@@ -27,7 +28,7 @@ def test_missing_mx_fails():
     results = checker.run_checks()
     mx_result = next(r for r in results if r.record_type == "MX")
 
-    assert mx_result.status == "FAIL"
+    assert mx_result.status is Status.FAIL
 
 
 def test_mx_priorities_match_pass():
@@ -58,7 +59,7 @@ def test_mx_priorities_match_pass():
     results = checker.run_checks()
     mx_result = next(r for r in results if r.record_type == "MX")
 
-    assert mx_result.status == "PASS"
+    assert mx_result.status is Status.PASS
 
 
 def test_mx_priority_mismatch_warns():
@@ -89,7 +90,7 @@ def test_mx_priority_mismatch_warns():
     results = checker.run_checks()
     mx_result = next(r for r in results if r.record_type == "MX")
 
-    assert mx_result.status == "WARN"
+    assert mx_result.status is Status.WARN
     assert "mismatched" in mx_result.details
 
 
@@ -130,7 +131,7 @@ def test_mx_lookup_error_returns_unknown():
 
     result = checker.check_mx()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
 
 
 def test_mx_strict_extra_hosts_fail():
@@ -157,7 +158,7 @@ def test_mx_strict_extra_hosts_fail():
 
     result = checker.check_mx()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert "extra" in result.details
 
 
@@ -177,7 +178,7 @@ def test_mx_missing_required_non_strict_fails():
 
     result = checker.check_mx()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert "missing" in result.details
 
 
@@ -199,7 +200,7 @@ def test_mx_extra_hosts_warns():
 
     result = checker.check_mx()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert "extra" in result.details
 
 
@@ -230,7 +231,7 @@ def test_mx_priority_mismatch_with_extra_warns():
 
     result = checker.check_mx()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert "mismatched" in result.details
     assert "extra" in result.details
 
@@ -256,5 +257,5 @@ def test_mx_strict_mismatch_includes_details():
 
     result = checker.check_mx()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert "mismatched" in result.details

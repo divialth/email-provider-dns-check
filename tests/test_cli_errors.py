@@ -16,6 +16,7 @@ from provider_check.cli import (
     main,
 )
 from provider_check.provider_config import ProviderConfig, ProviderVariable
+from provider_check.status import Status
 
 
 def test_setup_logging_levels(monkeypatch):
@@ -115,10 +116,10 @@ def test_verbose_flag_sets_info_logging(monkeypatch):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+            return [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
-    monkeypatch.setattr(cli, "summarize_status", lambda _results: "PASS")
+    monkeypatch.setattr(cli, "summarize_status", lambda _results: Status.PASS)
 
     code = main(["example.com", "--provider", "dummy", "--verbose", "--output", "json"])
     assert code == 0
@@ -151,10 +152,10 @@ def test_domain_flag_used(monkeypatch, capsys):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+            return [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
-    monkeypatch.setattr(cli, "summarize_status", lambda _results: "PASS")
+    monkeypatch.setattr(cli, "summarize_status", lambda _results: Status.PASS)
 
     code = main(["--domain", "example.com", "--provider", "dummy", "--output", "json"])
     assert code == 0
@@ -307,10 +308,10 @@ def test_json_output(monkeypatch, capsys):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+            return [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
-    monkeypatch.setattr(cli, "summarize_status", lambda _results: "PASS")
+    monkeypatch.setattr(cli, "summarize_status", lambda _results: Status.PASS)
 
     code = main(["example.com", "--provider", "dummy", "--output", "json"])
     assert code == 0
@@ -338,10 +339,10 @@ def test_text_output(monkeypatch, capsys):
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck("MX", "PASS", "ok", {"found": ["mx"]})]
+            return [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
-    monkeypatch.setattr(cli, "summarize_status", lambda _results: "PASS")
+    monkeypatch.setattr(cli, "summarize_status", lambda _results: Status.PASS)
 
     code = main(["example.com", "--provider", "dummy", "--output", "text"])
     assert code == 0

@@ -3,9 +3,8 @@ from provider_check.output import _serialize_results
 
 
 def test_serialize_results_builds_caa_missing_rows():
-    result = RecordCheck(
+    result = RecordCheck.fail(
         "CAA",
-        "FAIL",
         "Missing required CAA records",
         {
             "missing": {"example.com": [{"flags": 0, "tag": "issue", "value": "ca.example.test"}]},
@@ -22,11 +21,10 @@ def test_serialize_results_builds_caa_missing_rows():
 
 
 def test_serialize_results_builds_caa_pass_rows():
-    result = RecordCheck(
+    result = RecordCheck.pass_(
         "CAA",
-        "PASS",
         "Required CAA records present",
-        {"records": {"example.com": [{"flags": 0, "tag": "issue", "value": "ca.example.test"}]}},
+        {"expected": {"example.com": [{"flags": 0, "tag": "issue", "value": "ca.example.test"}]}},
     )
 
     serialized = _serialize_results([result])
@@ -37,9 +35,8 @@ def test_serialize_results_builds_caa_pass_rows():
 
 
 def test_serialize_results_builds_caa_extra_rows():
-    result = RecordCheck(
+    result = RecordCheck.fail(
         "CAA",
-        "FAIL",
         "CAA records do not exactly match required configuration",
         {
             "expected": {"example.com": [{"flags": 0, "tag": "issue", "value": "ca.example.test"}]},

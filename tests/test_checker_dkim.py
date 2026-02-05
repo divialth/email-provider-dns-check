@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import DKIMConfig, ProviderConfig
+from provider_check.status import Status
 
 from tests.support import BASE_PROVIDER, FakeResolver
 
@@ -27,7 +28,7 @@ def test_dkim_pass_includes_selector_details():
     results = checker.run_checks()
     dkim = next(r for r in results if r.record_type == "DKIM")
 
-    assert dkim.status == "PASS"
+    assert dkim.status is Status.PASS
     assert "selectors" in dkim.details
     assert len(dkim.details["selectors"]) == 4
 
@@ -59,7 +60,7 @@ def test_dkim_txt_values_pass():
     results = checker.run_checks()
 
     dkim_result = next(r for r in results if r.record_type == "DKIM")
-    assert dkim_result.status == "PASS"
+    assert dkim_result.status is Status.PASS
 
 
 def test_dkim_txt_values_mismatch_warns():
@@ -89,7 +90,7 @@ def test_dkim_txt_values_mismatch_warns():
     results = checker.run_checks()
 
     dkim_result = next(r for r in results if r.record_type == "DKIM")
-    assert dkim_result.status == "WARN"
+    assert dkim_result.status is Status.WARN
     assert "mismatched" in dkim_result.details
 
 
@@ -134,7 +135,7 @@ def test_dkim_cname_lookup_error_returns_unknown():
 
     result = checker.check_dkim()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
 
 
 def test_dkim_cname_mismatch_warns():
@@ -158,7 +159,7 @@ def test_dkim_cname_mismatch_warns():
 
     result = checker.check_dkim()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert "mismatched" in result.details
 
 
@@ -183,7 +184,7 @@ def test_dkim_txt_missing_selector_fails():
 
     result = checker.check_dkim()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert "missing" in result.details
 
 
@@ -208,7 +209,7 @@ def test_dkim_txt_without_expected_value_marks_present():
 
     result = checker.check_dkim()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.details["selectors"]["s1._domainkey.example.test"] == "present"
 
 
@@ -236,4 +237,4 @@ def test_dkim_txt_lookup_error_returns_unknown():
 
     result = checker.check_dkim()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN

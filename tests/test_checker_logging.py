@@ -2,6 +2,7 @@ import logging
 
 from provider_check.checker import DNSChecker
 from provider_check.provider_config import MXConfig, ProviderConfig
+from provider_check.status import Status
 
 from tests.support import FakeResolver
 

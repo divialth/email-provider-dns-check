@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
-from ...status import Status
 from .models import RecordCheck
 
 
@@ -29,9 +28,7 @@ class SrvChecksMixin:
                 self.provider.srv.records
             )
         except DnsLookupError as err:
-            return RecordCheck(
-                "SRV", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
-            )
+            return RecordCheck.unknown("SRV", "DNS lookup failed", {"error": str(err)})
 
         if self.strict:
             if missing or mismatched or extra:
@@ -42,23 +39,20 @@ class SrvChecksMixin:
                     details["mismatched"] = mismatched
                 if extra:
                     details["extra"] = extra
-                return RecordCheck(
+                return RecordCheck.fail(
                     "SRV",
-                    Status.FAIL.value,
                     "SRV records do not exactly match required configuration",
                     details,
                 )
-            return RecordCheck(
+            return RecordCheck.pass_(
                 "SRV",
-                Status.PASS.value,
                 "SRV records match required configuration",
-                {"records": expected},
+                {"expected": expected},
             )
 
         if missing:
-            return RecordCheck(
+            return RecordCheck.fail(
                 "SRV",
-                Status.FAIL.value,
                 "Missing required SRV records",
                 {"missing": missing, "found": found, "expected": expected},
             )
@@ -66,25 +60,22 @@ class SrvChecksMixin:
             details = {"mismatched": mismatched, "found": found, "expected": expected}
             if extra:
                 details["extra"] = extra
-            return RecordCheck(
+            return RecordCheck.warn(
                 "SRV",
-                Status.WARN.value,
                 "SRV priorities or weights differ from expected",
                 details,
             )
         if extra:
-            return RecordCheck(
+            return RecordCheck.warn(
                 "SRV",
-                Status.WARN.value,
                 "Additional SRV records present; required records found",
                 {"extra": extra, "found": found},
             )
 
-        return RecordCheck(
+        return RecordCheck.pass_(
             "SRV",
-            Status.PASS.value,
             "Required SRV records present",
-            {"records": expected},
+            {"expected": expected},
         )
 
     def _evaluate_srv_records(self, records: Dict[str, List["SRVRecord"]]) -> tuple[
@@ -179,9 +170,8 @@ class SrvChecksMixin:
 
         records_optional = self.provider.srv.records_optional
         if not records_optional:
-            return RecordCheck(
+            return RecordCheck.pass_(
                 "SRV",
-                Status.PASS.value,
                 "No optional SRV records required",
                 {},
                 optional=True,
@@ -192,9 +182,8 @@ class SrvChecksMixin:
                 records_optional
             )
         except DnsLookupError as err:
-            return RecordCheck(
+            return RecordCheck.unknown(
                 "SRV",
-                Status.UNKNOWN.value,
                 "DNS lookup failed",
                 {"error": str(err)},
                 optional=True,
@@ -203,9 +192,8 @@ class SrvChecksMixin:
         has_found = any(entries for entries in found.values())
         has_mismatch = bool(mismatched) or bool(extra) or (missing and has_found)
         if has_mismatch:
-            return RecordCheck(
+            return RecordCheck.fail(
                 "SRV",
-                Status.FAIL.value,
                 "SRV optional records mismatched",
                 {
                     "missing": missing,
@@ -217,18 +205,16 @@ class SrvChecksMixin:
                 optional=True,
             )
         if missing:
-            return RecordCheck(
+            return RecordCheck.warn(
                 "SRV",
-                Status.WARN.value,
                 "SRV optional records missing",
                 {"missing": missing, "found": found, "expected": expected},
                 optional=True,
             )
 
-        return RecordCheck(
+        return RecordCheck.pass_(
             "SRV",
-            Status.PASS.value,
             "SRV optional records present",
-            {"records": expected},
+            {"expected": expected},
             optional=True,
         )

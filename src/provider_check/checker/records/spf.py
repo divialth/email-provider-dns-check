@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...dns_resolver import DnsLookupError
-from ...status import Status
 from ..utils import SPF_QUALIFIERS, strip_spf_qualifier
 from .models import RecordCheck
 
@@ -59,23 +58,19 @@ class SpfChecksMixin:
         try:
             txt_records = self.resolver.get_txt(self.domain)
         except DnsLookupError as err:
-            return RecordCheck(
-                "SPF", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
-            )
+            return RecordCheck.unknown("SPF", "DNS lookup failed", {"error": str(err)})
         spf_records = [record for record in txt_records if record.lower().startswith("v=spf1")]
 
         if not spf_records:
-            return RecordCheck(
+            return RecordCheck.fail(
                 "SPF",
-                Status.FAIL.value,
                 "No SPF record found",
                 {"expected": self._build_expected_spf()},
             )
 
         if len(spf_records) > 1:
-            return RecordCheck(
+            return RecordCheck.fail(
                 "SPF",
-                Status.FAIL.value,
                 "Multiple SPF records found",
                 {"found": spf_records},
             )
@@ -85,15 +80,13 @@ class SpfChecksMixin:
         normalized = " ".join(record.split())
         if self.strict:
             if normalized.lower() == expected.lower():
-                return RecordCheck(
+                return RecordCheck.pass_(
                     "SPF",
-                    Status.PASS.value,
                     "SPF record matches strict setup",
                     {"record": record},
                 )
-            return RecordCheck(
+            return RecordCheck.fail(
                 "SPF",
-                Status.FAIL.value,
                 "SPF record does not match strict configuration",
                 {"expected": expected, "found": record},
             )
@@ -205,19 +198,17 @@ class SpfChecksMixin:
             and required_modifiers_ok
             and not unexpected_tokens
         ):
-            return RecordCheck("SPF", Status.PASS.value, "SPF record valid", {"record": record})
+            return RecordCheck.pass_("SPF", "SPF record valid", {"record": record})
 
         if has_required_includes and policy_ok and required_mechanisms_ok and required_modifiers_ok:
-            return RecordCheck(
+            return RecordCheck.warn(
                 "SPF",
-                Status.WARN.value,
                 "SPF contains required includes but has extra mechanisms",
                 {"record": record, "extras": sorted(set(unexpected_tokens))},
             )
 
-        return RecordCheck(
+        return RecordCheck.fail(
             "SPF",
-            Status.FAIL.value,
             "SPF record does not meet requirements",
             {"expected": expected, "found": spf_records},
         )

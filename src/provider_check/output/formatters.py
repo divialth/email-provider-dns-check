@@ -32,7 +32,7 @@ def _template_context(
     summary: str,
     results: List[dict],
     lines: List[str],
-    colorize_status: Callable[[str], str] | None = None,
+    colorize_status: Callable[[str | Status], str] | None = None,
     table_headers: Optional[List[str]] = None,
 ) -> dict:
     """Build a template context for output rendering.
@@ -45,7 +45,7 @@ def _template_context(
         summary (str): Summary status string.
         results (List[dict]): Serialized results.
         lines (List[str]): Pre-rendered text lines.
-        colorize_status (Callable[[str], str] | None): Status colorizer callback.
+        colorize_status (Callable[[str | Status], str] | None): Status colorizer callback.
         table_headers (Optional[List[str]]): Optional table headers.
 
     Returns:
@@ -104,7 +104,7 @@ def build_json_payload(
         "results": [
             {
                 "record_type": result.record_type,
-                "status": result.status,
+                "status": result.status.value,
                 "message": result.message,
                 "details": result.details,
                 "optional": result.optional,
@@ -144,7 +144,7 @@ def to_text(
     provider_name: str,
     provider_version: str,
     *,
-    colorize_status: Callable[[str], str] | None = None,
+    colorize_status: Callable[[str | Status], str] | None = None,
 ) -> str:
     """Render results as plain text output.
 
@@ -154,7 +154,7 @@ def to_text(
         report_time (str): UTC report timestamp string.
         provider_name (str): Provider display name.
         provider_version (str): Provider configuration version.
-        colorize_status (Callable[[str], str] | None): Status colorizer callback.
+        colorize_status (Callable[[str | Status], str] | None): Status colorizer callback.
 
     Returns:
         str: Rendered text output.
@@ -163,8 +163,9 @@ def to_text(
         colorize_status = lambda text: text
     serialized = _serialize_results(results)
     summary = summarize_status(results)
+    summary_value = summary.value
     header = (
-        f"{colorize_status(summary)} - report for domain {domain} ({report_time}) / provider: "
+        f"{colorize_status(summary_value)} - report for domain {domain} ({report_time}) / provider: "
         f"{_provider_label(provider_name, provider_version)}"
     )
     lines = [header, ""]
@@ -195,7 +196,7 @@ def to_text(
         report_time=report_time,
         provider_name=provider_name,
         provider_version=provider_version,
-        summary=summary,
+        summary=summary_value,
         results=serialized,
         lines=lines,
         colorize_status=colorize_status,
@@ -224,7 +225,7 @@ def to_human(
     provider_name: str,
     provider_version: str,
     *,
-    colorize_status: Callable[[str], str] | None = None,
+    colorize_status: Callable[[str | Status], str] | None = None,
 ) -> str:
     """Render results as a markdown table for human-friendly output.
 
@@ -234,13 +235,14 @@ def to_human(
         report_time (str): UTC report timestamp string.
         provider_name (str): Provider display name.
         provider_version (str): Provider configuration version.
-        colorize_status (Callable[[str], str] | None): Status colorizer callback.
+        colorize_status (Callable[[str | Status], str] | None): Status colorizer callback.
 
     Returns:
         str: Rendered markdown output.
     """
     serialized = _serialize_results(results)
     summary = summarize_status(results)
+    summary_value = summary.value
     for result in serialized:
         result["table_widths"] = _build_table_widths(_HUMAN_TABLE_HEADERS, result["table_rows"])
     context = _template_context(
@@ -248,7 +250,7 @@ def to_human(
         report_time=report_time,
         provider_name=provider_name,
         provider_version=provider_version,
-        summary=summary,
+        summary=summary_value,
         results=serialized,
         lines=[],
         table_headers=_HUMAN_TABLE_HEADERS,
@@ -257,22 +259,22 @@ def to_human(
     return _render_template("human.j2", context)
 
 
-def summarize_status(results: List[RecordCheck]) -> str:
-    """Summarize results into a single status string.
+def summarize_status(results: List[RecordCheck]) -> Status:
+    """Summarize results into a single status value.
 
     Args:
         results (List[RecordCheck]): DNS check results.
 
     Returns:
-        str: Summary status (FAIL, WARN, UNKNOWN, or PASS).
+        Status: Summary status.
     """
-    fail = any(r.status == Status.FAIL.value for r in results)
-    warn = any(r.status == Status.WARN.value for r in results)
-    unknown = any(r.status == Status.UNKNOWN.value for r in results)
+    fail = any(r.status is Status.FAIL for r in results)
+    warn = any(r.status is Status.WARN for r in results)
+    unknown = any(r.status is Status.UNKNOWN for r in results)
     if fail:
-        return Status.FAIL.value
+        return Status.FAIL
     if warn:
-        return Status.WARN.value
+        return Status.WARN
     if unknown:
-        return Status.UNKNOWN.value
-    return Status.PASS.value
+        return Status.UNKNOWN
+    return Status.PASS

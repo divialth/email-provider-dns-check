@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import CAAConfig, CAARecord, ProviderConfig
+from provider_check.status import Status
 
 from tests.support import FakeResolver
 
@@ -32,7 +33,7 @@ def test_caa_passes_when_required_records_present():
 
     result = checker.check_caa()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_caa_fails_when_required_records_missing():
@@ -42,7 +43,7 @@ def test_caa_fails_when_required_records_missing():
 
     result = checker.check_caa()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert "missing" in result.details
 
 
@@ -55,7 +56,7 @@ def test_caa_iodef_value_is_case_sensitive():
 
     result = checker.check_caa()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert "missing" in result.details
 
 
@@ -73,7 +74,7 @@ def test_caa_strict_fails_with_extra_records():
 
     result = checker.check_caa()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert "extra" in result.details
 
 
@@ -84,7 +85,7 @@ def test_caa_strict_missing_records_reports_missing_details():
 
     result = checker.check_caa()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert "missing" in result.details
 
 
@@ -98,7 +99,7 @@ def test_caa_optional_warns_when_missing():
 
     result = checker.check_caa_optional()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.optional is True
 
 
@@ -112,7 +113,7 @@ def test_caa_optional_passes_when_present():
 
     result = checker.check_caa_optional()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.optional is True
 
 
@@ -122,7 +123,7 @@ def test_caa_optional_returns_pass_when_no_optional_required():
 
     result = checker.check_caa_optional()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.optional is True
 
 
@@ -175,7 +176,7 @@ def test_caa_dns_lookup_error_returns_unknown():
 
     result = checker.check_caa()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
 
 
 def test_caa_optional_dns_lookup_error_returns_unknown():
@@ -192,4 +193,4 @@ def test_caa_optional_dns_lookup_error_returns_unknown():
 
     result = checker.check_caa_optional()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN

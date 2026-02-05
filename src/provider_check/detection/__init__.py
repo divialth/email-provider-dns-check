@@ -111,10 +111,11 @@ def detect_providers(
         if not core_pass_records:
             continue
         optional_bonus = _optional_bonus(optional_results)
-        record_statuses = {result.record_type: result.status for result in required_results}
+        record_statuses = {result.record_type: result.status.value for result in required_results}
         for result in optional_results:
-            record_statuses[f"{result.record_type}_OPT"] = result.status
-            status_counts[result.status] = status_counts.get(result.status, 0) + 1
+            record_statuses[f"{result.record_type}_OPT"] = result.status.value
+            status_value = result.status.value
+            status_counts[status_value] = status_counts.get(status_value, 0) + 1
         candidates.append(
             DetectionCandidate(
                 provider_id=provider.provider_id,
@@ -148,7 +149,7 @@ def detect_providers(
         ):
             ambiguous = True
             selected = None
-    status = Status.PASS.value if selected and not ambiguous else Status.UNKNOWN.value
+    status = Status.PASS if selected and not ambiguous else Status.UNKNOWN
     return DetectionReport(
         domain=normalized_domain,
         candidates=top_candidates,

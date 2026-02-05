@@ -6,6 +6,7 @@ from typing import Callable, Optional
 
 from ..dns_resolver import DnsResolver
 from ..runner import CheckRequest, run_checks
+from ..status import Status
 
 from .shared import _build_dmarc_required_tags, _parse_txt_inputs
 
@@ -19,12 +20,12 @@ def handle_checks(
     parse_provider_vars: Callable[[list[str] | None], dict],
     parse_txt_records: Callable[[list[str] | None], dict],
     logger: object,
-    colorize_status: Callable[[str], str],
+    colorize_status: Callable[[str | Status], str],
     provider_dirs: Optional[list[object]] = None,
     load_provider_config: Optional[Callable[..., object]] = None,
     resolve_provider_config: Optional[Callable[..., object]] = None,
     dns_checker_cls: Optional[type] = None,
-    summarize_status: Optional[Callable[[list[object]], str]] = None,
+    summarize_status: Optional[Callable[[list[object]], Status | str]] = None,
 ) -> int:
     """Handle explicit provider checks.
 
@@ -36,12 +37,12 @@ def handle_checks(
         parse_provider_vars (Callable[[list[str] | None], dict]): Variable parser callback.
         parse_txt_records (Callable[[list[str] | None], dict]): TXT parser callback.
         logger (object): Logger for CLI messages.
-        colorize_status (Callable[[str], str]): Status colorizer callback.
+        colorize_status (Callable[[str | Status], str]): Status colorizer callback.
         provider_dirs (Optional[list[object]]): Additional provider config directories.
         load_provider_config (Optional[Callable[..., object]]): Provider loader override.
         resolve_provider_config (Optional[Callable[..., object]]): Provider resolver override.
         dns_checker_cls (Optional[type]): DNS checker class override.
-        summarize_status (Optional[Callable[[list[object]], str]]): Status override.
+        summarize_status (Optional[Callable[[list[object]], Status | str]]): Status override.
 
     Returns:
         int: Exit code.

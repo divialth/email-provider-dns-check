@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import DMARCConfig, ProviderConfig
+from provider_check.status import Status
 
 from tests.support import FakeResolver
 
@@ -32,7 +33,7 @@ def test_dmarc_optional_rua_allows_unexpected_rua():
     checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
     result = checker.check_dmarc()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_dmarc_required_rua_and_tags():
@@ -60,7 +61,7 @@ def test_dmarc_required_rua_and_tags():
     results = checker.run_checks()
 
     dmarc_result = next(r for r in results if r.record_type == "DMARC")
-    assert dmarc_result.status == "PASS"
+    assert dmarc_result.status is Status.PASS
 
 
 def test_dmarc_missing_required_rua_fails():
@@ -88,7 +89,7 @@ def test_dmarc_missing_required_rua_fails():
     results = checker.run_checks()
 
     dmarc_result = next(r for r in results if r.record_type == "DMARC")
-    assert dmarc_result.status == "FAIL"
+    assert dmarc_result.status is Status.FAIL
 
 
 def test_dmarc_required_tag_overrides_merge():
@@ -120,7 +121,7 @@ def test_dmarc_required_tag_overrides_merge():
     )
     result = checker.check_dmarc()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_dmarc_override_required_tag_missing_fails():
@@ -150,7 +151,7 @@ def test_dmarc_override_required_tag_missing_fails():
     )
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_rua_size_suffix_matches_required():
@@ -176,7 +177,7 @@ def test_dmarc_rua_size_suffix_matches_required():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
     result = checker.check_dmarc()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_dmarc_rua_size_suffix_required_rejects_missing():
@@ -202,7 +203,7 @@ def test_dmarc_rua_size_suffix_required_rejects_missing():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_rua_non_mailto_fails_when_required():
@@ -228,7 +229,7 @@ def test_dmarc_rua_non_mailto_fails_when_required():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_strict_rua_extra_entry_fails():
@@ -258,7 +259,7 @@ def test_dmarc_strict_rua_extra_entry_fails():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_required_ruf_passes():
@@ -285,7 +286,7 @@ def test_dmarc_required_ruf_passes():
     checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
     result = checker.check_dmarc()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_dmarc_missing_required_ruf_fails():
@@ -312,7 +313,7 @@ def test_dmarc_missing_required_ruf_fails():
     checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_missing_ruf_fails_when_required():
@@ -337,7 +338,7 @@ def test_dmarc_missing_ruf_fails_when_required():
     checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_requires_config():
@@ -380,7 +381,7 @@ def test_dmarc_rua_optional_allows_missing_rua():
     checker = DNSChecker(domain, provider, resolver=resolver)
     result = checker.check_dmarc()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_dmarc_lookup_error_returns_unknown():
@@ -407,7 +408,7 @@ def test_dmarc_lookup_error_returns_unknown():
 
     result = checker.check_dmarc()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
 
 
 def test_dmarc_strict_mismatch_fails():
@@ -431,7 +432,7 @@ def test_dmarc_strict_mismatch_fails():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_strict_requires_ruf_matches():
@@ -457,7 +458,7 @@ def test_dmarc_strict_requires_ruf_matches():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
     result = checker.check_dmarc()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_dmarc_strict_missing_ruf_fails():
@@ -481,7 +482,7 @@ def test_dmarc_strict_missing_ruf_fails():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_strict_ruf_mismatch_fails():
@@ -507,7 +508,7 @@ def test_dmarc_strict_ruf_mismatch_fails():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_records_missing_requirements_fail():
@@ -540,7 +541,7 @@ def test_dmarc_records_missing_requirements_fail():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=False)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_dmarc_rua_override_replaces_required_rua():
@@ -573,7 +574,7 @@ def test_dmarc_rua_override_replaces_required_rua():
     )
     result = checker.check_dmarc()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_dmarc_ruf_override_replaces_required_ruf():
@@ -606,7 +607,7 @@ def test_dmarc_ruf_override_replaces_required_ruf():
     )
     result = checker.check_dmarc()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_dmarc_rua_mailto_rejects_empty_values():
@@ -690,4 +691,4 @@ def test_dmarc_strict_filters_invalid_records():
     checker = DNSChecker("example.test", provider, resolver=resolver, strict=True)
     result = checker.check_dmarc()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL

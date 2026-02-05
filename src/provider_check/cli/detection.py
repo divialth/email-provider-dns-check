@@ -6,6 +6,7 @@ from typing import Callable, Optional
 
 from ..dns_resolver import DnsResolver
 from ..runner import DetectionRequest, run_detection
+from ..status import Status
 
 from .shared import _build_dmarc_required_tags, _parse_txt_inputs
 
@@ -17,13 +18,13 @@ def handle_detection(
     *,
     resolver: DnsResolver,
     parse_txt_records: Callable[[list[str] | None], dict],
-    colorize_status: Callable[[str], str],
+    colorize_status: Callable[[str | Status], str],
     provider_dirs: Optional[list[object]] = None,
     detect_providers: Optional[Callable[..., object]] = None,
     load_provider_config: Optional[Callable[..., object]] = None,
     resolve_provider_config: Optional[Callable[..., object]] = None,
     dns_checker_cls: Optional[type] = None,
-    summarize_status: Optional[Callable[[list[object]], str]] = None,
+    summarize_status: Optional[Callable[[list[object]], Status | str]] = None,
 ) -> int:
     """Handle provider detection and autoselect flows.
 
@@ -33,13 +34,13 @@ def handle_detection(
         report_time (str): Report timestamp.
         resolver (DnsResolver): DNS resolver to use for lookups.
         parse_txt_records (Callable[[list[str] | None], dict]): TXT parser callback.
-        colorize_status (Callable[[str], str]): Status colorizer callback.
+        colorize_status (Callable[[str | Status], str]): Status colorizer callback.
         provider_dirs (Optional[list[object]]): Additional provider config directories.
         detect_providers (Optional[Callable[..., object]]): Detection override.
         load_provider_config (Optional[Callable[..., object]]): Provider loader override.
         resolve_provider_config (Optional[Callable[..., object]]): Provider resolver override.
         dns_checker_cls (Optional[type]): DNS checker class override.
-        summarize_status (Optional[Callable[[list[object]], str]]): Status override.
+        summarize_status (Optional[Callable[[list[object]], Status | str]]): Status override.
 
     Returns:
         int: Exit code.

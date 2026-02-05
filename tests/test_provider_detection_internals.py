@@ -261,10 +261,9 @@ def test_detect_providers_ignores_optional_results(monkeypatch):
     class _Checker:
         def run_checks(self):
             return [
-                RecordCheck("MX", "PASS", "ok", {"found": ["mx.optional.test."]}),
-                RecordCheck(
+                RecordCheck.pass_("MX", "ok", {"found": ["mx.optional.test."]}),
+                RecordCheck.warn(
                     "CNAME",
-                    "WARN",
                     "CNAME optional records missing",
                     {"missing": ["autoconfig.example.com"]},
                     optional=True,

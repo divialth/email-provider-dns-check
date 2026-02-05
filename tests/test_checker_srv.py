@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import ProviderConfig, SRVConfig, SRVRecord
+from provider_check.status import Status
 
 from tests.support import FakeResolver
 
@@ -38,7 +39,7 @@ def test_srv_passes_when_records_match():
 
     result = checker.check_srv()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_srv_priority_mismatch_warns_in_non_strict():
@@ -58,7 +59,7 @@ def test_srv_priority_mismatch_warns_in_non_strict():
 
     result = checker.check_srv()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.details["mismatched"] == {
         "_sip._tls.example.com": [
             {
@@ -90,7 +91,7 @@ def test_srv_priority_mismatch_pairing_stable():
 
     result = checker.check_srv()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.details["mismatched"] == {
         "_sip._tls.example.com": [
             {
@@ -122,7 +123,7 @@ def test_srv_priority_mismatch_fails_in_strict():
 
     result = checker.check_srv()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_srv_strict_passes_when_records_match():
@@ -142,7 +143,7 @@ def test_srv_strict_passes_when_records_match():
 
     result = checker.check_srv()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
 
 
 def test_srv_missing_records_fail():
@@ -158,7 +159,7 @@ def test_srv_missing_records_fail():
 
     result = checker.check_srv()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.details["missing"] == {
         "_sip._tls.example.com": [(100, 1, 443, "srv.primary.provider.test.")]
     }
@@ -177,7 +178,7 @@ def test_srv_missing_records_fail_in_strict():
 
     result = checker.check_srv()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.details["missing"] == {
         "_sip._tls.example.com": [(100, 1, 443, "srv.primary.provider.test.")]
     }
@@ -203,7 +204,7 @@ def test_srv_mismatch_and_extra_warn_in_non_strict():
 
     result = checker.check_srv()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.details["extra"] == {
         "_sip._tls.example.com": [(50, 5, 5061, "srv.extra.provider.test.")]
     }
@@ -229,7 +230,7 @@ def test_srv_extra_records_warn_in_non_strict():
 
     result = checker.check_srv()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.details["extra"] == {
         "_sip._tls.example.com": [(100, 1, 5061, "srv.extra.provider.test.")]
     }
@@ -255,7 +256,7 @@ def test_srv_extra_records_fail_in_strict():
 
     result = checker.check_srv()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
 
 
 def test_srv_lookup_error_returns_unknown():
@@ -274,7 +275,7 @@ def test_srv_lookup_error_returns_unknown():
 
     result = checker.check_srv()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
 
 
 def test_srv_optional_missing_warns():
@@ -297,7 +298,7 @@ def test_srv_optional_missing_warns():
 
     result = checker.check_srv_optional()
 
-    assert result.status == "WARN"
+    assert result.status is Status.WARN
     assert result.optional is True
     assert result.details["missing"] == {
         "_autodiscover._tcp.example.com": [(0, 0, 443, "autodiscover.provider.test.")]
@@ -320,7 +321,7 @@ def test_srv_optional_present_passes():
 
     result = checker.check_srv_optional()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.optional is True
 
 
@@ -340,7 +341,7 @@ def test_srv_optional_mismatch_fails():
 
     result = checker.check_srv_optional()
 
-    assert result.status == "FAIL"
+    assert result.status is Status.FAIL
     assert result.optional is True
     assert result.details["extra"] == {
         "_autodiscover._tcp.example.com": [(0, 0, 443, "wrong.provider.test.")]
@@ -360,7 +361,7 @@ def test_srv_optional_no_records_passes():
 
     result = checker.check_srv_optional()
 
-    assert result.status == "PASS"
+    assert result.status is Status.PASS
     assert result.optional is True
 
 
@@ -381,7 +382,7 @@ def test_srv_optional_lookup_error_returns_unknown():
 
     result = checker.check_srv_optional()
 
-    assert result.status == "UNKNOWN"
+    assert result.status is Status.UNKNOWN
     assert result.optional is True
 
 

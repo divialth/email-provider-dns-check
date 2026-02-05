@@ -32,7 +32,7 @@ def _build_caa_rows(result: dict) -> List[dict]:
         List[dict]: Row dicts for output.
     """
     details = result["details"]
-    expected = details.get("expected") or details.get("records") or {}
+    expected = details.get("expected") or {}
     found = details.get("found", {})
     missing = details.get("missing", {})
     extra = details.get("extra", {})

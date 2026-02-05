@@ -3,6 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import ProviderConfig, SPFConfig
+from provider_check.status import Status
 
 from tests.support import BASE_PROVIDER, FakeResolver
 
@@ -27,7 +28,7 @@ def test_spf_warn_on_extra_include_standard_mode():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "WARN"
+    assert spf_result.status is Status.WARN
     assert "extras" in spf_result.details
 
 
@@ -58,7 +59,7 @@ def test_spf_policy_softfail():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS
 
 
 def test_spf_policy_not_last_passes():
@@ -79,7 +80,7 @@ def test_spf_policy_not_last_passes():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS
 
 
 def test_spf_strict_uses_strict_record():
@@ -110,7 +111,7 @@ def test_spf_strict_uses_strict_record():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS
 
 
 def test_spf_strict_mismatch_fails():
@@ -141,7 +142,7 @@ def test_spf_strict_mismatch_fails():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "FAIL"
+    assert spf_result.status is Status.FAIL
 
 
 def test_spf_multiple_records_fail():
@@ -175,7 +176,7 @@ def test_spf_multiple_records_fail():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "FAIL"
+    assert spf_result.status is Status.FAIL
 
 
 def test_spf_dns_failure_returns_unknown():
@@ -206,7 +207,7 @@ def test_spf_dns_failure_returns_unknown():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "UNKNOWN"
+    assert spf_result.status is Status.UNKNOWN
 
 
 def test_spf_allowed_mechanisms_pass():
@@ -237,7 +238,7 @@ def test_spf_allowed_mechanisms_pass():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS
 
 
 def test_spf_unexpected_mechanism_warns_when_configured():
@@ -268,7 +269,7 @@ def test_spf_unexpected_mechanism_warns_when_configured():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "WARN"
+    assert spf_result.status is Status.WARN
     assert "ptr" in spf_result.details.get("extras", [])
 
 
@@ -300,7 +301,7 @@ def test_spf_required_modifiers_missing_fails():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "FAIL"
+    assert spf_result.status is Status.FAIL
 
 
 def test_spf_requires_config():
@@ -360,7 +361,7 @@ def test_spf_no_records_fails():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "FAIL"
+    assert spf_result.status is Status.FAIL
 
 
 def test_spf_requires_mechanism_base_pass():
@@ -386,7 +387,7 @@ def test_spf_requires_mechanism_base_pass():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS
 
 
 def test_spf_accepts_additional_ip4_ip6():
@@ -425,7 +426,7 @@ def test_spf_accepts_additional_ip4_ip6():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS
 
 
 def test_spf_required_and_allowed_mechanisms_cover_base():
@@ -451,7 +452,7 @@ def test_spf_required_and_allowed_mechanisms_cover_base():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS
 
 
 def test_spf_required_mechanism_with_qualifier_passes():
@@ -477,7 +478,7 @@ def test_spf_required_mechanism_with_qualifier_passes():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS
 
 
 def test_spf_allowed_mechanism_with_qualifier_passes():
@@ -503,4 +504,4 @@ def test_spf_allowed_mechanism_with_qualifier_passes():
     results = checker.run_checks()
 
     spf_result = next(r for r in results if r.record_type == "SPF")
-    assert spf_result.status == "PASS"
+    assert spf_result.status is Status.PASS

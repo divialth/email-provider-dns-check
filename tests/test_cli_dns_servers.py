@@ -3,6 +3,7 @@ import pytest
 from provider_check.cli import main
 from provider_check.detection import DetectionReport
 from provider_check.provider_config import ProviderConfig
+from provider_check.status import Status
 
 
 def test_dns_server_option_passed_to_resolver_for_checks(monkeypatch):
@@ -86,7 +87,7 @@ def test_dns_server_option_passed_to_detection(monkeypatch):
             candidates=[],
             selected=None,
             ambiguous=False,
-            status="UNKNOWN",
+            status=Status.UNKNOWN,
             top_n=top_n,
         )
 

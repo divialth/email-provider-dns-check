@@ -195,9 +195,7 @@ class DmarcChecksMixin:
         try:
             txt_records = self.resolver.get_txt(name)
         except DnsLookupError as err:
-            return RecordCheck(
-                "DMARC", Status.UNKNOWN.value, "DNS lookup failed", {"error": str(err)}
-            )
+            return RecordCheck.unknown("DMARC", "DNS lookup failed", {"error": str(err)})
 
         required_rua = self._effective_required_rua()
         rua_required = self._rua_required(required_rua)
@@ -207,9 +205,8 @@ class DmarcChecksMixin:
             required_rua, rua_required, required_ruf, ruf_required
         )
         if not txt_records:
-            return RecordCheck(
+            return RecordCheck.fail(
                 "DMARC",
-                Status.FAIL.value,
                 "No DMARC record found",
                 {"expected": expected},
             )
@@ -253,9 +250,8 @@ class DmarcChecksMixin:
                 allowed_tags.update(required_tags.keys())
                 if set(tokens.keys()) != allowed_tags:
                     continue
-                return RecordCheck(
+                return RecordCheck.pass_(
                     "DMARC",
-                    Status.PASS.value,
                     "DMARC record matches strict configuration",
                     {"record": record},
                 )
@@ -293,18 +289,17 @@ class DmarcChecksMixin:
             if missing_tags:
                 continue
 
-            status = Status.PASS.value
+            status = Status.PASS
             message = (
                 "DMARC policy present"
                 if not rua_entries and not ruf_entries
                 else "DMARC policy and reporting tags present"
             )
             details = {"record": record}
-            return RecordCheck("DMARC", status, message, details)
+            return RecordCheck.with_status("DMARC", status, message, details)
 
-        return RecordCheck(
+        return RecordCheck.fail(
             "DMARC",
-            Status.FAIL.value,
             "DMARC record does not meet guidance",
             {"expected": expected, "found": txt_records},
         )

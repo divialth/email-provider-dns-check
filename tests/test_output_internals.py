@@ -3,9 +3,8 @@ from provider_check.output import _build_table_rows, _serialize_results, _string
 
 
 def test_serialize_results_marks_mismatched_dkim():
-    result = RecordCheck(
+    result = RecordCheck.warn(
         "DKIM",
-        "WARN",
         "DKIM selectors not fully aligned",
         {
             "missing": [],
@@ -25,13 +24,12 @@ def test_serialize_results_marks_mismatched_dkim():
 
 def test_build_table_rows_includes_dkim_and_mx_rows():
     results = [
-        RecordCheck(
+        RecordCheck.pass_(
             "DKIM",
-            "PASS",
             "All DKIM selectors configured",
             {"selectors": {"s1._domainkey.example.com": "target."}},
         ),
-        RecordCheck("MX", "PASS", "ok", {"found": ["mx"]}),
+        RecordCheck.pass_("MX", "ok", {"found": ["mx"]}),
     ]
 
     serialized = _serialize_results(results)

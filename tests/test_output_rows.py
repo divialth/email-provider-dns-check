@@ -228,7 +228,7 @@ def test_build_srv_rows_with_missing_and_extra():
 def test_build_srv_rows_pass_uses_expected_when_found_missing():
     result = {
         "status": "PASS",
-        "details": {"records": {"_srv._tcp.example.test": [(0, 5, 443, "srv.example.test")]}},
+        "details": {"expected": {"_srv._tcp.example.test": [(0, 5, 443, "srv.example.test")]}},
     }
 
     rows = _build_srv_rows(result)
@@ -338,17 +338,17 @@ def test_build_result_rows_for_specific_record_types():
     cname_result = {
         "record_type": "CNAME",
         "status": "PASS",
-        "details": {"records": {"cname.example.test": "target.example.test."}},
+        "details": {"expected": {"cname.example.test": "target.example.test."}},
     }
     a_result = {
         "record_type": "A",
         "status": "PASS",
-        "details": {"records": {"mail.example.test": ["192.0.2.1"]}},
+        "details": {"expected": {"mail.example.test": ["192.0.2.1"]}},
     }
     srv_result = {
         "record_type": "SRV",
         "status": "PASS",
-        "details": {"records": {"_srv._tcp.example.test": [(0, 5, 443, "srv.example.test")]}},
+        "details": {"expected": {"_srv._tcp.example.test": [(0, 5, 443, "srv.example.test")]}},
     }
     txt_result = {
         "record_type": "TXT",

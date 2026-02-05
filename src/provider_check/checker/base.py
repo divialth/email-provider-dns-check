@@ -137,7 +137,7 @@ class DNSChecker(RecordsMixin):
         for name, check in checks:
             LOGGER.debug("Starting %s check", name)
             result = check()
-            LOGGER.info("%s: %s - %s", result.record_type, result.status, result.message)
+            LOGGER.info("%s: %s - %s", result.record_type, result.status.value, result.message)
             if result.details:
                 LOGGER.debug("%s details: %s", result.record_type, result.details)
             results.append(result)

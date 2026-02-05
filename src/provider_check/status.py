@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Union
 
 
 class Status(Enum):
@@ -32,22 +33,40 @@ class ExitCodes:
     UNKNOWN: int = 3
 
 
-def exit_code_for_status(status: str) -> int:
-    """Map a status string to an exit code.
+def coerce_status(status: Union[Status, str]) -> Status:
+    """Normalize a status string or enum into a Status value.
 
     Args:
-        status (str): Status string.
+        status (Status | str): Status enum or string value.
+
+    Returns:
+        Status: Normalized Status value.
+    """
+    if isinstance(status, Status):
+        return status
+    try:
+        return Status(status)
+    except ValueError:
+        return Status.UNKNOWN
+
+
+def exit_code_for_status(status: Union[Status, str]) -> int:
+    """Map a status value to an exit code.
+
+    Args:
+        status (Status | str): Status enum or string value.
 
     Returns:
         int: Exit code for the status.
     """
-    if status == Status.PASS.value:
+    normalized = coerce_status(status)
+    if normalized is Status.PASS:
         return ExitCodes.PASS
-    if status == Status.WARN.value:
+    if normalized is Status.WARN:
         return ExitCodes.WARN
-    if status == Status.FAIL.value:
+    if normalized is Status.FAIL:
         return ExitCodes.FAIL
     return ExitCodes.UNKNOWN
 
 
-__all__ = ["ExitCodes", "Status", "exit_code_for_status"]
+__all__ = ["ExitCodes", "Status", "coerce_status", "exit_code_for_status"]
