@@ -77,3 +77,25 @@ def _parse_provider_vars(raw_vars: List[str]) -> dict[str, str]:
             raise ValueError(f"Provider variable '{name}' was provided more than once")
         parsed[name] = value
     return parsed
+
+
+def _parse_positive_float(value: str, *, label: str) -> float:
+    """Parse a positive float value from CLI input.
+
+    Args:
+        value (str): String value to parse.
+        label (str): Label used in error messages.
+
+    Returns:
+        float: Parsed positive float value.
+
+    Raises:
+        argparse.ArgumentTypeError: If the value is invalid or non-positive.
+    """
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"{label} must be a positive number") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError(f"{label} must be a positive number")
+    return parsed

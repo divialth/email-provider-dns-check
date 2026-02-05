@@ -5,8 +5,9 @@ The resolver is intentionally thin so it can be replaced in tests.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 try:
     import dns.exception
@@ -15,6 +16,34 @@ except ImportError as exc:  # pragma: no cover - handled at runtime
     raise SystemExit("dnspython is required. Install with `pip install dnspython`.") from exc
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _is_ip_address(value: str) -> bool:
+    """Check whether a string is a valid IP address.
+
+    Args:
+        value (str): Input string to validate.
+
+    Returns:
+        bool: True if the value is a valid IPv4 or IPv6 address.
+    """
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _append_unique(items: List[str], value: str) -> None:
+    """Append a value to a list if it is not already present.
+
+    Args:
+        items (List[str]): Target list to mutate.
+        value (str): Value to append when missing.
+    """
+    if value in items:
+        return
+    items.append(value)
 
 
 class DnsLookupError(RuntimeError):
@@ -37,9 +66,92 @@ class DnsLookupError(RuntimeError):
 class DnsResolver:
     """Perform DNS lookups using dnspython."""
 
-    def __init__(self) -> None:
-        """Initialize the DNS resolver."""
+    def __init__(
+        self,
+        nameservers: Optional[Iterable[str]] = None,
+        timeout: Optional[float] = None,
+        lifetime: Optional[float] = None,
+        use_tcp: bool = False,
+    ) -> None:
+        """Initialize the DNS resolver.
+
+        Args:
+            nameservers (Optional[Iterable[str]]): Optional nameserver IPs or hostnames.
+            timeout (Optional[float]): Per-query timeout in seconds.
+            lifetime (Optional[float]): Total timeout across retries in seconds.
+            use_tcp (bool): Whether to force TCP for DNS lookups.
+
+        Raises:
+            ValueError: If a nameserver is invalid or cannot be resolved.
+        """
         self._resolver = dns.resolver.Resolver()
+        if timeout is not None:
+            if timeout <= 0:
+                raise ValueError("DNS timeout must be a positive number")
+            self._resolver.timeout = timeout
+        if lifetime is not None:
+            if lifetime <= 0:
+                raise ValueError("DNS lifetime must be a positive number")
+            self._resolver.lifetime = lifetime
+        self._resolver.use_tcp = bool(use_tcp)
+        if nameservers:
+            self._resolver.nameservers = self._resolve_nameservers(nameservers)
+
+    def _resolve_nameservers(self, nameservers: Iterable[str]) -> List[str]:
+        """Resolve nameserver hostnames into IP addresses.
+
+        Args:
+            nameservers (Iterable[str]): Nameserver IPs or hostnames.
+
+        Returns:
+            List[str]: Resolved IP addresses in input order.
+
+        Raises:
+            ValueError: If a nameserver is invalid or cannot be resolved.
+        """
+        resolved: List[str] = []
+        for server in nameservers:
+            server_text = str(server).strip()
+            if not server_text:
+                raise ValueError("DNS server entries cannot be empty")
+            if _is_ip_address(server_text):
+                _append_unique(resolved, server_text)
+                continue
+            addresses = self._resolve_nameserver_hostname(server_text)
+            if not addresses:
+                raise ValueError(f"DNS server '{server_text}' did not resolve to any IP addresses")
+            for address in addresses:
+                _append_unique(resolved, address)
+        if not resolved:
+            raise ValueError("At least one DNS server must be provided")
+        return resolved
+
+    def _resolve_nameserver_hostname(self, hostname: str) -> List[str]:
+        """Resolve a nameserver hostname into A/AAAA records.
+
+        Args:
+            hostname (str): Hostname to resolve.
+
+        Returns:
+            List[str]: Resolved IP addresses.
+
+        Raises:
+            ValueError: If the hostname cannot be resolved due to DNS errors.
+        """
+        addresses: List[str] = []
+        for record_type in ("A", "AAAA"):
+            try:
+                answers = self._resolver.resolve(hostname, record_type)
+            except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+                continue
+            except dns.exception.DNSException as err:
+                raise ValueError(f"DNS server '{hostname}' could not be resolved: {err}") from err
+            for rdata in answers:
+                address = str(rdata.address)
+                addresses.append(address)
+        if addresses:
+            LOGGER.debug("Resolved DNS server %s to %s", hostname, addresses)
+        return addresses
 
     def get_mx(self, domain: str) -> List[tuple[str, int]]:
         """Resolve MX records for a domain.

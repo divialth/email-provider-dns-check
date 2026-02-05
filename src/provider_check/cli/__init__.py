@@ -9,6 +9,7 @@ from typing import List
 
 from ..checker import DNSChecker
 from ..detection import DEFAULT_TOP_N, detect_providers
+from ..dns_resolver import DnsResolver
 from ..output import (
     build_json_payload,
     make_status_colorizer,
@@ -28,7 +29,12 @@ from .checks import handle_checks
 from .detection import handle_detection
 from .formatting import _build_detection_payload, _format_detection_report
 from .parser import _setup_logging, build_parser
-from .parsing import _parse_dmarc_pct, _parse_provider_vars, _parse_txt_records
+from .parsing import (
+    _parse_dmarc_pct,
+    _parse_positive_float,
+    _parse_provider_vars,
+    _parse_txt_records,
+)
 from .providers import handle_provider_show, handle_providers_list
 from .yaml_format import _LiteralString, _ProviderShowDumper, _strip_long_description_indicator
 
@@ -38,6 +44,7 @@ __all__ = [
     "_build_detection_payload",
     "_format_detection_report",
     "_parse_dmarc_pct",
+    "_parse_positive_float",
     "_parse_provider_vars",
     "_parse_txt_records",
     "_setup_logging",
@@ -93,6 +100,16 @@ def main(argv: List[str] | None = None) -> int:
             "--provider-var is not supported with --provider-detect or --provider-autoselect"
         )
 
+    try:
+        resolver = DnsResolver(
+            nameservers=args.dns_servers,
+            timeout=args.dns_timeout,
+            lifetime=args.dns_lifetime,
+            use_tcp=args.dns_tcp,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+
     report_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
 
     if args.provider_detect or args.provider_autoselect:
@@ -100,6 +117,7 @@ def main(argv: List[str] | None = None) -> int:
             args,
             parser,
             report_time,
+            resolver=resolver,
             detect_providers=detect_providers,
             default_top_n=DEFAULT_TOP_N,
             format_detection_report=_format_detection_report,
@@ -122,6 +140,7 @@ def main(argv: List[str] | None = None) -> int:
         args,
         parser,
         report_time,
+        resolver=resolver,
         load_provider_config=load_provider_config,
         resolve_provider_config=resolve_provider_config,
         parse_provider_vars=_parse_provider_vars,

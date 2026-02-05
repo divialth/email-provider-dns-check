@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from typing import Callable
 
+from ..dns_resolver import DnsResolver
+
 from .shared import _build_dmarc_required_tags, _parse_txt_inputs
 
 
@@ -13,6 +15,7 @@ def handle_detection(
     parser: object,
     report_time: str,
     *,
+    resolver: DnsResolver,
     detect_providers: Callable[..., object],
     default_top_n: int,
     format_detection_report: Callable[[object, str], str],
@@ -33,6 +36,7 @@ def handle_detection(
         args (object): Parsed CLI arguments.
         parser (object): Argument parser with an error() method.
         report_time (str): Report timestamp.
+        resolver (DnsResolver): DNS resolver to use for lookups.
         detect_providers (Callable[..., object]): Provider detection callback.
         default_top_n (int): Default number of candidates to return.
         format_detection_report (Callable[[object, str], str]): Report formatter.
@@ -50,7 +54,7 @@ def handle_detection(
     Returns:
         int: Exit code.
     """
-    report = detect_providers(args.domain, top_n=default_top_n)
+    report = detect_providers(args.domain, resolver=resolver, top_n=default_top_n)
     detection_output = format_detection_report(
         report,
         report_time,
@@ -74,6 +78,7 @@ def handle_detection(
             checker = dns_checker_cls(
                 args.domain,
                 provider,
+                resolver=resolver,
                 strict=args.strict,
                 dmarc_rua_mailto=args.dmarc_rua_mailto,
                 dmarc_ruf_mailto=args.dmarc_ruf_mailto,
@@ -121,6 +126,7 @@ def handle_detection(
         checker = dns_checker_cls(
             args.domain,
             provider,
+            resolver=resolver,
             strict=args.strict,
             dmarc_rua_mailto=args.dmarc_rua_mailto,
             dmarc_ruf_mailto=args.dmarc_ruf_mailto,

@@ -10,6 +10,10 @@ from provider_check.dns_resolver import DnsLookupError, DnsResolver
 class DummyResolver:
     def __init__(self, answers):
         self.answers = answers
+        self.nameservers = []
+        self.timeout = None
+        self.lifetime = None
+        self.use_tcp = False
 
     def resolve(self, name: str, record_type: str):
         result = self.answers[(name, record_type)]
@@ -239,3 +243,102 @@ def test_get_aaaa_dns_exception_raises_lookup_error(monkeypatch):
 
     assert exc.value.record_type == "AAAA"
     assert exc.value.name == "example.com"
+
+
+def test_nameserver_ips_are_used(monkeypatch):
+    dummy = DummyResolver({})
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    DnsResolver(nameservers=["1.1.1.1", "2001:db8::1"])
+
+    assert dummy.nameservers == ["1.1.1.1", "2001:db8::1"]
+
+
+def test_nameserver_duplicates_are_deduped(monkeypatch):
+    dummy = DummyResolver({})
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    DnsResolver(nameservers=["1.1.1.1", "1.1.1.1"])
+
+    assert dummy.nameservers == ["1.1.1.1"]
+
+
+def test_nameserver_hostnames_are_resolved(monkeypatch):
+    answers = {
+        ("dns.example.test", "A"): [SimpleNamespace(address="203.0.113.53")],
+        ("dns.example.test", "AAAA"): [SimpleNamespace(address="2001:db8::53")],
+    }
+    dummy = DummyResolver(answers)
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    DnsResolver(nameservers=["dns.example.test"])
+
+    assert dummy.nameservers == ["203.0.113.53", "2001:db8::53"]
+
+
+def test_nameserver_hostname_without_addresses_raises(monkeypatch):
+    answers = {
+        ("dns.example.test", "A"): dns.resolver.NXDOMAIN(),
+        ("dns.example.test", "AAAA"): dns.resolver.NoAnswer(),
+    }
+    dummy = DummyResolver(answers)
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    with pytest.raises(ValueError):
+        DnsResolver(nameservers=["dns.example.test"])
+
+
+def test_nameserver_hostname_dns_exception_raises(monkeypatch):
+    answers = {
+        ("dns.example.test", "A"): dns.exception.DNSException("boom"),
+        ("dns.example.test", "AAAA"): dns.resolver.NoAnswer(),
+    }
+    dummy = DummyResolver(answers)
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    with pytest.raises(ValueError):
+        DnsResolver(nameservers=["dns.example.test"])
+
+
+def test_empty_nameserver_entry_raises(monkeypatch):
+    dummy = DummyResolver({})
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    with pytest.raises(ValueError):
+        DnsResolver(nameservers=[""])
+
+
+def test_empty_nameserver_list_raises(monkeypatch):
+    dummy = DummyResolver({})
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+    resolver = DnsResolver()
+
+    with pytest.raises(ValueError):
+        resolver._resolve_nameservers([])
+
+
+def test_dns_timeout_lifetime_and_tcp_are_set(monkeypatch):
+    dummy = DummyResolver({})
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    DnsResolver(timeout=2.5, lifetime=7.0, use_tcp=True)
+
+    assert dummy.timeout == 2.5
+    assert dummy.lifetime == 7.0
+    assert dummy.use_tcp is True
+
+
+def test_dns_timeout_rejects_non_positive(monkeypatch):
+    dummy = DummyResolver({})
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    with pytest.raises(ValueError):
+        DnsResolver(timeout=0)
+
+
+def test_dns_lifetime_rejects_non_positive(monkeypatch):
+    dummy = DummyResolver({})
+    monkeypatch.setattr(dns.resolver, "Resolver", lambda: dummy)
+
+    with pytest.raises(ValueError):
+        DnsResolver(lifetime=-1)
