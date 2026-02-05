@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict
 
 from ...models import ProviderVariable
-from ...utils import _RESERVED_VARIABLES, _require_variables
+from ...utils import _RESERVED_VARIABLES, _reject_unknown_keys, _require_variables
 
 
 def _parse_variables(provider_id: str, data: dict) -> Dict[str, ProviderVariable]:
@@ -41,6 +41,12 @@ def _parse_variables(provider_id: str, data: dict) -> Dict[str, ProviderVariable
             raise ValueError(
                 f"Provider config {provider_id} variable '{var_name}' must be a mapping"
             )
+        _reject_unknown_keys(
+            provider_id,
+            f"variable '{var_name}'",
+            spec,
+            {"required", "default", "description"},
+        )
         required = spec.get("required", False)
         if not isinstance(required, bool):
             raise ValueError(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict
 
 from ...models import MXConfig
-from ...utils import _require_list, _require_mapping
+from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
 
 def _parse_mx(provider_id: str, records: dict) -> MXConfig | None:
@@ -25,6 +25,7 @@ def _parse_mx(provider_id: str, records: dict) -> MXConfig | None:
         return None
 
     mx_section = _require_mapping(provider_id, "mx", records.get("mx"))
+    _reject_unknown_keys(provider_id, "mx", mx_section, {"hosts", "records", "priorities"})
     hosts = _require_list(provider_id, "mx hosts", mx_section.get("hosts", []))
     priorities: Dict[str, int] = {}
     for entry in _require_list(provider_id, "mx records", mx_section.get("records", [])):

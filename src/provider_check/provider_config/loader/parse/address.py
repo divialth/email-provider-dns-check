@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...models import AddressConfig
-from ...utils import _require_list, _require_mapping
+from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
 
 def _parse_address_records(
@@ -45,6 +45,7 @@ def _parse_a(provider_id: str, records: dict) -> AddressConfig | None:
         return None
 
     a_section = _require_mapping(provider_id, "a", records.get("a"))
+    _reject_unknown_keys(provider_id, "a", a_section, {"records", "records_optional"})
     a_records_raw = _require_mapping(provider_id, "a records", a_section.get("records", {}))
     a_optional_raw = _require_mapping(
         provider_id, "a records_optional", a_section.get("records_optional", {})
@@ -68,6 +69,7 @@ def _parse_aaaa(provider_id: str, records: dict) -> AddressConfig | None:
         return None
 
     aaaa_section = _require_mapping(provider_id, "aaaa", records.get("aaaa"))
+    _reject_unknown_keys(provider_id, "aaaa", aaaa_section, {"records", "records_optional"})
     aaaa_records_raw = _require_mapping(
         provider_id, "aaaa records", aaaa_section.get("records", {})
     )

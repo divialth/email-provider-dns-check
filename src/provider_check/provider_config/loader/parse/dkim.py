@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ...models import DKIMConfig
-from ...utils import _require_list, _require_mapping
+from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
 
 def _parse_dkim(provider_id: str, records: dict) -> DKIMConfig | None:
@@ -23,6 +23,12 @@ def _parse_dkim(provider_id: str, records: dict) -> DKIMConfig | None:
         return None
 
     dkim_section = _require_mapping(provider_id, "dkim", records.get("dkim"))
+    _reject_unknown_keys(
+        provider_id,
+        "dkim",
+        dkim_section,
+        {"selectors", "record_type", "target_template", "txt_values"},
+    )
     selectors = _require_list(provider_id, "dkim selectors", dkim_section.get("selectors", []))
     record_type = str(dkim_section.get("record_type", "cname")).lower()
     if record_type not in {"cname", "txt"}:

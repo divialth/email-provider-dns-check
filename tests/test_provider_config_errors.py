@@ -142,6 +142,16 @@ def test_load_provider_srv_optional_requires_priority_fields():
         provider_config._load_provider_from_data("bad", data)
 
 
+def test_load_provider_records_unknown_type_rejected():
+    data = {
+        "version": "1",
+        "records": {"bogus": {"records": {}}},
+    }
+
+    with pytest.raises(ValueError, match="records has unknown keys: bogus"):
+        provider_config._load_provider_from_data("bad", data)
+
+
 def test_load_provider_txt_records_loaded():
     data = {
         "version": "1",
@@ -152,6 +162,16 @@ def test_load_provider_txt_records_loaded():
 
     assert config.txt is not None
     assert config.txt.records == {"_verify": ["token-1", "token-2"]}
+
+
+def test_load_provider_txt_unknown_key_rejected():
+    data = {
+        "version": "1",
+        "records": {"txt": {"records": {"_verify": ["token-1"]}, "extra": True}},
+    }
+
+    with pytest.raises(ValueError, match="txt has unknown keys: extra"):
+        provider_config._load_provider_from_data("txt", data)
 
 
 def test_load_provider_txt_optional_records_loaded():
@@ -169,6 +189,16 @@ def test_load_provider_txt_optional_records_loaded():
 
     assert config.txt is not None
     assert config.txt.records_optional == {"_optional": ["token-2"]}
+
+
+def test_load_provider_variable_unknown_key_rejected():
+    data = {
+        "version": "1",
+        "variables": {"tenant": {"required": True, "extra": "value"}},
+    }
+
+    with pytest.raises(ValueError, match="variable 'tenant' has unknown keys: extra"):
+        provider_config._load_provider_from_data("bad", data)
 
 
 def test_load_provider_address_records_loaded():

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict
 
 from ...models import ProviderConfig
-from ...utils import _require_mapping
+from ...utils import _reject_unknown_keys, _require_mapping
 from .address import _parse_a, _parse_aaaa
 from .caa import _parse_caa
 from .cname import _parse_cname
@@ -40,6 +40,23 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         records = _require_mapping(provider_id, "records", data.get("records"))
     else:
         records = {}
+    _reject_unknown_keys(
+        provider_id,
+        "records",
+        records,
+        {
+            "mx",
+            "spf",
+            "dkim",
+            "a",
+            "aaaa",
+            "cname",
+            "caa",
+            "srv",
+            "txt",
+            "dmarc",
+        },
+    )
 
     return ProviderConfig(
         provider_id=provider_id,

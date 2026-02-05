@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ...models import DMARCConfig
-from ...utils import _require_list, _require_mapping
+from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
 
 def _parse_dmarc(provider_id: str, records: dict) -> DMARCConfig | None:
@@ -23,6 +23,19 @@ def _parse_dmarc(provider_id: str, records: dict) -> DMARCConfig | None:
         return None
 
     dmarc_section = _require_mapping(provider_id, "dmarc", records.get("dmarc"))
+    _reject_unknown_keys(
+        provider_id,
+        "dmarc",
+        dmarc_section,
+        {
+            "default_policy",
+            "required_rua",
+            "required_ruf",
+            "required_tags",
+            "rua_required",
+            "ruf_required",
+        },
+    )
     default_policy = dmarc_section.get("default_policy", "reject")
     required_rua = _require_list(
         provider_id, "dmarc required_rua", dmarc_section.get("required_rua", [])

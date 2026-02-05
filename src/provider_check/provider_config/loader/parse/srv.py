@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...models import SRVConfig, SRVRecord
-from ...utils import _require_list, _require_mapping
+from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
 
 def _parse_srv_records(
@@ -70,6 +70,7 @@ def _parse_srv(provider_id: str, records: dict) -> SRVConfig | None:
         return None
 
     srv_section = _require_mapping(provider_id, "srv", records.get("srv"))
+    _reject_unknown_keys(provider_id, "srv", srv_section, {"records", "records_optional"})
     srv_records_raw = _require_mapping(provider_id, "srv records", srv_section.get("records", {}))
     srv_optional_raw = _require_mapping(
         provider_id, "srv records_optional", srv_section.get("records_optional", {})

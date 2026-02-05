@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...models import TXTConfig
-from ...utils import _require_list, _require_mapping
+from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
 
 def _parse_txt(provider_id: str, records: dict) -> TXTConfig | None:
@@ -25,6 +25,12 @@ def _parse_txt(provider_id: str, records: dict) -> TXTConfig | None:
         return None
 
     txt_section = _require_mapping(provider_id, "txt", records.get("txt"))
+    _reject_unknown_keys(
+        provider_id,
+        "txt",
+        txt_section,
+        {"records", "records_optional", "verification_required"},
+    )
     records_raw = _require_mapping(provider_id, "txt records", txt_section.get("records", {}))
     records_required: Dict[str, List[str]] = {}
     for name, values in records_raw.items():

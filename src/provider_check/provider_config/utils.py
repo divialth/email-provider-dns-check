@@ -6,7 +6,7 @@ import copy
 import logging
 import os
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Set
 
 CONFIG_DIR_NAME = "provider-dns-check"
 PROVIDER_DIR_NAME = "providers"
@@ -95,6 +95,30 @@ def _require_variables(provider_id: str, value: object | None) -> dict:
     if not isinstance(value, dict):
         raise ValueError(f"Provider config {provider_id} variables must be a mapping")
     return value
+
+
+def _reject_unknown_keys(
+    provider_id: str,
+    section: str,
+    data: dict,
+    allowed_keys: Iterable[str],
+) -> None:
+    """Reject unknown keys in a configuration mapping.
+
+    Args:
+        provider_id (str): Provider identifier used in error messages.
+        section (str): Section label for error messages.
+        data (dict): Mapping to validate.
+        allowed_keys (Iterable[str]): Allowed keys in the mapping.
+
+    Raises:
+        ValueError: If unknown keys are present in the mapping.
+    """
+    allowed: Set[str] = {str(key) for key in allowed_keys}
+    unknown = {str(key) for key in data.keys()} - allowed
+    if unknown:
+        rendered = ", ".join(sorted(unknown))
+        raise ValueError(f"Provider config {provider_id} {section} has unknown keys: {rendered}")
 
 
 def external_config_dirs() -> List[Path]:

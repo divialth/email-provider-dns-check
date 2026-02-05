@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ...models import CAAConfig, CAARecord
-from ...utils import _require_list, _require_mapping
+from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
 
 def _parse_caa_records(
@@ -62,6 +62,7 @@ def _parse_caa(provider_id: str, records: dict) -> CAAConfig | None:
         return None
 
     caa_section = _require_mapping(provider_id, "caa", records.get("caa"))
+    _reject_unknown_keys(provider_id, "caa", caa_section, {"records", "records_optional"})
     caa_records_raw = _require_mapping(provider_id, "caa records", caa_section.get("records", {}))
     caa_optional_raw = _require_mapping(
         provider_id, "caa records_optional", caa_section.get("records_optional", {})

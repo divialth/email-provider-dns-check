@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict
 
 from ...models import CNAMEConfig
-from ...utils import _require_mapping
+from ...utils import _reject_unknown_keys, _require_mapping
 
 
 def _parse_cname(provider_id: str, records: dict) -> CNAMEConfig | None:
@@ -25,6 +25,7 @@ def _parse_cname(provider_id: str, records: dict) -> CNAMEConfig | None:
         return None
 
     cname_section = _require_mapping(provider_id, "cname", records.get("cname"))
+    _reject_unknown_keys(provider_id, "cname", cname_section, {"records", "records_optional"})
     cname_records_raw = _require_mapping(
         provider_id, "cname records", cname_section.get("records", {})
     )

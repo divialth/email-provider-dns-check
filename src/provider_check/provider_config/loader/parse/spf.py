@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ...models import SPFConfig
-from ...utils import _require_list, _require_mapping
+from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
 
 def _parse_spf(provider_id: str, records: dict) -> SPFConfig | None:
@@ -23,6 +23,18 @@ def _parse_spf(provider_id: str, records: dict) -> SPFConfig | None:
         return None
 
     spf_section = _require_mapping(provider_id, "spf", records.get("spf"))
+    _reject_unknown_keys(
+        provider_id,
+        "spf",
+        spf_section,
+        {
+            "required_includes",
+            "required_mechanisms",
+            "allowed_mechanisms",
+            "required_modifiers",
+            "strict_record",
+        },
+    )
     required = _require_list(
         provider_id, "spf required_includes", spf_section.get("required_includes", [])
     )
