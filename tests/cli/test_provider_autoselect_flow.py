@@ -8,10 +8,10 @@ from typing import Any
 
 import pytest
 
-from provider_check.checker import RecordCheck
 from provider_check.cli import main
 from provider_check.detection import DetectionReport
 from provider_check.status import Status
+from tests.factories import make_record_check
 
 DMARC_STRICT_ARGS = [
     "--dmarc-subdomain-policy",
@@ -88,7 +88,7 @@ def test_provider_autoselect_runs_checks(
         make_detection_report,
         make_provider,
     )
-    patch_dns_checker([RecordCheck.pass_("MX", "ok", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check()])
 
     code = main(["example.com", "--provider-autoselect", "--output", "text"])
 
@@ -116,7 +116,7 @@ def test_provider_autoselect_warn_exit(
         make_detection_report,
         make_provider,
     )
-    patch_dns_checker([RecordCheck.warn("MX", "warn", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check(status=Status.WARN, message="warn")])
 
     code = main(["example.com", "--provider-autoselect", "--output", "text", *DMARC_STRICT_ARGS])
 
@@ -141,7 +141,7 @@ def test_provider_autoselect_human_fail(
         make_detection_report,
         make_provider,
     )
-    patch_dns_checker([RecordCheck.fail("MX", "fail", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check(status=Status.FAIL, message="fail")])
 
     code = main(["example.com", "--provider-autoselect", "--output", "human"])
 
@@ -173,7 +173,7 @@ def test_provider_autoselect_json_statuses(
         make_detection_report,
         make_provider,
     )
-    patch_dns_checker([RecordCheck.with_status("MX", status, "status", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check(status=status, message="status")])
 
     code = main(["example.com", "--provider-autoselect", "--output", "json", *DMARC_STRICT_ARGS])
 
@@ -203,7 +203,7 @@ def test_provider_autoselect_json_unknown(
         make_detection_report,
         make_provider,
     )
-    patch_dns_checker([RecordCheck.pass_("MX", "ok", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check()])
     monkeypatch.setattr(cli_module, "summarize_status", lambda _results: Status.UNKNOWN)
 
     code = main(["example.com", "--provider-autoselect", "--output", "json"])
@@ -289,7 +289,7 @@ def test_provider_autoselect_text_unknown(
         make_detection_report,
         make_provider,
     )
-    patch_dns_checker([RecordCheck.pass_("MX", "ok", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check()])
     monkeypatch.setattr(cli_module, "summarize_status", lambda _results: Status.UNKNOWN)
 
     code = main(["example.com", "--provider-autoselect", "--output", "text"])

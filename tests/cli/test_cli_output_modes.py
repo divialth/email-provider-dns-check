@@ -8,9 +8,9 @@ from typing import Any
 
 import pytest
 
-from provider_check.checker import RecordCheck
 from provider_check.cli import main
 from provider_check.status import Status
+from tests.factories import make_record_check
 
 
 def test_verbose_flag_sets_info_logging(
@@ -28,7 +28,7 @@ def test_verbose_flag_sets_info_logging(
 
     monkeypatch.setattr(cli_module.logging, "basicConfig", _fake_basic_config)
     patch_provider_resolution(make_provider(name="Dummy"))
-    patch_dns_checker([RecordCheck.pass_("MX", "ok", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check()])
     monkeypatch.setattr(cli_module, "summarize_status", lambda _results: Status.PASS)
 
     code = main(["example.com", "--provider", "dummy", "--verbose", "--output", "json"])
@@ -47,7 +47,7 @@ def test_domain_flag_used(
     """Accept ``--domain`` as an alternative to positional domain input."""
     patch_provider_resolution(make_provider(name="Dummy"))
     patch_cli_datetime(datetime(2026, 1, 31, 19, 37, tzinfo=timezone.utc))
-    patch_dns_checker([RecordCheck.pass_("MX", "ok", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check()])
 
     code = main(["--domain", "example.com", "--provider", "dummy", "--output", "json"])
 
@@ -66,7 +66,7 @@ def test_json_output(
     """Render provider checks in JSON format."""
     patch_provider_resolution(make_provider(name="Dummy"))
     patch_cli_datetime(datetime(2026, 1, 31, 19, 37, tzinfo=timezone.utc))
-    patch_dns_checker([RecordCheck.pass_("MX", "ok", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check()])
 
     code = main(["example.com", "--provider", "dummy", "--output", "json"])
 
@@ -86,7 +86,7 @@ def test_text_output(
     """Render provider checks in plain text format."""
     patch_provider_resolution(make_provider(name="Dummy"))
     patch_cli_datetime(datetime(2026, 1, 31, 19, 37, tzinfo=timezone.utc))
-    patch_dns_checker([RecordCheck.pass_("MX", "ok", {"found": ["mx"]})])
+    patch_dns_checker([make_record_check()])
 
     code = main(["example.com", "--provider", "dummy", "--output", "text"])
 
