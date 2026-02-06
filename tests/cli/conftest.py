@@ -13,6 +13,8 @@ from provider_check.detection import DetectionCandidate, DetectionReport
 from provider_check.provider_config import ProviderConfig, ProviderVariable
 from provider_check.status import Status
 
+from tests.factories import make_provider_config
+
 
 @pytest.fixture
 def cli_module():
@@ -41,15 +43,10 @@ def make_provider() -> Callable[..., ProviderConfig]:
         version: str = "1",
         variables: dict[str, ProviderVariable] | None = None,
     ) -> ProviderConfig:
-        return ProviderConfig(
+        return make_provider_config(
             provider_id=provider_id,
             name=name,
             version=version,
-            mx=None,
-            spf=None,
-            dkim=None,
-            txt=None,
-            dmarc=None,
             variables=variables,
         )
 

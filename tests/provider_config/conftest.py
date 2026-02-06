@@ -12,6 +12,8 @@ import pytest
 from provider_check.provider_config import list_providers
 from provider_check.provider_config import ProviderConfig
 
+from tests.factories import make_provider_config as build_provider_config
+
 
 @pytest.fixture
 def provider_dir(tmp_path: Path) -> Path:
@@ -149,15 +151,9 @@ def make_provider_config() -> Callable[..., ProviderConfig]:
     """
 
     def _make(provider_id: str, name: str) -> ProviderConfig:
-        return ProviderConfig(
+        return build_provider_config(
             provider_id=provider_id,
             name=name,
-            version="1",
-            mx=None,
-            spf=None,
-            dkim=None,
-            txt=None,
-            dmarc=None,
         )
 
     return _make

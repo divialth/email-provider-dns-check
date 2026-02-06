@@ -3,6 +3,8 @@ import pytest
 from provider_check import __version__
 from provider_check.cli import main
 
+from tests.factories import make_provider_config
+
 
 def _write_provider_config(path, provider_id, name="Custom Provider"):
     payload = f"version: 1\nname: {name}\nrecords: {{}}\n"
@@ -52,17 +54,10 @@ def test_providers_dir_used_for_list(capsys, tmp_path):
 
 def test_provider_show_outputs_yaml(capsys, monkeypatch):
     import provider_check.cli as cli
-    from provider_check.provider_config import ProviderConfig
 
-    provider = ProviderConfig(
+    provider = make_provider_config(
         provider_id="dummy_provider",
         name="Dummy Provider",
-        version="1",
-        mx=None,
-        spf=None,
-        dkim=None,
-        txt=None,
-        dmarc=None,
         short_description="Short summary.",
         long_description="Long description line 1.\nLong description line 2.",
     )
@@ -98,17 +93,10 @@ def test_providers_dir_used_for_provider_show(capsys, tmp_path):
 
 def test_provider_show_allows_domain_flag(capsys, monkeypatch):
     import provider_check.cli as cli
-    from provider_check.provider_config import ProviderConfig
 
-    provider = ProviderConfig(
+    provider = make_provider_config(
         provider_id="dummy_provider",
         name="Dummy Provider",
-        version="1",
-        mx=None,
-        spf=None,
-        dkim=None,
-        txt=None,
-        dmarc=None,
     )
     data = {
         "name": "Dummy Provider",
