@@ -9,6 +9,13 @@ on:
   schedule:
     - cron: "0 3 * * 1"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   sync-repo-to-codeberg:
     if: &skip_renovate >-

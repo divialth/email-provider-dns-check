@@ -3,9 +3,19 @@ name: tests
 on:
   push:
     branches-ignore:
+      - codex/**
       - renovate/**
       - renovate-*
   pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   black:
@@ -22,6 +32,8 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.14"
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install black
         run: python -m pip install black
@@ -40,6 +52,8 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.14"
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Regenerate requirements files
         run: python scripts/update_requirements.py
@@ -58,6 +72,8 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.14"
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install yamllint
         run: python -m pip install yamllint
@@ -83,6 +99,8 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: python -m pip install ".[test]"
@@ -101,6 +119,8 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.14"
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: python -m pip install ".[test]"
