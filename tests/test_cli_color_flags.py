@@ -1,8 +1,7 @@
-from provider_check.checker import RecordCheck
 from provider_check.cli import main
 from provider_check.status import Status
 
-from tests.factories import make_provider_config
+from tests.factories import make_provider_config, make_record_check
 
 
 def _patch_provider_and_checker(monkeypatch, status: Status = Status.PASS) -> None:
@@ -14,7 +13,7 @@ def _patch_provider_and_checker(monkeypatch, status: Status = Status.PASS) -> No
 
     class _DummyChecker:
         def run_checks(self):
-            return [RecordCheck.with_status("MX", status, "ok", {"found": ["mx"]})]
+            return [make_record_check(status=status)]
 
     monkeypatch.setattr(cli, "DNSChecker", lambda *_args, **_kwargs: _DummyChecker())
 
