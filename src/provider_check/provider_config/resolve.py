@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Dict, Iterable, List, Optional
 
 from .models import (
@@ -27,6 +28,31 @@ from .models import (
     TXTSettings,
 )
 from .utils import _format_string
+
+_PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z0-9_]+)\}")
+
+
+def _validate_allowed_placeholders(value: str, *, allowed: set[str], context: str) -> None:
+    """Validate that a template contains only allowed unresolved placeholders.
+
+    Args:
+        value (str): Template string to validate.
+        allowed (set[str]): Placeholder names that are allowed to remain unresolved.
+        context (str): Error message context.
+
+    Raises:
+        ValueError: If disallowed placeholders are present.
+    """
+    placeholders = set(_PLACEHOLDER_RE.findall(value))
+    disallowed = sorted(placeholders - allowed)
+    if not disallowed:
+        return
+    allowed_values = ", ".join(sorted(allowed)) or "none"
+    rendered = ", ".join(disallowed)
+    raise ValueError(
+        f"{context} contains unsupported placeholder(s): {rendered}. "
+        f"Allowed unresolved placeholder(s): {allowed_values}."
+    )
 
 
 def _format_list(values: Iterable[str], variables: Dict[str, str]) -> List[str]:
@@ -230,11 +256,18 @@ def resolve_provider_config(
 
     dkim = None
     if provider.dkim:
+        target_template = _format_string(provider.dkim.required.target_template, resolved)
+        if target_template is not None:
+            _validate_allowed_placeholders(
+                target_template,
+                allowed={"selector"},
+                context=f"Provider '{provider.provider_id}' DKIM target_template",
+            )
         dkim = DKIMConfig(
             required=DKIMRequired(
                 selectors=_format_list(provider.dkim.required.selectors, resolved),
                 record_type=provider.dkim.required.record_type,
-                target_template=_format_string(provider.dkim.required.target_template, resolved),
+                target_template=target_template,
                 txt_values=_format_mapping(provider.dkim.required.txt_values, resolved),
             )
         )

@@ -235,3 +235,27 @@ def test_resolve_provider_config_formats_none_values():
     resolved = resolve_provider_config(provider, {"token": "value"})
 
     assert resolved.spf.required.record is None
+
+
+def test_resolve_provider_config_rejects_invalid_dkim_placeholder():
+    provider = ProviderConfig(
+        provider_id="invalid_dkim_template",
+        name="Invalid DKIM Template",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=DKIMConfig(
+            required=DKIMRequired(
+                selectors=["selector1"],
+                record_type="cname",
+                target_template="{selector}.{unknown}.example.test.",
+                txt_values={},
+            )
+        ),
+        txt=None,
+        dmarc=None,
+        variables={"tenant": ProviderVariable(name="tenant", required=False)},
+    )
+
+    with pytest.raises(ValueError, match="unsupported placeholder"):
+        resolve_provider_config(provider, {"tenant": "acme"}, domain="example.test")

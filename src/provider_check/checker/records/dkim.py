@@ -32,9 +32,22 @@ class DkimChecksMixin:
         dkim_required = self.provider.dkim.required
         if dkim_required.record_type == "cname":
             template = dkim_required.target_template
+            if not template:
+                return RecordCheck.unknown(
+                    "DKIM",
+                    "Invalid DKIM target template",
+                    {"error": "missing target_template"},
+                )
             for selector in dkim_required.selectors:
                 name = f"{selector}._domainkey.{self.domain}"
-                expected_target = template.format(selector=selector)
+                try:
+                    expected_target = template.format(selector=selector)
+                except (KeyError, ValueError) as err:
+                    return RecordCheck.unknown(
+                        "DKIM",
+                        "Invalid DKIM target template",
+                        {"error": str(err), "template": template},
+                    )
                 expected_target = self._normalize_host(expected_target)
                 selectors_map[name] = expected_target
                 expected_selectors.append(name)
