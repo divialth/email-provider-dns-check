@@ -171,6 +171,60 @@ def test_dkim_cname_mismatch_warns():
     assert "mismatched" in result.details
 
 
+def test_dkim_cname_invalid_template_returns_unknown():
+    provider = ProviderConfig(
+        provider_id="dkim_cname",
+        name="DKIM CNAME Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=DKIMConfig(
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="cname",
+                target_template="{selector}.{unknown}.example.test.",
+                txt_values={},
+            )
+        ),
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FakeResolver(), strict=False)
+
+    result = checker.check_dkim()
+
+    assert result.status is Status.UNKNOWN
+    assert result.message == "Invalid DKIM target template"
+    assert "template" in result.details
+
+
+def test_dkim_cname_missing_template_returns_unknown():
+    provider = ProviderConfig(
+        provider_id="dkim_cname",
+        name="DKIM CNAME Provider",
+        version="1",
+        mx=None,
+        spf=None,
+        dkim=DKIMConfig(
+            required=DKIMRequired(
+                selectors=["s1"],
+                record_type="cname",
+                target_template=None,
+                txt_values={},
+            )
+        ),
+        txt=None,
+        dmarc=None,
+    )
+    checker = DNSChecker("example.test", provider, resolver=FakeResolver(), strict=False)
+
+    result = checker.check_dkim()
+
+    assert result.status is Status.UNKNOWN
+    assert result.message == "Invalid DKIM target template"
+    assert result.details["error"] == "missing target_template"
+
+
 def test_dkim_txt_missing_selector_fails():
     provider = ProviderConfig(
         provider_id="dkim_txt",

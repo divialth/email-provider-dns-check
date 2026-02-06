@@ -65,7 +65,10 @@ def test_normalize_record_name_variants():
     assert detection._normalize_record_name("mx.example.com", domain) == "mx.example.com"
     assert detection._normalize_record_name("mx", domain) == "mx.example.com"
     assert detection._normalize_record_name("Mail.Example.com", domain) == "mail.example.com"
-    assert detection._normalize_record_name("mail.example.net", domain) == "mail.example.net"
+    assert (
+        detection._normalize_record_name("mail.example.net", domain)
+        == "mail.example.net.example.com"
+    )
 
 
 def test_template_regex_and_match_infer_branches():
@@ -252,6 +255,18 @@ def test_infer_provider_variables_handles_srv_lookup_error():
     )
     inferred = detection.infer_provider_variables(provider, "example.com", _FailingResolver())
     assert inferred == {}
+
+
+def test_infer_provider_variables_from_srv_relative_dotted_name():
+    provider = _provider(
+        srv=SRVConfig(required={"_sip._tls": [SRVRecord(1, 1, 443, "{tenant}.srv.test.")]}),
+        variables={"tenant": ProviderVariable(name="tenant", required=False)},
+    )
+    resolver = _Resolver(srv={"_sip._tls.example.com": [(1, 1, 443, "acme.srv.test.")]})
+
+    inferred = detection.infer_provider_variables(provider, "example.com", resolver)
+
+    assert inferred["tenant"] == "acme"
 
 
 def test_detect_providers_skips_empty_results(monkeypatch):

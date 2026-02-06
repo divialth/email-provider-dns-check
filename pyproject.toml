@@ -49,4 +49,8 @@ target-version = ["py311"]
 "provider_check.resources.templates" = ["*.j2"]
 
 [tool.setuptools]
+package-dir = {"" = "src"}
 license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

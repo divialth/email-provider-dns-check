@@ -2,23 +2,15 @@ import pytest
 
 from provider_check.cli import main
 from provider_check.detection import DetectionReport
-from provider_check.provider_config import ProviderConfig
 from provider_check.status import Status
+
+from tests.factories import make_provider_config
 
 
 def test_dns_server_option_passed_to_resolver_for_checks(monkeypatch):
     import provider_check.cli as cli
 
-    provider = ProviderConfig(
-        provider_id="dummy",
-        name="Dummy",
-        version="1",
-        mx=None,
-        spf=None,
-        dkim=None,
-        txt=None,
-        dmarc=None,
-    )
+    provider = make_provider_config(provider_id="dummy", name="Dummy")
     monkeypatch.setattr(cli, "load_provider_config", lambda _selection: provider)
     monkeypatch.setattr(cli, "resolve_provider_config", lambda prov, *_args, **_kwargs: prov)
 
