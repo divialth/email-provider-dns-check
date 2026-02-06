@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import pytest
 
@@ -46,6 +47,35 @@ def test_run_checks_success(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert result.status is Status.PASS
     assert "report for domain example.com" in result.output
+
+
+@pytest.mark.parametrize("output_format", ["text", "human", "json"])
+def test_run_checks_output_modes(tmp_path: Path, output_format: str) -> None:
+    provider_dir = _write_dummy_provider(tmp_path)
+    resolver = FakeResolver(
+        mx={"example.com": [("mx1.dummy.test.", 10)]},
+    )
+    result = run_checks(
+        CheckRequest(
+            domain="example.com",
+            provider_id="dummy_provider",
+            provider_dirs=[provider_dir],
+            output=output_format,
+            resolver=resolver,
+        )
+    )
+
+    assert result.exit_code == 0
+    assert result.status is Status.PASS
+    if output_format == "json":
+        payload = json.loads(result.output)
+        assert payload["domain"] == "example.com"
+        assert payload["provider"] == "Dummy Provider"
+    elif output_format == "human":
+        assert "report for domain example.com" in result.output
+        assert "| Status" in result.output
+    else:
+        assert "report for domain example.com" in result.output
 
 
 def test_run_checks_unknown_provider(tmp_path: Path) -> None:

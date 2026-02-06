@@ -1,3 +1,5 @@
+import pytest
+
 from provider_check.cli import main
 from provider_check.provider_config import list_providers
 
@@ -11,7 +13,8 @@ class DummyChecker:
         return []
 
 
-def test_dmarc_flag_parsing(monkeypatch):
+@pytest.mark.parametrize("output_format", ["human", "text", "json"])
+def test_dmarc_flag_parsing(monkeypatch, output_format):
     captured = {}
 
     def _factory(*args, **kwargs):
@@ -28,6 +31,8 @@ def test_dmarc_flag_parsing(monkeypatch):
             "example.com",
             "--provider",
             provider_id,
+            "--output",
+            output_format,
             "--dmarc-subdomain-policy",
             "reject",
             "--dmarc-adkim",

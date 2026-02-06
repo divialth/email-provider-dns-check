@@ -92,3 +92,23 @@ def test_text_output(
 
     assert code == 0
     assert "report for domain example.com" in capsys.readouterr().out
+
+
+def test_human_output(
+    patch_provider_resolution,
+    patch_dns_checker,
+    patch_cli_datetime,
+    make_provider,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Render provider checks in human format."""
+    patch_provider_resolution(make_provider(name="Dummy"))
+    patch_cli_datetime(datetime(2026, 1, 31, 19, 37, tzinfo=timezone.utc))
+    patch_dns_checker([make_record_check()])
+
+    code = main(["example.com", "--provider", "dummy", "--output", "human"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "report for domain example.com" in output
+    assert "| Status" in output
