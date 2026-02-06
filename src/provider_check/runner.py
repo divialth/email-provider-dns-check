@@ -94,10 +94,6 @@ class CheckRequest:
         resolve_provider_config_fn (Optional[Callable[..., object]]): Provider resolver override.
         dns_checker_cls (Optional[type]): DNS checker class override.
         summarize_status_fn (Optional[Callable[[List[RecordCheck]], Status | str]]): Summary override.
-        load_provider_config_fn (Optional[Callable[..., object]]): Provider loader override.
-        resolve_provider_config_fn (Optional[Callable[..., object]]): Provider resolver override.
-        dns_checker_cls (Optional[type]): DNS checker class override.
-        summarize_status_fn (Optional[Callable[[List[RecordCheck]], Status | str]]): Summary override.
     """
 
     domain: str
@@ -120,10 +116,6 @@ class CheckRequest:
     colorize_status: Optional[Callable[[str | Status], str]] = None
     report_time: Optional[str] = None
     resolver: Optional[DnsResolver] = None
-    load_provider_config_fn: Optional[Callable[..., object]] = None
-    resolve_provider_config_fn: Optional[Callable[..., object]] = None
-    dns_checker_cls: Optional[type] = None
-    summarize_status_fn: Optional[Callable[[List[RecordCheck]], Status | str]] = None
     load_provider_config_fn: Optional[Callable[..., object]] = None
     resolve_provider_config_fn: Optional[Callable[..., object]] = None
     dns_checker_cls: Optional[type] = None
