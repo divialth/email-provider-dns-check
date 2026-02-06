@@ -1,64 +1,49 @@
-CODE:
--  programming language: Python
--  code formatting: Black
--  documentation style: Google (full Google-style docstrings)
--  docstrings required for all classes/functions (enforced by tests)
--  use argparse for command-line argument parsing
--  use logging for output messages
--  use UTC timezone for timestamps
--  code structure: small, focused modules with per-feature subpackages and re-exports in `__init__` (e.g., `checker/records/*`, `output/rows/*`, `provider_config/loader/parse/*`, `cli/*`)
--  provide a stable programmatic API in `provider_check.runner` with typed request/response dataclasses for checks and detection
--  centralize record-type metadata and check enablement in `provider_check.record_registry`
--  expose a stable public API surface via `provider_check.api`
--  centralize status constants and exit code mapping in `provider_check.status`
+# Project Goals
 
-PROJECT GOALS:
--  Script for checking if the DNS records for a domain are correctly set up.
--  Support for checking MX, SPF, DKIM, DMARC, TXT, CNAME, and SRV records.
--  Support multiple email providers via separate YAML configuration files.
--  Provider configs should use `required` and `optional` sections within each record type (under `records`) to distinguish required vs optional values.
--  Provider configs must include a version tag and can define any subset of record types.
--  Validate only the record types present in the selected provider config.
--  Provide a stable runner API via `run_checks(CheckRequest) -> CheckResult` and `run_detection(DetectionRequest) -> DetectionResult`.
--  Use cached DNS lookups during provider detection to avoid redundant queries.
--  Allow users to specify the domain to check via command-line arguments.
--  Allow users to specify verbosity level for logging output.
--  Provide a help message for command-line usage.
--  Provide a CLI parameter to select the provider configuration.
--  Provide a CLI parameter to list available providers.
--  Provide a CLI parameter to show the tool version.
--  Provide a CLI mode to detect the closest matching provider and optionally auto-select it.
--  Provide parameters for specifying DMARC rua and ruf mailto destinations.
--  Provide a parameter for specifying the DMARC policy (none, quarantine, reject).
--  Provide a parameter for specifying the SPF policy (softfail, hardfail).
--  Provide a parameter for specifying additional SPF includes.
--  Provide a parameter for specifying additional SPF IPv4 or IPv6 entries.
--  Provide a parameter for specifying required TXT records.
--  Provide a parameter for specifying required TXT verification records.
--  Provide a parameter to skip TXT verification checks when desired.
--  Provide a parameter for specifying provider variables.
--  Provide a parameter for showing a provider configuration.
--  Provide a parameter for output type (text, json, human).
--  Support a strict mode to enforce exact provider config values with no extras.
--  In the standard mode, provide only a warning if, for example, additional SPF mechanisms are present.
--  Allow provider configs to be added or overridden via user and system config directories.
--  Strictly validate provider configs (booleans must be booleans; lists must be lists) and skip invalid configs with warnings.
--  Allow text and human output templates to be overridden via config directories.
--  Support provider inheritance via extends and variable substitution in configs.
--  Provide a lightweight wrapper script for running from the repo without installing the package.
--  Output must clearly indicate which provider and config version were used.
--  Provide clear output indicating which records are correctly set up and which need attention.
--  Output the text results in a clear and user-friendly format.
--  Output the JSON results in a structured format suitable for further processing.
--  Output the human results in a clear, user-friendly table.
--  Output defaults to human format.
--  Output should clearly indicate the status of each DNS record checked.
--  Output should give a clear summary in the report.
--  Modular code structure to facilitate future enhancements and maintenance.
--  Comprehensive README file with usage instructions and examples.
--  Create a correct .gitignore file for the repository.
--  License the project under GPL-3.0-or-later.
--  Host the project on GitHub for version control and collaboration.
--  Include error handling for common DNS lookup issues.
--  Write unit tests to ensure the correctness of the DNS checking functions.
--  Ensure compatibility with Python 3.11 and above.
+## Current Product Scope
+- Provide a CLI tool that checks whether a domain matches an email provider DNS configuration.
+- Support these record types when present in provider configs: `MX`, `SPF`, `DKIM`, `DMARC`, `TXT`, `CNAME`, `SRV`, `CAA`, `A`, and `AAAA`.
+- Support multiple providers via YAML config files and validate only record types present in the selected provider config.
+- Support `required` and `optional` sections per record type under `records`.
+- Require provider config versioning and allow configs to define any subset of record types.
+- Provide provider detection and provider autoselect flows with cached DNS lookups.
+- Allow provider config extension via `extends` and variable substitution.
+- Allow provider config and template overrides from user/system config directories.
+- Support text, JSON, and human output formats, with human output as default.
+- Include clear per-record status output, report summaries, and provider/config version metadata in output.
+- Expose a stable runner API:
+  `run_checks(CheckRequest) -> CheckResult`
+  `run_detection(DetectionRequest) -> DetectionResult`
+
+## CLI and UX Goals
+- Support domain input via positional argument and `--domain`.
+- Support provider selection/listing/showing and custom providers directories.
+- Support DMARC overrides (policy, rua/ruf, subdomain policy, alignment, pct).
+- Support SPF overrides (policy, includes, `ip4`, `ip6`).
+- Support TXT overrides and optional skip of TXT verification checks.
+- Support provider variables via CLI flags.
+- Support configurable DNS resolver behavior (servers, timeout, lifetime, TCP).
+- Provide consistent exit codes for OK, warning, critical, and unknown outcomes.
+- Provide readable help text and predictable defaults.
+
+## Engineering Invariants
+- Python is the implementation language; Black is the formatter.
+- Use full Google-style docstrings and keep docstring coverage enforced by tests.
+- Use `argparse` for CLI parsing and `logging` for runtime messages.
+- Use UTC timestamps in logs and output metadata.
+- Keep code modular with small, focused per-feature packages and stable re-exports.
+- Maintain stable public API surface in `provider_check.api`.
+- Keep runner request/response dataclasses stable in `provider_check.runner`.
+- Centralize record-type metadata/check enablement in `provider_check.record_registry`.
+- Centralize status constants and exit-code mapping in `provider_check.status`.
+
+## Quality Goals
+- Keep unit tests comprehensive for checker, CLI, detection, provider loading, and output layers.
+- Maintain 100% coverage threshold in CI and local validation.
+- Keep README usage examples and provider documentation accurate with shipped behavior.
+- Preserve compatibility with Python 3.11+.
+
+## Historical Baseline (Already Completed)
+- Repository hosting and collaboration on GitHub.
+- Project licensing under GPL-3.0-or-later.
+- Repository hygiene basics such as `.gitignore`.
