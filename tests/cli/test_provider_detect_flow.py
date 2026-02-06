@@ -32,6 +32,28 @@ def test_provider_detect_outputs_json(
     assert payload["candidates"][0]["provider_id"] == "dummy"
 
 
+@pytest.mark.parametrize("output_format", ["text", "human"])
+def test_provider_detect_outputs_text_and_human(
+    output_format: str,
+    patch_cli_datetime,
+    patch_detection_report,
+    make_detection_candidate,
+    make_detection_report,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Return rendered text for non-JSON output modes."""
+    patch_cli_datetime(datetime(2026, 2, 2, 12, 0, tzinfo=timezone.utc))
+    candidate = make_detection_candidate()
+    patch_detection_report(make_detection_report(candidate))
+
+    code = main(["example.com", "--provider-detect", "--output", output_format])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "provider detection report for domain example.com" in output
+    assert "dummy (Dummy Provider" in output
+
+
 def test_provider_detect_limit_passed_to_detection(
     cli_module: Any,
     monkeypatch: pytest.MonkeyPatch,
