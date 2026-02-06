@@ -56,8 +56,6 @@ def _normalize_record_name(name: str, domain: str) -> str:
     domain_lower = domain.lower()
     if trimmed_lower.endswith(domain_lower):
         return trimmed_lower
-    if "." in trimmed:
-        return trimmed_lower
     return f"{trimmed_lower}.{domain_lower}"
 
 
