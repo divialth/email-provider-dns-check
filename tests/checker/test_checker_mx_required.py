@@ -2,7 +2,7 @@ from provider_check.checker import DNSChecker
 from provider_check.provider_config import MXRecord
 from provider_check.status import Status
 
-from tests.checker_mx_support import make_mx_config, make_provider_with_mx
+from tests.checker.mx_support import make_mx_config, make_provider_with_mx
 from tests.support import BASE_PROVIDER, FakeResolver
 
 

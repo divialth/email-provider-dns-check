@@ -1,7 +1,7 @@
 from provider_check.checker import DNSChecker
 from provider_check.status import Status
 
-from tests.checker_spf_support import make_provider_with_spf, make_spf_config
+from tests.checker.spf_support import make_provider_with_spf, make_spf_config
 from tests.support import FakeResolver
 
 
