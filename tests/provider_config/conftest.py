@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from provider_check.provider_config import list_providers
+from provider_check.provider_config import ProviderConfig
 
 
 @pytest.fixture
@@ -125,3 +126,60 @@ def assert_provider_accepted(
         assert provider_id in provider_ids
 
     return _assert
+
+
+@pytest.fixture
+def provider_config_loader():
+    """Import the provider config loader module used by tests.
+
+    Returns:
+        module: Imported ``provider_check.provider_config.loader`` module.
+    """
+    import provider_check.provider_config.loader as provider_config
+
+    return provider_config
+
+
+@pytest.fixture
+def make_provider_config() -> Callable[..., ProviderConfig]:
+    """Build minimal provider config objects for loader tests.
+
+    Returns:
+        Callable[..., ProviderConfig]: Factory function for ``ProviderConfig``.
+    """
+
+    def _make(provider_id: str, name: str) -> ProviderConfig:
+        return ProviderConfig(
+            provider_id=provider_id,
+            name=name,
+            version="1",
+            mx=None,
+            spf=None,
+            dkim=None,
+            txt=None,
+            dmarc=None,
+        )
+
+    return _make
+
+
+@pytest.fixture
+def fake_path_factory() -> Callable[[str, str], object]:
+    """Build fake path-like objects exposing ``name`` and ``read_text``.
+
+    Returns:
+        Callable[[str, str], object]: Factory for fake path-like objects.
+    """
+
+    def _make(name: str, content: str) -> object:
+        class _FakePath:
+            def __init__(self, path_name: str, raw: str):
+                self.name = path_name
+                self._content = raw
+
+            def read_text(self, encoding: str = "utf-8"):
+                return self._content
+
+        return _FakePath(name, content)
+
+    return _make
