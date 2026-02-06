@@ -17,6 +17,11 @@
 - When editing Markdown tables, align columns so the raw Markdown is readable (consistent column widths with aligned pipes).
 - For Markdown-only changes, you may skip formatting/lint/test runs.
 - When adding new functionality, keep modules small and focused: use per-feature submodules (for example `checker/records/*`, `output/rows/*`, `provider_config/loader/parse/*`, `cli/*` handlers) and re-export from package `__init__` files to preserve stable imports.
+- Test structure policy:
+  - Prefer shared fixtures/factories over inline setup; reuse `tests/factories.py`, `tests/cli/conftest.py`, and `tests/provider_config/conftest.py` before adding new local builders.
+  - Prefer `pytest.mark.parametrize` for repetitive input/expectation matrices instead of copy-pasted test functions.
+  - For negative-path tests, assert the specific error/warning message (or stable substring), not only indirect outcomes like "item not listed" or generic exit codes.
+  - Keep test files focused and reasonably small; split by feature/scenario before a file grows beyond ~350 lines.
 - Git commit messages must follow Conventional Commits 1.0.0 with a required scope and body:
   `type(scope): short description`
   `long description`
