@@ -3,7 +3,7 @@ import pytest
 from provider_check.checker import DNSChecker
 from provider_check.status import Status
 
-from tests.checker_txt_support import make_provider_with_txt, make_txt_config
+from tests.checker.txt_support import make_provider_with_txt, make_txt_config
 from tests.support import FakeResolver
 
 

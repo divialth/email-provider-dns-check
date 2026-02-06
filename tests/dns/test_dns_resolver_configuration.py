@@ -6,7 +6,7 @@ import pytest
 
 from provider_check.dns_resolver import DnsResolver
 
-from tests.dns_resolver_support import make_dummy_resolver
+from tests.dns.support import make_dummy_resolver
 
 
 def test_nameserver_ips_are_used(monkeypatch):

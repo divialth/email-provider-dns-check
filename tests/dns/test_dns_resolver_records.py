@@ -6,7 +6,7 @@ import pytest
 
 from provider_check.dns_resolver import DnsLookupError
 
-from tests.dns_resolver_support import make_dns_resolver
+from tests.dns.support import make_dns_resolver
 
 
 def test_get_mx_success(monkeypatch):

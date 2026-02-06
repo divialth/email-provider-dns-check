@@ -4,7 +4,7 @@ from provider_check.checker import DNSChecker
 from provider_check.dns_resolver import DnsLookupError
 from provider_check.status import Status
 
-from tests.checker_dmarc_support import make_dmarc_config, make_provider_with_dmarc
+from tests.checker.dmarc_support import make_dmarc_config, make_provider_with_dmarc
 from tests.support import FakeResolver
 
 

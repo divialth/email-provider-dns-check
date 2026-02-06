@@ -3,7 +3,7 @@ from provider_check.dns_resolver import DnsLookupError
 from provider_check.provider_config import SRVRecord
 from provider_check.status import Status
 
-from tests.checker_srv_support import make_provider_with_srv, make_srv_config
+from tests.checker.srv_support import make_provider_with_srv, make_srv_config
 from tests.support import FakeResolver
 
 
