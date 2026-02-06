@@ -339,6 +339,7 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
     """
     _validate_output_format(request.output)
     report_time = request.report_time or _default_report_time()
+    normalized_domain = request.domain.lower().strip()
     resolver = request.resolver or DnsResolver()
     detect = request.detect_providers_fn or detect_providers
     load_provider = request.load_provider_config_fn or load_provider_config
@@ -350,7 +351,7 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
     detect_kwargs = {"resolver": resolver, "top_n": top_n}
     if request.provider_dirs:
         detect_kwargs["provider_dirs"] = request.provider_dirs
-    report = detect(request.domain, **detect_kwargs)
+    report = detect(normalized_domain, **detect_kwargs)
     status = report.status
     results: Optional[List[RecordCheck]] = None
 
@@ -361,7 +362,7 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
                 load_provider, report.selected.provider_id, request.provider_dirs
             )
             provider = resolve_provider(
-                provider, report.selected.inferred_variables, domain=request.domain
+                provider, report.selected.inferred_variables, domain=normalized_domain
             )
             checker = checker_cls(
                 request.domain,
@@ -410,7 +411,7 @@ def run_detection(request: DetectionRequest) -> DetectionResult:
             load_provider, report.selected.provider_id, request.provider_dirs
         )
         provider = resolve_provider(
-            provider, report.selected.inferred_variables, domain=request.domain
+            provider, report.selected.inferred_variables, domain=normalized_domain
         )
         checker = checker_cls(
             request.domain,
