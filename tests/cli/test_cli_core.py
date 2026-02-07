@@ -142,6 +142,50 @@ def test_providers_validate_custom_dir_json_empty(capsys, tmp_path):
     assert payload["message"] == "No external/custom provider YAML files found."
 
 
+def test_providers_validate_json_multi_dir_mixed_results(capsys, tmp_path, monkeypatch):
+    import provider_check.cli.providers as cli_providers
+
+    valid_dir = tmp_path / "valid"
+    invalid_dir = tmp_path / "invalid"
+    valid_dir.mkdir()
+    invalid_dir.mkdir()
+    _write_provider_config(valid_dir / "custom_provider.yaml", "custom_provider")
+    (invalid_dir / "broken_provider.yaml").write_text(
+        "name: Broken\nrecords:\n  spf:\n    required:\n      includes: []\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        cli_providers, "_external_provider_dirs", lambda provider_dirs: provider_dirs
+    )
+
+    code = main(
+        [
+            "--providers-validate",
+            "--providers-dir",
+            str(valid_dir),
+            "--providers-dir",
+            str(invalid_dir),
+            "--output",
+            "json",
+        ]
+    )
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["mode"] == "providers_validate"
+    assert payload["checked"] == 2
+    assert payload["passed"] == 1
+    assert payload["failed"] == 1
+    assert payload["valid"] is False
+    results_by_path = {item["path"]: item for item in payload["results"]}
+    assert len(results_by_path) == 2
+    assert results_by_path[str(valid_dir / "custom_provider.yaml")]["valid"] is True
+    assert results_by_path[str(valid_dir / "custom_provider.yaml")]["errors"] == []
+    assert results_by_path[str(invalid_dir / "broken_provider.yaml")]["valid"] is False
+    assert results_by_path[str(invalid_dir / "broken_provider.yaml")]["errors"]
+
+
 def test_provider_show_outputs_yaml(capsys, monkeypatch):
     import provider_check.cli as cli
 
