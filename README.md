@@ -21,7 +21,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 provider-dns-check --providers-list
-provider-dns-check --domain example.com --provider dummy_provider
+provider-dns-check --domain example.com --provider your_provider_id
 ```
 
 ## Dependencies
@@ -61,12 +61,14 @@ cd email-provider-dns-check
 Then run:
 ```bash
 ./provider-dns-check --providers-list
-./provider-dns-check --domain example.com --provider dummy_provider
+./provider-dns-check --domain example.com --provider your_provider_id
 ```
 The wrapper uses `python3` from your `PATH`, so ensure the runtime dependencies are already
 installed in that environment.
 
 ## Usage
+
+Use a provider ID from `provider-dns-check --providers-list` in the examples below.
 
 List providers:
 ```bash
@@ -83,13 +85,13 @@ provider-dns-check --providers-validate --providers-dir ./providers --output jso
 
 Run checks:
 ```bash
-provider-dns-check --domain example.com --provider dummy_provider
-provider-dns-check --domain example.com --provider dummy_provider --strict
+provider-dns-check --domain example.com --provider your_provider_id
+provider-dns-check --domain example.com --provider your_provider_id --strict
 ```
 
 Change output format:
 ```bash
-provider-dns-check --domain example.com --provider dummy_provider --output json
+provider-dns-check --domain example.com --provider your_provider_id --output json
 ```
 
 Detect providers:
@@ -101,14 +103,14 @@ provider-dns-check --domain example.com --provider-autoselect
 
 Override policies and records:
 ```bash
-provider-dns-check --domain example.com --provider dummy_provider --dmarc-policy quarantine --dmarc-rua-mailto security@example.com
-provider-dns-check --domain example.com --provider dummy_provider --spf-policy softfail --spf-include spf.protection.example
-provider-dns-check --domain example.com --provider dummy_provider --txt-verification _verify=token
+provider-dns-check --domain example.com --provider your_provider_id --dmarc-policy quarantine --dmarc-rua-mailto security@example.com
+provider-dns-check --domain example.com --provider your_provider_id --spf-policy softfail --spf-include spf.protection.example
+provider-dns-check --domain example.com --provider your_provider_id --txt-verification _verify=token
 ```
 
 Show a provider config:
 ```bash
-provider-dns-check --provider-show mailbox.org
+provider-dns-check --provider-show your_provider_id
 ```
 
 ## Exit codes
@@ -136,7 +138,7 @@ DOMAIN                 domain to validate
 --providers-validate     validate external/custom provider YAML files against schema and exit
 --providers-dir DIR      additional provider config directory (repeatable)
 --provider-show PROVIDER show provider configuration and exit
---provider PROVIDER      provider configuration to use (required unless --providers-list/--providers-validate/--provider-show)
+--provider PROVIDER      provider configuration to use (required unless --providers-list/--providers-validate/--provider-show/--provider-detect/--provider-autoselect)
 --provider-var NAME=VALUE provider variables (repeatable)
 --provider-detect        detect the closest matching provider and exit
 --provider-autoselect    detect the closest matching provider and run checks
@@ -412,15 +414,15 @@ Template context includes:
 ## Development
 - Setup:
 ```bash
-python -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install '.[test]'
 ./.venv/bin/python scripts/update_requirements.py
 ```
 - Run tests: `./.venv/bin/python -m pytest`
-- Run coverage: `./.venv/bin/coverage run -m pytest` then `./.venv/bin/coverage report -m --fail-under=100`
-- Format code: `./.venv/bin/black src tests`
-- Lint YAML: `./.venv/bin/yamllint -c .yamllint src`
+- Run coverage: `./.venv/bin/python -m coverage run -m pytest` then `./.venv/bin/python -m coverage report -m --fail-under=100`
+- Format code: `./.venv/bin/python -m black src tests`
+- Lint YAML: `./.venv/bin/python -m yamllint -c .yamllint src`
 - Docstrings must use full Google style (summary + sections like Args/Returns/Raises/Attributes when applicable).
 - Docstrings are required for all classes/functions in `src` (enforced by `tests/test_docstring_coverage.py`).
 

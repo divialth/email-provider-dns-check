@@ -33,6 +33,8 @@
 - When editing Markdown tables, align columns so raw Markdown remains readable.
 - Keep `README.md` accurate with current code. Any change to CLI flags/behavior, dependency metadata (`pyproject.toml`, `requirements*.txt`), or released version must include matching README updates in the same change.
 - When dependencies change, verify the README runtime/dev dependency lists match `pyproject.toml` before handoff.
+- In `README.md` command examples, use provider placeholders (for example, `your_provider_id`) instead of hardcoding real provider IDs.
+- In `README.md`, pin `python3.11` only in the **Development** section; keep user-facing setup/install examples version-agnostic (`python -m venv`).
 - Never remove entries from `.gitignore` without explicit user approval first.
 
 ## Provider Schema Consistency
