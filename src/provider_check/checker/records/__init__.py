@@ -15,6 +15,7 @@ from .mx import MxChecksMixin
 from .ptr import PtrChecksMixin
 from .spf import SpfChecksMixin
 from .srv import SrvChecksMixin
+from .tlsa import TlsaChecksMixin
 from .txt import TxtChecksMixin
 
 LOGGER = logging.getLogger("provider_check.checker")
@@ -30,6 +31,7 @@ class RecordsMixin(
     CnameChecksMixin,
     CaaChecksMixin,
     SrvChecksMixin,
+    TlsaChecksMixin,
     TxtChecksMixin,
     DmarcChecksMixin,
 ):

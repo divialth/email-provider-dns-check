@@ -21,6 +21,8 @@ from provider_check.provider_config import (
     CNAMEConfig,
     SRVConfig,
     SRVRecord,
+    TLSAConfig,
+    TLSARecord,
     TXTConfig,
     TXTSettings,
     resolve_provider_config,
@@ -98,6 +100,28 @@ def test_resolve_provider_config_applies_variables_and_domain():
                 ]
             },
         ),
+        tlsa=TLSAConfig(
+            required={
+                "_25._tcp.mail": [
+                    TLSARecord(
+                        usage=3,
+                        selector=1,
+                        matching_type=1,
+                        certificate_association="ABCDEF{tenant}",
+                    )
+                ]
+            },
+            optional={
+                "_443._tcp.autodiscover": [
+                    TLSARecord(
+                        usage=3,
+                        selector=1,
+                        matching_type=1,
+                        certificate_association="{region}1234",
+                    )
+                ]
+            },
+        ),
         txt=TXTConfig(
             required={"_verify.{domain}": ["token-{tenant}"]},
             optional={},
@@ -146,6 +170,8 @@ def test_resolve_provider_config_applies_variables_and_domain():
     assert resolved.caa.optional["mail.example.test"][0].value == ("mailto:security@example.test")
     assert resolved.srv.required["_sip._tls"][0].target == "sipdir.tenant-a.example.test."
     assert resolved.srv.optional["_autodiscover._tcp"][0].target == "auto.tenant-a.example.test."
+    assert resolved.tlsa.required["_25._tcp.mail"][0].certificate_association == "ABCDEFtenant-a"
+    assert resolved.tlsa.optional["_443._tcp.autodiscover"][0].certificate_association == "us1234"
     assert resolved.txt.required == {"_verify.example.test": ["token-tenant-a"]}
     assert resolved.dmarc.required.rua == ["mailto:dmarc@example.test"]
     assert resolved.dmarc.required.ruf == ["mailto:forensic@example.test"]

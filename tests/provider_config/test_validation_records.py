@@ -169,6 +169,32 @@ INVALID_RECORD_CASES = [
         name: Invalid Provider
         version: 1
         records:
+          tlsa:
+            required:
+              _25._tcp.mail: invalid
+        """,
+        "Provider config bad tlsa required._25._tcp.mail must be a list",
+        id="invalid-tlsa-entry-list-type",
+    ),
+    pytest.param(
+        """
+        name: Invalid Provider
+        version: 1
+        records:
+          tlsa:
+            required:
+              _25._tcp.mail:
+                - usage: 3
+                  selector: 1
+        """,
+        "Provider config bad tlsa required._25._tcp.mail entries require usage, selector, matching_type, and certificate_association",
+        id="invalid-tlsa-entry-missing-fields",
+    ),
+    pytest.param(
+        """
+        name: Invalid Provider
+        version: 1
+        records:
           dmarc:
             settings:
               rua_required: "false"

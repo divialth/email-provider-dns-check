@@ -22,6 +22,7 @@ from provider_check.provider_config import (
     SPFOptional,
     SPFRequired,
     SRVConfig,
+    TLSAConfig,
     TXTConfig,
     TXTSettings,
 )
@@ -52,6 +53,7 @@ def _field_names(model: type) -> set[str]:
         ("cname", CNAMEConfig),
         ("caa", CAAConfig),
         ("srv", SRVConfig),
+        ("tlsa", TLSAConfig),
         ("txt", TXTConfig),
         ("dmarc", DMARCConfig),
     ],
@@ -103,6 +105,7 @@ def test_record_nested_sections_are_explicit_and_bounded() -> None:
         "cname": set(),
         "caa": set(),
         "srv": set(),
+        "tlsa": set(),
         "txt": {"settings"},
         "dmarc": {"required", "optional", "settings"},
     }

@@ -201,6 +201,36 @@ class SRVConfig:
 
 
 @dataclass(frozen=True)
+class TLSARecord:
+    """Define a single TLSA record entry.
+
+    Attributes:
+        usage (int): Certificate usage field.
+        selector (int): Selector field.
+        matching_type (int): Matching type field.
+        certificate_association (str): Certificate association data.
+    """
+
+    usage: int
+    selector: int
+    matching_type: int
+    certificate_association: str
+
+
+@dataclass(frozen=True)
+class TLSAConfig:
+    """Define TLSA record requirements for a provider.
+
+    Attributes:
+        required (Dict[str, List[TLSARecord]]): TLSA records keyed by name.
+        optional (Dict[str, List[TLSARecord]]): Optional TLSA records keyed by name.
+    """
+
+    required: Dict[str, List[TLSARecord]]
+    optional: Dict[str, List[TLSARecord]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class TXTSettings:
     """Define TXT configuration settings.
 
@@ -317,6 +347,7 @@ class ProviderConfig:
         cname (Optional[CNAMEConfig]): CNAME requirements.
         caa (Optional[CAAConfig]): CAA requirements.
         srv (Optional[SRVConfig]): SRV requirements.
+        tlsa (Optional[TLSAConfig]): TLSA requirements.
         txt (Optional[TXTConfig]): TXT requirements.
         dmarc (Optional[DMARCConfig]): DMARC requirements.
         short_description (Optional[str]): Short provider description.
@@ -336,6 +367,7 @@ class ProviderConfig:
     cname: Optional[CNAMEConfig] = None
     caa: Optional[CAAConfig] = None
     srv: Optional[SRVConfig] = None
+    tlsa: Optional[TLSAConfig] = None
     txt: Optional[TXTConfig] = None
     dmarc: Optional[DMARCConfig] = None
     short_description: Optional[str] = None

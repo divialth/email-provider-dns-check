@@ -24,6 +24,8 @@ from .models import (
     SPFRequired,
     SRVConfig,
     SRVRecord,
+    TLSAConfig,
+    TLSARecord,
     TXTConfig,
     TXTSettings,
 )
@@ -53,6 +55,8 @@ __all__ = [
     "SPFRequired",
     "SRVConfig",
     "SRVRecord",
+    "TLSAConfig",
+    "TLSARecord",
     "TEMPLATE_DIR_NAME",
     "TXTConfig",
     "TXTSettings",

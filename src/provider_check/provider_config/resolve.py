@@ -25,6 +25,8 @@ from .models import (
     SPFRequired,
     SRVConfig,
     SRVRecord,
+    TLSAConfig,
+    TLSARecord,
     TXTConfig,
     TXTSettings,
 )
@@ -177,6 +179,33 @@ def _format_mx_records(values: List[MXRecord], variables: Dict[str, str]) -> Lis
     ]
 
 
+def _format_tlsa_mapping(
+    values: Dict[str, List[TLSARecord]],
+    variables: Dict[str, str],
+) -> Dict[str, List[TLSARecord]]:
+    """Format a TLSA records mapping using provider variables.
+
+    Args:
+        values (Dict[str, List[TLSARecord]]): TLSA mapping to format.
+        variables (Dict[str, str]): Provider variables.
+
+    Returns:
+        Dict[str, List[TLSARecord]]: Formatted TLSA mapping.
+    """
+    return {
+        _format_string(name, variables): [
+            TLSARecord(
+                usage=int(entry.usage),
+                selector=int(entry.selector),
+                matching_type=int(entry.matching_type),
+                certificate_association=_format_string(entry.certificate_association, variables),
+            )
+            for entry in entries
+        ]
+        for name, entries in values.items()
+    }
+
+
 def resolve_provider_config(
     provider: ProviderConfig, variables: Dict[str, str], *, domain: Optional[str] = None
 ) -> ProviderConfig:
@@ -313,6 +342,12 @@ def resolve_provider_config(
         srv_optional = _format_srv_mapping(provider.srv.optional, resolved)
         srv = SRVConfig(required=srv_required, optional=srv_optional)
 
+    tlsa = None
+    if provider.tlsa:
+        tlsa_required = _format_tlsa_mapping(provider.tlsa.required, resolved)
+        tlsa_optional = _format_tlsa_mapping(provider.tlsa.optional, resolved)
+        tlsa = TLSAConfig(required=tlsa_required, optional=tlsa_optional)
+
     txt = None
     if provider.txt:
         required_txt = _format_list_mapping(provider.txt.required, resolved)
@@ -355,6 +390,7 @@ def resolve_provider_config(
         cname=cname,
         caa=caa,
         srv=srv,
+        tlsa=tlsa,
         txt=txt,
         dmarc=dmarc,
         short_description=provider.short_description,

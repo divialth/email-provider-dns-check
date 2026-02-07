@@ -58,3 +58,13 @@ def test_caching_resolver_supports_ptr():
     cached = CachingResolver(_Resolver())
 
     assert cached.get_ptr("10.2.0.192.in-addr.arpa") == ["mail.example.test."]
+
+
+def test_caching_resolver_supports_tlsa():
+    class _Resolver:
+        def get_tlsa(self, name: str):
+            return [(3, 1, 1, "aabb")]
+
+    cached = CachingResolver(_Resolver())
+
+    assert cached.get_tlsa("_25._tcp.mail.example.com") == [(3, 1, 1, "aabb")]

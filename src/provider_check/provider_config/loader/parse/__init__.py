@@ -18,6 +18,7 @@ from .ptr import _parse_ptr
 from .schema import RECORD_SCHEMA
 from .spf import _parse_spf
 from .srv import _parse_srv
+from .tlsa import _parse_tlsa
 from .txt import _parse_txt
 from .variables import _parse_variables
 
@@ -85,6 +86,7 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         cname=_parse_cname(provider_id, records),
         caa=_parse_caa(provider_id, records),
         srv=_parse_srv(provider_id, records),
+        tlsa=_parse_tlsa(provider_id, records),
         txt=_parse_txt(provider_id, records),
         dmarc=_parse_dmarc(provider_id, records),
         variables=variables,

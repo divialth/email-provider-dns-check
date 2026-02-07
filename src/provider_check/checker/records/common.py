@@ -152,3 +152,40 @@ class NormalizationMixin:
             if normalized_value not in normalized:
                 normalized.append(normalized_value)
         return normalized
+
+    @staticmethod
+    def _normalize_tlsa_association(value: str) -> str:
+        """Normalize TLSA certificate association data for comparison.
+
+        Args:
+            value (str): Raw certificate association data.
+
+        Returns:
+            str: Normalized certificate association string.
+        """
+        return "".join(str(value).split()).lower()
+
+    def _normalize_tlsa_entry(
+        self,
+        usage: int,
+        selector: int,
+        matching_type: int,
+        certificate_association: str,
+    ) -> tuple[int, int, int, str]:
+        """Normalize a TLSA entry for comparison.
+
+        Args:
+            usage (int): TLSA usage value.
+            selector (int): TLSA selector value.
+            matching_type (int): TLSA matching type value.
+            certificate_association (str): TLSA certificate association data.
+
+        Returns:
+            tuple[int, int, int, str]: Normalized tuple for matching.
+        """
+        return (
+            int(usage),
+            int(selector),
+            int(matching_type),
+            self._normalize_tlsa_association(certificate_association),
+        )

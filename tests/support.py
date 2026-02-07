@@ -63,6 +63,7 @@ class FakeResolver:
         cname=None,
         srv=None,
         caa=None,
+        tlsa=None,
         a=None,
         aaaa=None,
         ptr=None,
@@ -72,6 +73,7 @@ class FakeResolver:
         self.cname = cname or {}
         self.srv = srv or {}
         self.caa = caa or {}
+        self.tlsa = tlsa or {}
         self.a = a or {}
         self.aaaa = aaaa or {}
         self.ptr = ptr or {}
@@ -90,6 +92,9 @@ class FakeResolver:
 
     def get_caa(self, name: str):
         return self.caa.get(name, [])
+
+    def get_tlsa(self, name: str):
+        return self.tlsa.get(name, [])
 
     def get_a(self, name: str):
         return self.a.get(name, [])

@@ -85,6 +85,9 @@
         "srv": {
           "$ref": "#/$defs/srv_section"
         },
+        "tlsa": {
+          "$ref": "#/$defs/tlsa_section"
+        },
         "txt": {
           "$ref": "#/$defs/txt_section"
         },
@@ -406,6 +409,54 @@
             "type": "array",
             "items": {
               "$ref": "#/$defs/srv_record"
+            }
+          }
+        }
+      }
+    },
+    "tlsa_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "usage": {
+          "type": "integer"
+        },
+        "selector": {
+          "type": "integer"
+        },
+        "matching_type": {
+          "type": "integer"
+        },
+        "certificate_association": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "usage",
+        "selector",
+        "matching_type",
+        "certificate_association"
+      ]
+    },
+    "tlsa_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/tlsa_record"
+            }
+          }
+        },
+        "optional": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/tlsa_record"
             }
           }
         }

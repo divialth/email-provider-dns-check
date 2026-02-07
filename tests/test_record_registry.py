@@ -18,6 +18,8 @@ from provider_check.provider_config import (
     SPFRequired,
     SRVConfig,
     SRVRecord,
+    TLSAConfig,
+    TLSARecord,
     TXTConfig,
     TXTSettings,
 )
@@ -89,6 +91,28 @@ def _build_provider() -> ProviderConfig:
             },
             optional={
                 "_sip._udp": [SRVRecord(priority=1, weight=1, port=5060, target="sip.test.")]
+            },
+        ),
+        tlsa=TLSAConfig(
+            required={
+                "_25._tcp.mail": [
+                    TLSARecord(
+                        usage=3,
+                        selector=1,
+                        matching_type=1,
+                        certificate_association="2a3f0b8cc17af4f58b1f99572e7a5e0a",
+                    )
+                ]
+            },
+            optional={
+                "_443._tcp.autodiscover": [
+                    TLSARecord(
+                        usage=3,
+                        selector=1,
+                        matching_type=1,
+                        certificate_association="9f4cf4b2a8e2d76c5d8d3a4e2c1f9b8a",
+                    )
+                ]
             },
         ),
         txt=TXTConfig(

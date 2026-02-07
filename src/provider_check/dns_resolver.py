@@ -282,6 +282,53 @@ class DnsResolver:
             LOGGER.warning("CAA lookup failed for %s: %s", name, err)
             raise DnsLookupError("CAA", name, err) from err
 
+    def get_tlsa(self, name: str) -> List[tuple[int, int, int, str]]:
+        """Resolve TLSA records for a DNS name.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            List[tuple[int, int, int, str]]: (usage, selector, matching_type,
+                certificate_association) tuples.
+
+        Raises:
+            DnsLookupError: If a DNS error occurs during lookup.
+        """
+        try:
+            answers = self._resolver.resolve(name, "TLSA")
+            records: List[tuple[int, int, int, str]] = []
+            for rdata in answers:
+                usage = int(rdata.usage)
+                selector = int(rdata.selector)
+                matching_type_value = (
+                    rdata.matching_type if hasattr(rdata, "matching_type") else rdata.mtype
+                )
+                matching_type = int(matching_type_value)
+                certificate_association = (
+                    rdata.certificate_association
+                    if hasattr(rdata, "certificate_association")
+                    else rdata.cert
+                )
+                if isinstance(certificate_association, bytes):
+                    certificate_association_text = certificate_association.hex()
+                else:
+                    certificate_association_text = str(certificate_association)
+                records.append(
+                    (
+                        usage,
+                        selector,
+                        matching_type,
+                        "".join(certificate_association_text.split()).lower(),
+                    )
+                )
+            return records
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+            return []
+        except dns.exception.DNSException as err:
+            LOGGER.warning("TLSA lookup failed for %s: %s", name, err)
+            raise DnsLookupError("TLSA", name, err) from err
+
     def get_a(self, name: str) -> List[str]:
         """Resolve A records for a DNS name.
 
@@ -447,6 +494,17 @@ class CachingResolver:
             list: CAA record tuples.
         """
         return self._cached(("CAA", name), self._resolver.get_caa, name)
+
+    def get_tlsa(self, name: str):
+        """Resolve TLSA records with caching.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            list: TLSA record tuples.
+        """
+        return self._cached(("TLSA", name), self._resolver.get_tlsa, name)
 
     def get_a(self, name: str):
         """Resolve A records with caching.

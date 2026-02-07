@@ -199,6 +199,28 @@ def test_load_provider_srv_optional_requires_priority_fields(provider_config_loa
         provider_config_loader._load_provider_from_data("bad", data)
 
 
+def test_load_provider_tlsa_optional_requires_mapping_entries(provider_config_loader) -> None:
+    """Require optional TLSA entries to be mappings."""
+    data = {
+        "version": "1",
+        "records": {"tlsa": {"optional": {"_25._tcp.mail": ["not-a-map"]}}},
+    }
+
+    with pytest.raises(ValueError, match="tlsa optional._25._tcp.mail entries"):
+        provider_config_loader._load_provider_from_data("bad", data)
+
+
+def test_load_provider_tlsa_optional_requires_fields(provider_config_loader) -> None:
+    """Require optional TLSA entries to include required fields."""
+    data = {
+        "version": "1",
+        "records": {"tlsa": {"optional": {"_25._tcp.mail": [{"usage": 3, "selector": 1}]}}},
+    }
+
+    with pytest.raises(ValueError, match="tlsa optional._25._tcp.mail entries require"):
+        provider_config_loader._load_provider_from_data("bad", data)
+
+
 def test_load_provider_records_unknown_type_rejected(provider_config_loader) -> None:
     """Reject unknown record type sections."""
     data = {
@@ -271,6 +293,24 @@ def test_load_provider_top_level_unknown_key_rejected(provider_config_loader) ->
             },
             "records.caa.required.@.0",
         ),
+        (
+            {
+                "tlsa": {
+                    "required": {
+                        "_25._tcp.mail": [
+                            {
+                                "usage": 3,
+                                "selector": 1,
+                                "matching_type": 1,
+                                "certificate_association": "abc123",
+                                "unexpected": True,
+                            }
+                        ]
+                    }
+                }
+            },
+            "records.tlsa.required._25._tcp.mail.0",
+        ),
     ],
 )
 def test_load_provider_record_entries_unknown_keys_rejected(
@@ -278,7 +318,7 @@ def test_load_provider_record_entries_unknown_keys_rejected(
     records: dict,
     expected_location: str,
 ) -> None:
-    """Reject unknown keys in MX/SRV/CAA record entries via schema validation."""
+    """Reject unknown keys in MX/SRV/CAA/TLSA record entries via schema validation."""
     data = {
         "version": "1",
         "records": records,

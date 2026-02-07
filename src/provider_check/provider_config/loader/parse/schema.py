@@ -33,6 +33,9 @@ RECORD_SCHEMA: dict[str, dict[str, frozenset[str]]] = {
     "srv": {
         "section": frozenset({"required", "optional"}),
     },
+    "tlsa": {
+        "section": frozenset({"required", "optional"}),
+    },
     "txt": {
         "section": frozenset({"required", "optional", "settings"}),
         "settings": frozenset({"verification_required"}),

@@ -166,6 +166,45 @@ def test_get_caa_dns_exception_raises_lookup_error(monkeypatch):
     assert exc.value.name == "example.com"
 
 
+def test_get_tlsa_success(monkeypatch):
+    answers = {
+        ("_25._tcp.mail.example.com", "TLSA"): [
+            SimpleNamespace(usage=3, selector=1, mtype=1, cert=b"\xaa\xbb"),
+            SimpleNamespace(
+                usage=2,
+                selector=0,
+                matching_type=0,
+                certificate_association=" CCDD ",
+                cert="ignored",
+            ),
+        ]
+    }
+    resolver = make_dns_resolver(monkeypatch, answers)
+
+    assert resolver.get_tlsa("_25._tcp.mail.example.com") == [
+        (3, 1, 1, "aabb"),
+        (2, 0, 0, "ccdd"),
+    ]
+
+
+def test_get_tlsa_no_answer_returns_empty(monkeypatch):
+    answers = {("_25._tcp.mail.example.com", "TLSA"): dns.resolver.NoAnswer()}
+    resolver = make_dns_resolver(monkeypatch, answers)
+
+    assert resolver.get_tlsa("_25._tcp.mail.example.com") == []
+
+
+def test_get_tlsa_dns_exception_raises_lookup_error(monkeypatch):
+    answers = {("_25._tcp.mail.example.com", "TLSA"): dns.exception.DNSException("boom")}
+    resolver = make_dns_resolver(monkeypatch, answers)
+
+    with pytest.raises(DnsLookupError) as exc:
+        resolver.get_tlsa("_25._tcp.mail.example.com")
+
+    assert exc.value.record_type == "TLSA"
+    assert exc.value.name == "_25._tcp.mail.example.com"
+
+
 def test_get_a_success(monkeypatch):
     answers = {
         ("example.com", "A"): [

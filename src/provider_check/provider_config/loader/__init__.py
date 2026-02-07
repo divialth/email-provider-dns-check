@@ -19,6 +19,8 @@ from ..models import (
     SPFConfig,
     SRVConfig,
     SRVRecord,
+    TLSAConfig,
+    TLSARecord,
     TXTConfig,
 )
 from ..utils import (

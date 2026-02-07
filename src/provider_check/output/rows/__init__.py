@@ -15,6 +15,7 @@ from .generic import _build_generic_rows
 from .mx import _build_mx_rows, _format_priority
 from .spf import _build_spf_rows
 from .srv import _build_srv_rows, _format_srv_entry
+from .tlsa import _build_tlsa_rows, _format_tlsa_entry
 from .txt import _build_txt_rows
 
 _ROW_BUILDERS: Dict[str, callable] = {}
@@ -53,9 +54,11 @@ __all__ = [
     "_build_result_rows",
     "_build_spf_rows",
     "_build_srv_rows",
+    "_build_tlsa_rows",
     "_build_txt_rows",
     "_format_caa_entry",
     "_format_priority",
     "_format_srv_entry",
+    "_format_tlsa_entry",
     "_stringify_value",
 ]

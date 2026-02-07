@@ -1,4 +1,9 @@
-from provider_check.output import _build_address_rows, _build_srv_rows, _build_txt_rows
+from provider_check.output import (
+    _build_address_rows,
+    _build_srv_rows,
+    _build_tlsa_rows,
+    _build_txt_rows,
+)
 
 
 def test_build_address_rows_missing_and_extra():
@@ -104,6 +109,46 @@ def test_build_srv_rows_with_mismatched_values():
     rows = _build_srv_rows(result)
 
     assert any(row["found"].startswith("priority 20 weight 5 port 443") for row in rows)
+
+
+def test_build_tlsa_rows_with_missing_and_extra():
+    result = {
+        "status": "FAIL",
+        "details": {
+            "expected": {"_25._tcp.mail.example.test": [(3, 1, 1, "aabb")]},
+            "found": {"_25._tcp.mail.example.test": [(3, 1, 1, "ccdd")]},
+            "missing": {"_25._tcp.mail.example.test": [(3, 1, 1, "aabb")]},
+            "extra": {"_25._tcp.mail.example.test": [(3, 1, 1, "ccdd")]},
+        },
+    }
+
+    rows = _build_tlsa_rows(result)
+
+    assert any(row["found"] == "(missing)" for row in rows)
+    assert any("TLSA _25._tcp.mail.example.test extra" == row["message"] for row in rows)
+
+
+def test_build_tlsa_rows_pass_uses_expected_when_found_missing():
+    result = {
+        "status": "PASS",
+        "details": {"expected": {"_25._tcp.mail.example.test": [(3, 1, 1, "aabb")]}},
+    }
+
+    rows = _build_tlsa_rows(result)
+
+    assert rows[0]["found"].startswith("usage 3 selector 1 matching_type 1")
+
+
+def test_build_tlsa_rows_marks_missing_without_missing_details():
+    result = {
+        "status": "FAIL",
+        "details": {"expected": {"_25._tcp.mail.example.test": [(3, 1, 1, "aabb")]}},
+    }
+
+    rows = _build_tlsa_rows(result)
+
+    assert rows[0]["status"] == "FAIL"
+    assert rows[0]["found"] == "(missing)"
 
 
 def test_build_txt_rows_variants():

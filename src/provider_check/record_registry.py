@@ -303,6 +303,32 @@ def _enabled_txt(checker: _CheckerView) -> bool:
     )
 
 
+def _enabled_tlsa(checker: _CheckerView) -> bool:
+    """Enable TLSA checks when required TLSA records are present.
+
+    Args:
+        checker (_CheckerView): Checker instance to inspect.
+
+    Returns:
+        bool: True if TLSA checks should run.
+    """
+
+    return _has_required_records(getattr(checker.provider, "tlsa", None))
+
+
+def _enabled_tlsa_optional(checker: _CheckerView) -> bool:
+    """Enable optional TLSA checks when optional TLSA records are present.
+
+    Args:
+        checker (_CheckerView): Checker instance to inspect.
+
+    Returns:
+        bool: True if optional TLSA checks should run.
+    """
+
+    return _has_optional_records(getattr(checker.provider, "tlsa", None))
+
+
 def _enabled_txt_optional(checker: _CheckerView) -> bool:
     """Enable optional TXT checks when optional TXT records are present.
 
@@ -346,6 +372,8 @@ CHECK_SPECS: tuple[CheckSpec, ...] = (
     CheckSpec("CAA", "check_caa_optional", _enabled_caa_optional),
     CheckSpec("SRV", "check_srv", _enabled_srv),
     CheckSpec("SRV", "check_srv_optional", _enabled_srv_optional),
+    CheckSpec("TLSA", "check_tlsa", _enabled_tlsa),
+    CheckSpec("TLSA", "check_tlsa_optional", _enabled_tlsa_optional),
     CheckSpec("TXT", "check_txt", _enabled_txt),
     CheckSpec("TXT", "check_txt_optional", _enabled_txt_optional),
     CheckSpec("DMARC", "check_dmarc", _enabled_dmarc),
@@ -361,6 +389,7 @@ RECORD_TYPE_SPECS: tuple[RecordTypeSpec, ...] = (
     RecordTypeSpec("CNAME", weight=3, core=True, row_builder_name="_build_cname_rows"),
     RecordTypeSpec("SRV", weight=2, core=True, row_builder_name="_build_srv_rows"),
     RecordTypeSpec("CAA", weight=1, core=False, row_builder_name="_build_caa_rows"),
+    RecordTypeSpec("TLSA", weight=1, core=False, row_builder_name="_build_tlsa_rows"),
     RecordTypeSpec("TXT", weight=1, core=False, row_builder_name="_build_txt_rows"),
     RecordTypeSpec("DMARC", weight=1, core=False, row_builder_name="_build_dmarc_rows"),
 )

@@ -196,6 +196,22 @@ records:
           port: 443
           target: autodiscover.{region}.example-provider.test.
 
+  tlsa:
+    # Required TLSA records (name -> list of entries).
+    required:
+      _25._tcp.mail:
+        - usage: 3
+          selector: 1
+          matching_type: 1
+          certificate_association: "2a3f0b8cc17af4f58b1f99572e7a5e0a79ccf3b8f67b2d61e8d5ac71bc9f4e22"
+    # Optional TLSA records (name -> list of entries).
+    optional:
+      _443._tcp.autodiscover:
+        - usage: 3
+          selector: 1
+          matching_type: 1
+          certificate_association: "9f4cf4b2a8e2d76c5d8d3a4e2c1f9b8a7e6d5c4b3a291807f6e5d4c3b2a1908f"
+
   txt:
     # Required TXT records for any purpose (name -> list of expected values).
     # Names may be relative (appended to the domain) or fully-qualified.

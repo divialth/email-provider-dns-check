@@ -4,6 +4,7 @@ from provider_check.output import (
     _build_table_rows,
     _format_priority,
     _format_srv_entry,
+    _format_tlsa_entry,
     _stringify_details,
     _stringify_value,
 )
@@ -22,6 +23,10 @@ def test_output_helper_formatters():
     assert (
         _format_srv_entry((0, 1, 2, "srv.example.test"))
         == "priority 0 weight 1 port 2 target srv.example.test"
+    )
+    assert (
+        _format_tlsa_entry((3, 1, 1, "aabbcc"))
+        == "usage 3 selector 1 matching_type 1 certificate_association aabbcc"
     )
 
 
@@ -91,6 +96,11 @@ def test_build_result_rows_for_specific_record_types():
         "status": "PASS",
         "details": {"required": {"example.test": ["value"]}},
     }
+    tlsa_result = {
+        "record_type": "TLSA",
+        "status": "PASS",
+        "details": {"expected": {"_25._tcp.mail.example.test": [(3, 1, 1, "aabb")]}},
+    }
     dmarc_result = {
         "record_type": "DMARC",
         "status": "PASS",
@@ -102,6 +112,7 @@ def test_build_result_rows_for_specific_record_types():
     assert _build_result_rows(srv_result)
     assert _build_result_rows(ptr_result)
     assert _build_result_rows(txt_result)
+    assert _build_result_rows(tlsa_result)
     assert _build_result_rows(dmarc_result)
 
 
