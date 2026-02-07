@@ -52,6 +52,41 @@ def test_providers_dir_used_for_list(capsys, tmp_path):
     assert provider_id in out
 
 
+def test_providers_validate_custom_dir_passes(capsys, tmp_path):
+    provider_id = "custom_provider"
+    _write_provider_config(tmp_path / f"{provider_id}.yaml", provider_id)
+
+    code = main(["--providers-validate", "--providers-dir", str(tmp_path)])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert f"PASS {tmp_path / f'{provider_id}.yaml'}" in out
+    assert "Schema validation passed" in out
+
+
+def test_providers_validate_custom_dir_fails(capsys, tmp_path):
+    provider_id = "broken_provider"
+    (tmp_path / f"{provider_id}.yaml").write_text(
+        "name: Broken\nrecords:\n  spf:\n    required:\n      includes: []\n",
+        encoding="utf-8",
+    )
+
+    code = main(["--providers-validate", "--providers-dir", str(tmp_path)])
+
+    assert code == 2
+    out = capsys.readouterr().out
+    assert f"FAIL {tmp_path / f'{provider_id}.yaml'}" in out
+    assert "Schema validation failed" in out
+
+
+def test_providers_validate_custom_dir_empty(capsys, tmp_path):
+    code = main(["--providers-validate", "--providers-dir", str(tmp_path)])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "No external/custom provider YAML files found." in out
+
+
 def test_provider_show_outputs_yaml(capsys, monkeypatch):
     import provider_check.cli as cli
 

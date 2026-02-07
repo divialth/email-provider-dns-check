@@ -37,6 +37,37 @@ def test_provider_detect_limit_requires_detection(capsys: pytest.CaptureFixture[
     assert "--provider-detect-limit requires" in capsys.readouterr().err
 
 
+def test_providers_validate_rejects_provider_selection(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Reject combining ``--providers-validate`` with direct provider checks."""
+    with pytest.raises(SystemExit) as exc:
+        main(["--providers-validate", "--provider", "dummy"])
+
+    assert exc.value.code == 2
+    assert "--providers-validate cannot be combined with --provider" in capsys.readouterr().err
+
+
+def test_providers_validate_rejects_detection_modes(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Reject combining ``--providers-validate`` with detection flags."""
+    with pytest.raises(SystemExit) as exc:
+        main(["--providers-validate", "--provider-detect"])
+
+    assert exc.value.code == 2
+    assert "--providers-validate cannot be combined" in capsys.readouterr().err
+
+
+def test_providers_validate_rejects_provider_show(capsys: pytest.CaptureFixture[str]) -> None:
+    """Reject combining ``--providers-validate`` with provider config output."""
+    with pytest.raises(SystemExit) as exc:
+        main(["--providers-validate", "--provider-show", "dummy"])
+
+    assert exc.value.code == 2
+    assert "--providers-validate cannot be combined with --provider-show" in capsys.readouterr().err
+
+
 def test_domain_flag_with_providers_list(
     cli_module: Any,
     monkeypatch: pytest.MonkeyPatch,

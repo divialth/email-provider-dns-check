@@ -65,6 +65,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="List available providers and exit",
     )
     provider_group.add_argument(
+        "--providers-validate",
+        dest="providers_validate",
+        action="store_true",
+        help="Validate external/custom provider YAML files against the provider schema and exit",
+    )
+    provider_group.add_argument(
         "--providers-dir",
         dest="providers_dirs",
         action="append",

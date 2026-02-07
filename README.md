@@ -21,7 +21,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 provider-dns-check --providers-list
-provider-dns-check example.com --provider dummy_provider
+provider-dns-check --domain example.com --provider dummy_provider
 ```
 
 ## Dependencies
@@ -43,7 +43,7 @@ pip install -r requirements.txt
 ```bash
 pip install --user "git+https://github.com/divialth/email-provider-dns-check.git"
 # optional pin:
-pip install --user "git+https://github.com/divialth/email-provider-dns-check.git@v0.4.0"
+pip install --user "git+https://github.com/divialth/email-provider-dns-check.git@v1.0.0"
 ```
 
 ### Run from a checkout without installing
@@ -56,7 +56,7 @@ cd email-provider-dns-check
 Then run:
 ```bash
 ./provider-dns-check --providers-list
-./provider-dns-check example.com --provider dummy_provider
+./provider-dns-check --domain example.com --provider dummy_provider
 ```
 The wrapper uses `python3` from your `PATH`, so ensure the runtime dependencies are already
 installed in that environment.
@@ -67,32 +67,32 @@ List providers:
 ```bash
 provider-dns-check --providers-list
 provider-dns-check --providers-list --providers-dir ./providers
+provider-dns-check --providers-validate --providers-dir ./providers
 ```
 
 Run checks:
 ```bash
-provider-dns-check example.com --provider dummy_provider
 provider-dns-check --domain example.com --provider dummy_provider
-provider-dns-check example.com --provider dummy_provider --strict
+provider-dns-check --domain example.com --provider dummy_provider --strict
 ```
 
 Change output format:
 ```bash
-provider-dns-check example.com --provider dummy_provider --output json
+provider-dns-check --domain example.com --provider dummy_provider --output json
 ```
 
 Detect providers:
 ```bash
-provider-dns-check example.com --provider-detect
-provider-dns-check example.com --provider-detect --provider-detect-limit 5
-provider-dns-check example.com --provider-autoselect
+provider-dns-check --domain example.com --provider-detect
+provider-dns-check --domain example.com --provider-detect --provider-detect-limit 5
+provider-dns-check --domain example.com --provider-autoselect
 ```
 
 Override policies and records:
 ```bash
-provider-dns-check example.com --provider dummy_provider --dmarc-policy quarantine --dmarc-rua-mailto security@example.com
-provider-dns-check example.com --provider dummy_provider --spf-policy softfail --spf-include spf.protection.example
-provider-dns-check example.com --provider dummy_provider --txt-verification _verify=token
+provider-dns-check --domain example.com --provider dummy_provider --dmarc-policy quarantine --dmarc-rua-mailto security@example.com
+provider-dns-check --domain example.com --provider dummy_provider --spf-policy softfail --spf-include spf.protection.example
+provider-dns-check --domain example.com --provider dummy_provider --txt-verification _verify=token
 ```
 
 Show a provider config:
@@ -122,6 +122,7 @@ DOMAIN                 domain to validate
 #### Provider selection
 ```text
 --providers-list         list available provider configs and exit
+--providers-validate     validate external/custom provider YAML files against schema and exit
 --providers-dir DIR      additional provider config directory (repeatable)
 --provider-show PROVIDER show provider configuration and exit
 --provider PROVIDER      provider configuration to use (required unless --providers-list)
@@ -413,7 +414,7 @@ pip install '.[test]'
 - Docstrings are required for all classes/functions in `src` (enforced by `tests/test_docstring_coverage.py`).
 
 ## Notes
-- Strict mode enforces the exact DNS strings from the provider config (no extras).
+- Strict mode enforces exact provider constraints and rejects extras.
 - Standard mode requires the provider essentials and warns when extra mechanisms are present.
 - DNS lookup failures report as `UNKNOWN`.
 

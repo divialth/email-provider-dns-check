@@ -29,7 +29,7 @@ from .parsing import (
     _parse_provider_vars,
     _parse_txt_records,
 )
-from .providers import handle_provider_show, handle_providers_list
+from .providers import handle_provider_show, handle_providers_list, handle_providers_validate
 from .yaml_format import _LiteralString, _ProviderShowDumper, _strip_long_description_indicator
 
 LOGGER = logging.getLogger(__name__)
@@ -91,6 +91,19 @@ def main(argv: List[str] | None = None) -> int:
     if args.providers_list:
         LOGGER.info("Listing available providers")
         return handle_providers_list(list_providers_fn)
+
+    if args.providers_validate:
+        if args.provider_show:
+            parser.error("--providers-validate cannot be combined with --provider-show")
+        if args.provider:
+            parser.error("--providers-validate cannot be combined with --provider")
+        if args.provider_detect or args.provider_autoselect:
+            parser.error(
+                "--providers-validate cannot be combined with --provider-detect or "
+                "--provider-autoselect"
+            )
+        LOGGER.info("Validating external/custom provider YAML files")
+        return handle_providers_validate(provider_dirs)
 
     if args.provider_show:
         LOGGER.info("Showing provider configuration for %s", args.provider_show)
