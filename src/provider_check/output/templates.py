@@ -6,13 +6,13 @@ from importlib import resources
 from pathlib import Path
 from typing import Optional
 
-from jinja2 import Environment
+from jinja2.sandbox import SandboxedEnvironment
 
 from ..provider_config import TEMPLATE_DIR_NAME, external_config_dirs
 
 _TEMPLATE_PACKAGE = "provider_check.resources.templates"
 
-_ENV = Environment(autoescape=False, trim_blocks=True, lstrip_blocks=True)
+_ENV = SandboxedEnvironment(autoescape=False, trim_blocks=True, lstrip_blocks=True)
 
 
 def _provider_label(provider_name: str, provider_version: str) -> str:

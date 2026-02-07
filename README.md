@@ -20,9 +20,11 @@ validated domain, provider name, provider version, and a report timestamp (UTC).
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-provider-dns-check --providers-list
-provider-dns-check --domain example.com --provider your_provider_id
+./provider-dns-check --providers-list
+./provider-dns-check --domain example.com --provider your_provider_id
 ```
+This quick start uses the repository wrapper script. If you prefer the `provider-dns-check`
+entrypoint from your virtualenv, install the package first with `pip install .`.
 
 ## Dependencies
 - Runtime: `dnspython`, `PyYAML`, `Jinja2`, `jsonschema`
@@ -401,6 +403,8 @@ Add or override templates by dropping `text.j2` and/or `human.j2` into one of th
 - `~/.config/provider-dns-check/templates/` (or `$XDG_CONFIG_HOME/provider-dns-check/templates/`)
 - `/etc/provider-dns-check/templates/`
 - `/usr/local/etc/provider-dns-check/templates/`
+
+Template overrides are treated as trusted local configuration. Do not use untrusted template files.
 
 Template context includes:
 - `domain`, `report_time`, `provider_name`, `provider_version`, `provider_label`, `summary`

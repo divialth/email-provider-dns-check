@@ -210,6 +210,87 @@ def test_load_provider_records_unknown_type_rejected(provider_config_loader) -> 
         provider_config_loader._load_provider_from_data("bad", data)
 
 
+def test_load_provider_top_level_unknown_key_rejected(provider_config_loader) -> None:
+    """Reject unknown top-level keys via provider schema validation."""
+    data = {
+        "version": "1",
+        "records": {},
+        "bogus_top": True,
+    }
+
+    with pytest.raises(ValueError) as exc_info:
+        provider_config_loader._load_provider_from_data("bad", data)
+    message = str(exc_info.value)
+    assert "failed schema validation at <root>" in message
+    assert "Additional properties are not allowed" in message
+
+
+@pytest.mark.parametrize(
+    "records, expected_location",
+    [
+        (
+            {
+                "mx": {
+                    "required": [{"host": "mx.example.test.", "priority": 10, "unexpected": True}],
+                }
+            },
+            "records.mx.required.0",
+        ),
+        (
+            {
+                "srv": {
+                    "required": {
+                        "_sip._tls": [
+                            {
+                                "priority": 100,
+                                "weight": 1,
+                                "port": 443,
+                                "target": "sip.example.test.",
+                                "unexpected": True,
+                            }
+                        ]
+                    }
+                }
+            },
+            "records.srv.required._sip._tls.0",
+        ),
+        (
+            {
+                "caa": {
+                    "required": {
+                        "@": [
+                            {
+                                "flags": 0,
+                                "tag": "issue",
+                                "value": "ca.example.test",
+                                "unexpected": True,
+                            }
+                        ]
+                    }
+                }
+            },
+            "records.caa.required.@.0",
+        ),
+    ],
+)
+def test_load_provider_record_entries_unknown_keys_rejected(
+    provider_config_loader,
+    records: dict,
+    expected_location: str,
+) -> None:
+    """Reject unknown keys in MX/SRV/CAA record entries via schema validation."""
+    data = {
+        "version": "1",
+        "records": records,
+    }
+
+    with pytest.raises(ValueError) as exc_info:
+        provider_config_loader._load_provider_from_data("bad", data)
+    message = str(exc_info.value)
+    assert f"failed schema validation at {expected_location}" in message
+    assert "Additional properties are not allowed" in message
+
+
 def test_load_provider_txt_records_loaded(provider_config_loader) -> None:
     """Load required TXT records."""
     data = {

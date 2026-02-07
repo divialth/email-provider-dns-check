@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict
 
 from ...models import ProviderConfig
+from ...schema_validation import collect_provider_schema_errors
 from ...utils import _reject_unknown_keys, _require_mapping
 from .address import _parse_a, _parse_aaaa
 from .caa import _parse_caa
@@ -18,6 +19,26 @@ from .spf import _parse_spf
 from .srv import _parse_srv
 from .txt import _parse_txt
 from .variables import _parse_variables
+
+
+def _raise_schema_validation_error(provider_id: str, data: dict) -> None:
+    """Raise a normalized error for provider schema validation failures.
+
+    Args:
+        provider_id (str): Provider identifier used in error messages.
+        data (dict): Provider payload to validate.
+
+    Raises:
+        ValueError: If schema validation errors are present.
+    """
+    errors = collect_provider_schema_errors(data)
+    if not errors:
+        return
+    first_error = errors[0]
+    raise ValueError(
+        f"Provider config {provider_id} failed schema validation at "
+        f"{first_error['location']}: {first_error['message']}"
+    )
 
 
 def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
@@ -48,7 +69,7 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         RECORD_SCHEMA.keys(),
     )
 
-    return ProviderConfig(
+    parsed = ProviderConfig(
         provider_id=provider_id,
         name=provider_name,
         version=version,
@@ -66,3 +87,5 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         dmarc=_parse_dmarc(provider_id, records),
         variables=variables,
     )
+    _raise_schema_validation_error(provider_id, data)
+    return parsed

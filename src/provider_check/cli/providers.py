@@ -3,42 +3,13 @@
 from __future__ import annotations
 
 import json
-from importlib import resources
 from pathlib import Path
 from typing import Callable, Iterable, List, Literal
 
 import yaml
-from jsonschema import Draft202012Validator
 
 from ..provider_config.loader.paths import _external_provider_dirs, _iter_provider_paths_in_dir
-
-
-def _load_provider_schema_validator() -> Draft202012Validator:
-    """Load the provider JSON Schema validator.
-
-    Returns:
-        Draft202012Validator: Validator instance for provider YAML structures.
-    """
-    schema_text = (
-        resources.files("provider_check.resources.providers")
-        .joinpath("provider.schema.json")
-        .read_text(encoding="utf-8")
-    )
-    schema = json.loads(schema_text)
-    return Draft202012Validator(schema)
-
-
-def _schema_error_data(err: object) -> dict[str, str]:
-    """Render a schema validation error as structured data.
-
-    Args:
-        err (object): jsonschema ValidationError-like object.
-
-    Returns:
-        dict[str, str]: Error details with location and message.
-    """
-    location = ".".join(str(part) for part in err.absolute_path) or "<root>"
-    return {"location": location, "message": str(err.message)}
+from ..provider_config.schema_validation import collect_provider_schema_errors
 
 
 def _collect_provider_validation_results(
@@ -52,7 +23,6 @@ def _collect_provider_validation_results(
     Returns:
         list[dict[str, object]]: Per-file validation outcomes.
     """
-    validator = _load_provider_schema_validator()
     paths: List[Path] = []
     for directory in _external_provider_dirs(provider_dirs):
         paths.extend(list(_iter_provider_paths_in_dir(directory)))
@@ -72,7 +42,7 @@ def _collect_provider_validation_results(
             )
             continue
 
-        errors = [_schema_error_data(err) for err in validator.iter_errors(payload)]
+        errors = collect_provider_schema_errors(payload)
         if errors:
             results.append({"path": file_path, "valid": False, "errors": errors})
             continue

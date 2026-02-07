@@ -1,3 +1,6 @@
+import pytest
+from jinja2.exceptions import SecurityError
+
 from provider_check.checker import RecordCheck
 from provider_check.output import to_text
 
@@ -58,6 +61,24 @@ def test_to_text_uses_custom_template(monkeypatch, tmp_path):
     )
 
     assert output == "dummy-provider (v9)|example.com|5"
+
+
+def test_to_text_rejects_unsafe_template_access(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    template_dir = tmp_path / "provider-dns-check" / "templates"
+    template_dir.mkdir(parents=True)
+    template = template_dir / "text.j2"
+    template.write_text("{{ ''.__class__.__mro__ }}", encoding="utf-8")
+
+    results = [RecordCheck.pass_("MX", "ok", {"found": ["mx"]})]
+    with pytest.raises(SecurityError):
+        to_text(
+            results,
+            "example.com",
+            "2026-01-31 19:37",
+            "dummy-provider",
+            "9",
+        )
 
 
 def test_to_text_multiple_results_include_separator():
