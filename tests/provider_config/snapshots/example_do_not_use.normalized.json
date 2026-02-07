@@ -1,0 +1,219 @@
+{
+  "enabled": false,
+  "extends": [],
+  "long_description": "Optional long-form description of the provider. Use multiple lines to\nexplain what the configuration is intended for and any key assumptions.\n",
+  "name": "Example Provider (DO NOT USE)",
+  "records": {
+    "a": {
+      "optional": {
+        "autodiscover": [
+          "192.0.2.12"
+        ]
+      },
+      "required": {
+        "@": [
+          "192.0.2.10",
+          "192.0.2.11"
+        ]
+      }
+    },
+    "aaaa": {
+      "optional": {
+        "autodiscover": [
+          "2001:db8::12"
+        ]
+      },
+      "required": {
+        "@": [
+          "2001:db8::10"
+        ]
+      }
+    },
+    "caa": {
+      "optional": {
+        "mail.{domain}": [
+          {
+            "flags": 0,
+            "tag": "iodef",
+            "value": "mailto:security@{domain}"
+          }
+        ]
+      },
+      "required": {
+        "@": [
+          {
+            "flags": 0,
+            "tag": "issue",
+            "value": "ca.example-provider.test"
+          },
+          {
+            "flags": 0,
+            "tag": "issuewild",
+            "value": "ca-wild.example-provider.test"
+          }
+        ]
+      }
+    },
+    "cname": {
+      "optional": {
+        "autoconfig": "autoconfig.example-provider.test."
+      },
+      "required": {
+        "lyncdiscover": "webdir.example-provider.test.",
+        "sip": "sipdir.example-provider.test."
+      }
+    },
+    "dkim": {
+      "required": {
+        "record_type": "cname",
+        "selectors": [
+          "selector1",
+          "selector2"
+        ],
+        "target_template": "{selector}._domainkey.{tenant}.example-provider.test.",
+        "txt_values": {
+          "selector1": "v=DKIM1; k=rsa; p=BASE64KEY"
+        }
+      }
+    },
+    "dmarc": {
+      "optional": {
+        "rua": [],
+        "ruf": []
+      },
+      "required": {
+        "policy": "reject",
+        "rua": [
+          "mailto:dmarc-aggregate@example-provider.test",
+          "mailto:dmarc-fallback@example-provider.test",
+          "mailto:postmaster@{domain}"
+        ],
+        "ruf": [
+          "mailto:dmarc-forensic@example-provider.test"
+        ],
+        "tags": {
+          "adkim": "s",
+          "aspf": "s",
+          "pct": "100"
+        }
+      },
+      "settings": {
+        "rua_required": true,
+        "ruf_required": false
+      }
+    },
+    "mx": {
+      "optional": [
+        {
+          "host": "mx4.{tenant}.example-provider.test.",
+          "priority": 40
+        }
+      ],
+      "required": [
+        {
+          "host": "mx1.{tenant}.example-provider.test.",
+          "priority": 10
+        },
+        {
+          "host": "mx2.{tenant}.example-provider.test.",
+          "priority": 20
+        },
+        {
+          "host": "mx3.{tenant}.example-provider.test.",
+          "priority": 30
+        }
+      ]
+    },
+    "spf": {
+      "optional": {
+        "mechanisms": [
+          "ip4:203.0.113.0/24",
+          "ip6:2001:db8::/32",
+          "mx",
+          "ptr"
+        ],
+        "modifiers": {}
+      },
+      "required": {
+        "includes": [
+          "spf.{tenant}.example-provider.test",
+          "{tenant}.example-provider.test"
+        ],
+        "mechanisms": [
+          "a",
+          "mx:mail.{tenant}.example-provider.test",
+          "exists:%{i}.spf.{tenant}.example-provider.test"
+        ],
+        "modifiers": {
+          "exp": "exp._spf.{tenant}.example-provider.test",
+          "redirect": "_spf.{tenant}.example-provider.test"
+        },
+        "policy": "hardfail"
+      }
+    },
+    "srv": {
+      "optional": {
+        "_autodiscover._tcp": [
+          {
+            "port": 443,
+            "priority": 0,
+            "target": "autodiscover.{region}.example-provider.test.",
+            "weight": 0
+          }
+        ]
+      },
+      "required": {
+        "_sip._tls": [
+          {
+            "port": 443,
+            "priority": 100,
+            "target": "sipdir.{region}.example-provider.test.",
+            "weight": 1
+          }
+        ],
+        "_sipfederationtls._tcp": [
+          {
+            "port": 5061,
+            "priority": 100,
+            "target": "sipfed.{region}.example-provider.test.",
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "txt": {
+      "optional": {
+        "_provider-optional": [
+          "optional-flag=true"
+        ]
+      },
+      "required": {
+        "@": [
+          "v=example-domain-txt; flag=enabled"
+        ],
+        "_provider-token": [
+          "provisioning-key=abc123",
+          "activation-hint=def456"
+        ],
+        "validation.example-provider.test.": [
+          "v=custom-validation; token=xyz"
+        ]
+      },
+      "settings": {
+        "verification_required": true
+      }
+    }
+  },
+  "short_description": "Optional short summary of the provider (keep under 150 chars).",
+  "variables": {
+    "region": {
+      "default": "us",
+      "description": "Optional region short code used in record templates."
+    },
+    "tenant": {
+      "description": "Example required variable used in record templates.",
+      "required": true
+    }
+  },
+  "version": 1
+}

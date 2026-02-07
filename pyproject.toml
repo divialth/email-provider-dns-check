@@ -35,7 +35,13 @@ Repository = "https://github.com/divialth/email-provider-dns-check"
 Issues = "https://github.com/divialth/email-provider-dns-check/issues"
 
 [project.optional-dependencies]
-test = ["pytest>=7.4", "black>=24.0", "yamllint>=1.35.1", "coverage>=7.4"]
+test = [
+  "pytest>=7.4",
+  "black>=24.0",
+  "yamllint>=1.35.1",
+  "coverage>=7.4",
+  "jsonschema>=4.22",
+]
 
 [project.scripts]
 provider-dns-check = "provider_check.cli:main"
@@ -45,7 +51,7 @@ line-length = 100
 target-version = ["py311"]
 
 [tool.setuptools.package-data]
-"provider_check.resources.providers" = ["*.yaml", "*.yml"]
+"provider_check.resources.providers" = ["*.yaml", "*.yml", "*.json"]
 "provider_check.resources.templates" = ["*.j2"]
 
 [tool.setuptools]
