@@ -103,7 +103,7 @@ def main(argv: List[str] | None = None) -> int:
                 "--provider-autoselect"
             )
         LOGGER.info("Validating external/custom provider YAML files")
-        return handle_providers_validate(provider_dirs)
+        return handle_providers_validate(provider_dirs, args.output)
 
     if args.provider_show:
         LOGGER.info("Showing provider configuration for %s", args.provider_show)

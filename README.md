@@ -68,6 +68,12 @@ List providers:
 provider-dns-check --providers-list
 provider-dns-check --providers-list --providers-dir ./providers
 provider-dns-check --providers-validate --providers-dir ./providers
+provider-dns-check --providers-validate --providers-dir ./providers --output json
+```
+
+Use JSON output in CI:
+```bash
+provider-dns-check --providers-validate --providers-dir ./providers --output json | jq -e '.valid'
 ```
 
 Run checks:
@@ -125,7 +131,7 @@ DOMAIN                 domain to validate
 --providers-validate     validate external/custom provider YAML files against schema and exit
 --providers-dir DIR      additional provider config directory (repeatable)
 --provider-show PROVIDER show provider configuration and exit
---provider PROVIDER      provider configuration to use (required unless --providers-list)
+--provider PROVIDER      provider configuration to use (required unless --providers-list/--providers-validate/--provider-show)
 --provider-var NAME=VALUE provider variables (repeatable)
 --provider-detect        detect the closest matching provider and exit
 --provider-autoselect    detect the closest matching provider and run checks

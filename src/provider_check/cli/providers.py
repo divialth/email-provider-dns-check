@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from importlib import resources
 from pathlib import Path
-from typing import Callable, Iterable, List
+from typing import Callable, Iterable, List, Literal
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -28,18 +28,107 @@ def _load_provider_schema_validator() -> Draft202012Validator:
     return Draft202012Validator(schema)
 
 
-def _render_schema_error(path: Path, err: object) -> str:
-    """Render a schema validation error for display.
+def _schema_error_data(err: object) -> dict[str, str]:
+    """Render a schema validation error as structured data.
 
     Args:
-        path (Path): Provider file path.
         err (object): jsonschema ValidationError-like object.
 
     Returns:
-        str: Human-readable error line.
+        dict[str, str]: Error details with location and message.
     """
     location = ".".join(str(part) for part in err.absolute_path) or "<root>"
-    return f"  - {path}:{location}: {err.message}"
+    return {"location": location, "message": str(err.message)}
+
+
+def _collect_provider_validation_results(
+    provider_dirs: List[Path],
+) -> list[dict[str, object]]:
+    """Validate external/custom provider files and collect result data.
+
+    Args:
+        provider_dirs (List[Path]): Additional provider directories from CLI.
+
+    Returns:
+        list[dict[str, object]]: Per-file validation outcomes.
+    """
+    validator = _load_provider_schema_validator()
+    paths: List[Path] = []
+    for directory in _external_provider_dirs(provider_dirs):
+        paths.extend(list(_iter_provider_paths_in_dir(directory)))
+
+    results: list[dict[str, object]] = []
+    for path in paths:
+        file_path = str(path)
+        try:
+            payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except Exception as exc:  # pragma: no cover - defensive
+            results.append(
+                {
+                    "path": file_path,
+                    "valid": False,
+                    "errors": [{"location": "<root>", "message": f"failed to read YAML: {exc}"}],
+                }
+            )
+            continue
+
+        errors = [_schema_error_data(err) for err in validator.iter_errors(payload)]
+        if errors:
+            results.append({"path": file_path, "valid": False, "errors": errors})
+            continue
+        results.append({"path": file_path, "valid": True, "errors": []})
+    return results
+
+
+def _render_provider_validation_text(results: list[dict[str, object]]) -> None:
+    """Render provider validation results as text/human output.
+
+    Args:
+        results (list[dict[str, object]]): Per-file validation outcomes.
+    """
+    if not results:
+        print("No external/custom provider YAML files found.")
+        return
+
+    failed = 0
+    for item in results:
+        path = str(item["path"])
+        valid = bool(item["valid"])
+        errors = list(item["errors"])
+        if valid:
+            print(f"PASS {path}")
+            continue
+        failed += 1
+        print(f"FAIL {path}")
+        for err in errors:
+            print(f"  - {path}:{err['location']}: {err['message']}")
+
+    checked = len(results)
+    if failed:
+        print(f"Schema validation failed: {failed}/{checked} provider file(s) invalid.")
+        return
+    print(f"Schema validation passed: {checked}/{checked} provider file(s) valid.")
+
+
+def _render_provider_validation_json(results: list[dict[str, object]]) -> None:
+    """Render provider validation results as JSON.
+
+    Args:
+        results (list[dict[str, object]]): Per-file validation outcomes.
+    """
+    checked = len(results)
+    failed = sum(1 for item in results if not bool(item["valid"]))
+    payload: dict[str, object] = {
+        "mode": "providers_validate",
+        "checked": checked,
+        "passed": checked - failed,
+        "failed": failed,
+        "valid": failed == 0,
+        "results": results,
+    }
+    if checked == 0:
+        payload["message"] = "No external/custom provider YAML files found."
+    print(json.dumps(payload, sort_keys=True))
 
 
 def handle_providers_list(list_providers: Callable[[], Iterable[object]]) -> int:
@@ -112,46 +201,24 @@ def handle_provider_show(
     return 0
 
 
-def handle_providers_validate(provider_dirs: List[Path]) -> int:
+def handle_providers_validate(
+    provider_dirs: List[Path],
+    output_format: Literal["text", "json", "human"] = "human",
+) -> int:
     """Handle the --providers-validate CLI command.
 
     Args:
         provider_dirs (List[Path]): Additional provider directories from CLI.
+        output_format (Literal["text", "json", "human"]): CLI output format.
 
     Returns:
         int: Exit code (0 when all provider files pass, 2 when any fail).
     """
-    validator = _load_provider_schema_validator()
-    paths: List[Path] = []
-    for directory in _external_provider_dirs(provider_dirs):
-        paths.extend(list(_iter_provider_paths_in_dir(directory)))
-    if not paths:
-        print("No external/custom provider YAML files found.")
-        return 0
+    results = _collect_provider_validation_results(provider_dirs)
+    if output_format == "json":
+        _render_provider_validation_json(results)
+    else:
+        _render_provider_validation_text(results)
 
-    failed = 0
-    for path in paths:
-        try:
-            payload = yaml.safe_load(path.read_text(encoding="utf-8"))
-        except Exception as exc:  # pragma: no cover - defensive
-            failed += 1
-            print(f"FAIL {path}")
-            print(f"  - {path}:<root>: failed to read YAML: {exc}")
-            continue
-
-        errors = list(validator.iter_errors(payload))
-        if not errors:
-            print(f"PASS {path}")
-            continue
-
-        failed += 1
-        print(f"FAIL {path}")
-        for err in errors:
-            print(_render_schema_error(path, err))
-
-    checked = len(paths)
-    if failed:
-        print(f"Schema validation failed: {failed}/{checked} provider file(s) invalid.")
-        return 2
-    print(f"Schema validation passed: {checked}/{checked} provider file(s) valid.")
-    return 0
+    failed = sum(1 for item in results if not bool(item["valid"]))
+    return 2 if failed else 0

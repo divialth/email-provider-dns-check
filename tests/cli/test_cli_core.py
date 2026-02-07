@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from provider_check import __version__
@@ -85,6 +87,59 @@ def test_providers_validate_custom_dir_empty(capsys, tmp_path):
     assert code == 0
     out = capsys.readouterr().out
     assert "No external/custom provider YAML files found." in out
+
+
+def test_providers_validate_custom_dir_json_passes(capsys, tmp_path):
+    provider_id = "custom_provider"
+    _write_provider_config(tmp_path / f"{provider_id}.yaml", provider_id)
+
+    code = main(["--providers-validate", "--providers-dir", str(tmp_path), "--output", "json"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["mode"] == "providers_validate"
+    assert payload["checked"] == 1
+    assert payload["passed"] == 1
+    assert payload["failed"] == 0
+    assert payload["valid"] is True
+    assert len(payload["results"]) == 1
+    assert payload["results"][0]["valid"] is True
+    assert payload["results"][0]["errors"] == []
+
+
+def test_providers_validate_custom_dir_json_fails(capsys, tmp_path):
+    provider_id = "broken_provider"
+    (tmp_path / f"{provider_id}.yaml").write_text(
+        "name: Broken\nrecords:\n  spf:\n    required:\n      includes: []\n",
+        encoding="utf-8",
+    )
+
+    code = main(["--providers-validate", "--providers-dir", str(tmp_path), "--output", "json"])
+
+    assert code == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["mode"] == "providers_validate"
+    assert payload["checked"] == 1
+    assert payload["passed"] == 0
+    assert payload["failed"] == 1
+    assert payload["valid"] is False
+    assert len(payload["results"]) == 1
+    assert payload["results"][0]["valid"] is False
+    assert payload["results"][0]["errors"]
+
+
+def test_providers_validate_custom_dir_json_empty(capsys, tmp_path):
+    code = main(["--providers-validate", "--providers-dir", str(tmp_path), "--output", "json"])
+
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["mode"] == "providers_validate"
+    assert payload["checked"] == 0
+    assert payload["passed"] == 0
+    assert payload["failed"] == 0
+    assert payload["valid"] is True
+    assert payload["results"] == []
+    assert payload["message"] == "No external/custom provider YAML files found."
 
 
 def test_provider_show_outputs_yaml(capsys, monkeypatch):
