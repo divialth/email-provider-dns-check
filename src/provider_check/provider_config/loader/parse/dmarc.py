@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...models import DMARCConfig, DMARCOptional, DMARCRequired, DMARCSettings
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .schema import RECORD_SCHEMA
 
 
 def _parse_dmarc(provider_id: str, records: dict) -> DMARCConfig | None:
@@ -23,7 +24,7 @@ def _parse_dmarc(provider_id: str, records: dict) -> DMARCConfig | None:
         return None
 
     dmarc_section = _require_mapping(provider_id, "dmarc", records.get("dmarc"))
-    _reject_unknown_keys(provider_id, "dmarc", dmarc_section, {"required", "optional", "settings"})
+    _reject_unknown_keys(provider_id, "dmarc", dmarc_section, RECORD_SCHEMA["dmarc"]["section"])
     required_section = _require_mapping(
         provider_id, "dmarc required", dmarc_section.get("required", {})
     )
@@ -37,11 +38,16 @@ def _parse_dmarc(provider_id: str, records: dict) -> DMARCConfig | None:
         provider_id,
         "dmarc required",
         required_section,
-        {"policy", "rua", "ruf", "tags"},
+        RECORD_SCHEMA["dmarc"]["required"],
     )
-    _reject_unknown_keys(provider_id, "dmarc optional", optional_section, {"rua", "ruf"})
     _reject_unknown_keys(
-        provider_id, "dmarc settings", settings_section, {"rua_required", "ruf_required"}
+        provider_id, "dmarc optional", optional_section, RECORD_SCHEMA["dmarc"]["optional"]
+    )
+    _reject_unknown_keys(
+        provider_id,
+        "dmarc settings",
+        settings_section,
+        RECORD_SCHEMA["dmarc"]["settings"],
     )
 
     policy = required_section.get("policy", "reject")

@@ -6,6 +6,7 @@ from typing import List
 
 from ...models import MXConfig, MXRecord
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .schema import RECORD_SCHEMA
 
 
 def _parse_mx_records(provider_id: str, field_label: str, raw_records: list) -> List[MXRecord]:
@@ -59,7 +60,7 @@ def _parse_mx(provider_id: str, records: dict) -> MXConfig | None:
         return None
 
     mx_section = _require_mapping(provider_id, "mx", records.get("mx"))
-    _reject_unknown_keys(provider_id, "mx", mx_section, {"required", "optional"})
+    _reject_unknown_keys(provider_id, "mx", mx_section, RECORD_SCHEMA["mx"]["section"])
     required_raw = _require_list(provider_id, "mx required", mx_section.get("required", []))
     optional_raw = _require_list(provider_id, "mx optional", mx_section.get("optional", []))
     required = _parse_mx_records(provider_id, "mx required", required_raw)

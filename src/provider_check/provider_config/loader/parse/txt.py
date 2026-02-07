@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from ...models import TXTConfig, TXTSettings
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .schema import RECORD_SCHEMA
 
 
 def _parse_txt(provider_id: str, records: dict) -> TXTConfig | None:
@@ -25,11 +26,16 @@ def _parse_txt(provider_id: str, records: dict) -> TXTConfig | None:
         return None
 
     txt_section = _require_mapping(provider_id, "txt", records.get("txt"))
-    _reject_unknown_keys(provider_id, "txt", txt_section, {"required", "optional", "settings"})
+    _reject_unknown_keys(provider_id, "txt", txt_section, RECORD_SCHEMA["txt"]["section"])
     required_raw = _require_mapping(provider_id, "txt required", txt_section.get("required", {}))
     optional_raw = _require_mapping(provider_id, "txt optional", txt_section.get("optional", {}))
     settings_raw = _require_mapping(provider_id, "txt settings", txt_section.get("settings", {}))
-    _reject_unknown_keys(provider_id, "txt settings", settings_raw, {"verification_required"})
+    _reject_unknown_keys(
+        provider_id,
+        "txt settings",
+        settings_raw,
+        RECORD_SCHEMA["txt"]["settings"],
+    )
 
     required: Dict[str, List[str]] = {}
     for name, values in required_raw.items():

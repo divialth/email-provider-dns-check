@@ -33,6 +33,12 @@
 - When editing Markdown tables, align columns so raw Markdown remains readable.
 - Never remove entries from `.gitignore` without explicit user approval first.
 
+## Provider Schema Consistency
+- Treat `src/provider_check/provider_config/loader/parse/schema.py` as the single source of truth for provider record parser keys.
+- Any provider schema change must update all of: `src/provider_check/provider_config/models.py`, affected parser modules under `src/provider_check/provider_config/loader/parse/`, and `tests/provider_config/test_parser_schema_contract.py`.
+- Strict-mode behavior must be represented by structured fields (for example, `policy`) and not raw strict-only strings such as `required.record`.
+- Schema-breaking changes require a Semantic Versioning major bump and matching updates to documentation/examples (including `README.md` and `src/provider_check/resources/providers/example_do_not_use.yaml`).
+
 ## Versioning and Commits
 - Git commit messages must follow Conventional Commits 1.0.0 with required scope and body:
   `type(scope): short description`

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...models import DKIMConfig, DKIMRequired
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .schema import RECORD_SCHEMA
 
 
 def _parse_dkim(provider_id: str, records: dict) -> DKIMConfig | None:
@@ -23,7 +24,7 @@ def _parse_dkim(provider_id: str, records: dict) -> DKIMConfig | None:
         return None
 
     dkim_section = _require_mapping(provider_id, "dkim", records.get("dkim"))
-    _reject_unknown_keys(provider_id, "dkim", dkim_section, {"required"})
+    _reject_unknown_keys(provider_id, "dkim", dkim_section, RECORD_SCHEMA["dkim"]["section"])
     required_section = _require_mapping(
         provider_id, "dkim required", dkim_section.get("required", {})
     )
@@ -31,7 +32,7 @@ def _parse_dkim(provider_id: str, records: dict) -> DKIMConfig | None:
         provider_id,
         "dkim required",
         required_section,
-        {"selectors", "record_type", "target_template", "txt_values"},
+        RECORD_SCHEMA["dkim"]["required"],
     )
 
     selectors = _require_list(provider_id, "dkim selectors", required_section.get("selectors", []))

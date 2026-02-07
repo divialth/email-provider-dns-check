@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from ...models import SRVConfig, SRVRecord
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .schema import RECORD_SCHEMA
 
 
 def _parse_srv_records(
@@ -70,7 +71,7 @@ def _parse_srv(provider_id: str, records: dict) -> SRVConfig | None:
         return None
 
     srv_section = _require_mapping(provider_id, "srv", records.get("srv"))
-    _reject_unknown_keys(provider_id, "srv", srv_section, {"required", "optional"})
+    _reject_unknown_keys(provider_id, "srv", srv_section, RECORD_SCHEMA["srv"]["section"])
     srv_required_raw = _require_mapping(
         provider_id, "srv required", srv_section.get("required", {})
     )

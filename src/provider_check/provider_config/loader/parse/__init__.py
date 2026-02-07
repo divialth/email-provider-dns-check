@@ -13,6 +13,7 @@ from .dkim import _parse_dkim
 from .dmarc import _parse_dmarc
 from .metadata import _parse_provider_metadata
 from .mx import _parse_mx
+from .schema import RECORD_SCHEMA
 from .spf import _parse_spf
 from .srv import _parse_srv
 from .txt import _parse_txt
@@ -44,18 +45,7 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         provider_id,
         "records",
         records,
-        {
-            "mx",
-            "spf",
-            "dkim",
-            "a",
-            "aaaa",
-            "cname",
-            "caa",
-            "srv",
-            "txt",
-            "dmarc",
-        },
+        RECORD_SCHEMA.keys(),
     )
 
     return ProviderConfig(

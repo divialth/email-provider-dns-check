@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from ...models import SPFConfig, SPFOptional, SPFRequired
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .schema import RECORD_SCHEMA
 
 _SPF_POLICIES = {"hardfail", "softfail", "neutral", "allow"}
 
@@ -25,7 +26,7 @@ def _parse_spf(provider_id: str, records: dict) -> SPFConfig | None:
         return None
 
     spf_section = _require_mapping(provider_id, "spf", records.get("spf"))
-    _reject_unknown_keys(provider_id, "spf", spf_section, {"required", "optional"})
+    _reject_unknown_keys(provider_id, "spf", spf_section, RECORD_SCHEMA["spf"]["section"])
     required_section = _require_mapping(
         provider_id, "spf required", spf_section.get("required", {})
     )
@@ -36,9 +37,14 @@ def _parse_spf(provider_id: str, records: dict) -> SPFConfig | None:
         provider_id,
         "spf required",
         required_section,
-        {"policy", "includes", "mechanisms", "modifiers"},
+        RECORD_SCHEMA["spf"]["required"],
     )
-    _reject_unknown_keys(provider_id, "spf optional", optional_section, {"mechanisms", "modifiers"})
+    _reject_unknown_keys(
+        provider_id,
+        "spf optional",
+        optional_section,
+        RECORD_SCHEMA["spf"]["optional"],
+    )
 
     policy = required_section.get("policy")
     if not isinstance(policy, str):

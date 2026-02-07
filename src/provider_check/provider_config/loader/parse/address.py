@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from ...models import AddressConfig
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .schema import RECORD_SCHEMA
 
 
 def _parse_address_records(
@@ -45,7 +46,7 @@ def _parse_a(provider_id: str, records: dict) -> AddressConfig | None:
         return None
 
     a_section = _require_mapping(provider_id, "a", records.get("a"))
-    _reject_unknown_keys(provider_id, "a", a_section, {"required", "optional"})
+    _reject_unknown_keys(provider_id, "a", a_section, RECORD_SCHEMA["a"]["section"])
     a_required_raw = _require_mapping(provider_id, "a required", a_section.get("required", {}))
     a_optional_raw = _require_mapping(provider_id, "a optional", a_section.get("optional", {}))
     a_required = _parse_address_records(provider_id, "a required", a_required_raw)
@@ -67,7 +68,7 @@ def _parse_aaaa(provider_id: str, records: dict) -> AddressConfig | None:
         return None
 
     aaaa_section = _require_mapping(provider_id, "aaaa", records.get("aaaa"))
-    _reject_unknown_keys(provider_id, "aaaa", aaaa_section, {"required", "optional"})
+    _reject_unknown_keys(provider_id, "aaaa", aaaa_section, RECORD_SCHEMA["aaaa"]["section"])
     aaaa_required_raw = _require_mapping(
         provider_id, "aaaa required", aaaa_section.get("required", {})
     )

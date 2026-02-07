@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from ...models import CAAConfig, CAARecord
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .schema import RECORD_SCHEMA
 
 
 def _parse_caa_records(
@@ -62,7 +63,7 @@ def _parse_caa(provider_id: str, records: dict) -> CAAConfig | None:
         return None
 
     caa_section = _require_mapping(provider_id, "caa", records.get("caa"))
-    _reject_unknown_keys(provider_id, "caa", caa_section, {"required", "optional"})
+    _reject_unknown_keys(provider_id, "caa", caa_section, RECORD_SCHEMA["caa"]["section"])
     caa_required_raw = _require_mapping(
         provider_id, "caa required", caa_section.get("required", {})
     )
