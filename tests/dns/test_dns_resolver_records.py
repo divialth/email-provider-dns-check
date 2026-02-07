@@ -224,3 +224,36 @@ def test_get_aaaa_dns_exception_raises_lookup_error(monkeypatch):
 
     assert exc.value.record_type == "AAAA"
     assert exc.value.name == "example.com"
+
+
+def test_get_ptr_success(monkeypatch):
+    answers = {
+        ("10.2.0.192.in-addr.arpa", "PTR"): [
+            SimpleNamespace(target="Mail.Example."),
+            SimpleNamespace(target="mx1.example."),
+        ]
+    }
+    resolver = make_dns_resolver(monkeypatch, answers)
+
+    assert resolver.get_ptr("10.2.0.192.in-addr.arpa") == [
+        "mail.example.",
+        "mx1.example.",
+    ]
+
+
+def test_get_ptr_no_answer_returns_empty(monkeypatch):
+    answers = {("10.2.0.192.in-addr.arpa", "PTR"): dns.resolver.NoAnswer()}
+    resolver = make_dns_resolver(monkeypatch, answers)
+
+    assert resolver.get_ptr("10.2.0.192.in-addr.arpa") == []
+
+
+def test_get_ptr_dns_exception_raises_lookup_error(monkeypatch):
+    answers = {("10.2.0.192.in-addr.arpa", "PTR"): dns.exception.DNSException("boom")}
+    resolver = make_dns_resolver(monkeypatch, answers)
+
+    with pytest.raises(DnsLookupError) as exc:
+        resolver.get_ptr("10.2.0.192.in-addr.arpa")
+
+    assert exc.value.record_type == "PTR"
+    assert exc.value.name == "10.2.0.192.in-addr.arpa"

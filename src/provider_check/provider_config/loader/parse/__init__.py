@@ -14,6 +14,7 @@ from .dkim import _parse_dkim
 from .dmarc import _parse_dmarc
 from .metadata import _parse_provider_metadata
 from .mx import _parse_mx
+from .ptr import _parse_ptr
 from .schema import RECORD_SCHEMA
 from .spf import _parse_spf
 from .srv import _parse_srv
@@ -80,6 +81,7 @@ def _load_provider_from_data(provider_id: str, data: dict) -> ProviderConfig:
         dkim=_parse_dkim(provider_id, records),
         a=_parse_a(provider_id, records),
         aaaa=_parse_aaaa(provider_id, records),
+        ptr=_parse_ptr(provider_id, records),
         cname=_parse_cname(provider_id, records),
         caa=_parse_caa(provider_id, records),
         srv=_parse_srv(provider_id, records),

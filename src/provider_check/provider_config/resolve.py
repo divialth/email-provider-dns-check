@@ -18,6 +18,7 @@ from .models import (
     DMARCSettings,
     MXConfig,
     MXRecord,
+    PTRConfig,
     ProviderConfig,
     SPFConfig,
     SPFOptional,
@@ -286,6 +287,13 @@ def resolve_provider_config(
             optional=_format_list_mapping(provider.aaaa.optional, resolved),
         )
 
+    ptr = None
+    if provider.ptr:
+        ptr = PTRConfig(
+            required=_format_list_mapping(provider.ptr.required, resolved),
+            optional=_format_list_mapping(provider.ptr.optional, resolved),
+        )
+
     cname = None
     if provider.cname:
         cname = CNAMEConfig(
@@ -343,6 +351,7 @@ def resolve_provider_config(
         dkim=dkim,
         a=a,
         aaaa=aaaa,
+        ptr=ptr,
         cname=cname,
         caa=caa,
         srv=srv,

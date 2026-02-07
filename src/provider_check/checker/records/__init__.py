@@ -12,6 +12,7 @@ from .dkim import DkimChecksMixin
 from .dmarc import DmarcChecksMixin
 from .models import RecordCheck
 from .mx import MxChecksMixin
+from .ptr import PtrChecksMixin
 from .spf import SpfChecksMixin
 from .srv import SrvChecksMixin
 from .txt import TxtChecksMixin
@@ -23,6 +24,7 @@ class RecordsMixin(
     NormalizationMixin,
     MxChecksMixin,
     AddressChecksMixin,
+    PtrChecksMixin,
     SpfChecksMixin,
     DkimChecksMixin,
     CnameChecksMixin,

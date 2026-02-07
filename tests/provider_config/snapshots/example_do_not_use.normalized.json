@@ -124,6 +124,22 @@
         }
       ]
     },
+    "ptr": {
+      "optional": {
+        "12.2.0.192.in-addr.arpa.": [
+          "autodiscover.{tenant}.example-provider.test."
+        ]
+      },
+      "required": {
+        "10.2.0.192.in-addr.arpa.": [
+          "mail.{tenant}.example-provider.test."
+        ],
+        "11.2.0.192.in-addr.arpa.": [
+          "mx1.{tenant}.example-provider.test.",
+          "mx2.{tenant}.example-provider.test."
+        ]
+      }
+    },
     "spf": {
       "optional": {
         "mechanisms": [

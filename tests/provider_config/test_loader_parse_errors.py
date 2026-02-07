@@ -368,3 +368,56 @@ def test_load_provider_address_records_loaded(provider_config_loader) -> None:
     assert config.aaaa is not None
     assert config.aaaa.required == {"@": ["2001:db8::1"]}
     assert config.aaaa.optional == {"autodiscover": ["2001:db8::2"]}
+
+
+def test_load_provider_ptr_records_loaded(provider_config_loader) -> None:
+    """Load PTR record mappings."""
+    data = {
+        "version": "1",
+        "records": {
+            "ptr": {
+                "required": {
+                    "10.2.0.192.in-addr.arpa.": ["mail.example.test."],
+                },
+                "optional": {
+                    "11.2.0.192.in-addr.arpa.": ["mx.example.test."],
+                },
+            }
+        },
+    }
+
+    config = provider_config_loader._load_provider_from_data("ptr", data)
+
+    assert config.ptr is not None
+    assert config.ptr.required == {"10.2.0.192.in-addr.arpa.": ["mail.example.test."]}
+    assert config.ptr.optional == {"11.2.0.192.in-addr.arpa.": ["mx.example.test."]}
+
+
+def test_load_provider_ptr_unknown_key_rejected(provider_config_loader) -> None:
+    """Reject unknown keys in PTR sections."""
+    data = {
+        "version": "1",
+        "records": {
+            "ptr": {"required": {"10.2.0.192.in-addr.arpa.": ["mail.example.test."]}, "extra": True}
+        },
+    }
+
+    with pytest.raises(ValueError, match="ptr has unknown keys: extra"):
+        provider_config_loader._load_provider_from_data("ptr", data)
+
+
+def test_load_provider_ptr_name_requires_reverse_zone(provider_config_loader) -> None:
+    """Reject PTR names outside reverse DNS zones."""
+    data = {
+        "version": "1",
+        "records": {
+            "ptr": {
+                "required": {
+                    "mail.example.test.": ["mail.example.test."],
+                }
+            }
+        },
+    }
+
+    with pytest.raises(ValueError, match="must be a reverse DNS name ending with"):
+        provider_config_loader._load_provider_from_data("ptr", data)

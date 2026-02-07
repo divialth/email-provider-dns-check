@@ -182,6 +182,32 @@ def _enabled_aaaa_optional(checker: _CheckerView) -> bool:
     return _has_optional_records(getattr(checker.provider, "aaaa", None))
 
 
+def _enabled_ptr(checker: _CheckerView) -> bool:
+    """Enable PTR checks when required PTR records are present.
+
+    Args:
+        checker (_CheckerView): Checker instance to inspect.
+
+    Returns:
+        bool: True if PTR checks should run.
+    """
+
+    return _has_required_records(getattr(checker.provider, "ptr", None))
+
+
+def _enabled_ptr_optional(checker: _CheckerView) -> bool:
+    """Enable optional PTR checks when optional PTR records are present.
+
+    Args:
+        checker (_CheckerView): Checker instance to inspect.
+
+    Returns:
+        bool: True if optional PTR checks should run.
+    """
+
+    return _has_optional_records(getattr(checker.provider, "ptr", None))
+
+
 def _enabled_cname(checker: _CheckerView) -> bool:
     """Enable CNAME checks when required CNAME records are present.
 
@@ -312,6 +338,8 @@ CHECK_SPECS: tuple[CheckSpec, ...] = (
     CheckSpec("A", "check_a_optional", _enabled_a_optional),
     CheckSpec("AAAA", "check_aaaa", _enabled_aaaa),
     CheckSpec("AAAA", "check_aaaa_optional", _enabled_aaaa_optional),
+    CheckSpec("PTR", "check_ptr", _enabled_ptr),
+    CheckSpec("PTR", "check_ptr_optional", _enabled_ptr_optional),
     CheckSpec("CNAME", "check_cname", _enabled_cname),
     CheckSpec("CNAME", "check_cname_optional", _enabled_cname_optional),
     CheckSpec("CAA", "check_caa", _enabled_caa),
@@ -329,6 +357,7 @@ RECORD_TYPE_SPECS: tuple[RecordTypeSpec, ...] = (
     RecordTypeSpec("DKIM", weight=4, core=True, row_builder_name="_build_dkim_rows"),
     RecordTypeSpec("A", weight=1, core=True, row_builder_name="_build_address_rows"),
     RecordTypeSpec("AAAA", weight=1, core=True, row_builder_name="_build_address_rows"),
+    RecordTypeSpec("PTR", weight=1, core=False, row_builder_name="_build_address_rows"),
     RecordTypeSpec("CNAME", weight=3, core=True, row_builder_name="_build_cname_rows"),
     RecordTypeSpec("SRV", weight=2, core=True, row_builder_name="_build_srv_rows"),
     RecordTypeSpec("CAA", weight=1, core=False, row_builder_name="_build_caa_rows"),

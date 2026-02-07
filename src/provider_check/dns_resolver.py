@@ -324,6 +324,31 @@ class DnsResolver:
             LOGGER.warning("AAAA lookup failed for %s: %s", name, err)
             raise DnsLookupError("AAAA", name, err) from err
 
+    def get_ptr(self, name: str) -> List[str]:
+        """Resolve PTR records for a DNS name.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            List[str]: PTR target hostnames.
+
+        Raises:
+            DnsLookupError: If a DNS error occurs during lookup.
+        """
+        try:
+            answers = self._resolver.resolve(name, "PTR")
+            records: List[str] = []
+            for rdata in answers:
+                target = str(rdata.target).lower().rstrip(".") + "."
+                records.append(target)
+            return records
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+            return []
+        except dns.exception.DNSException as err:
+            LOGGER.warning("PTR lookup failed for %s: %s", name, err)
+            raise DnsLookupError("PTR", name, err) from err
+
 
 class CachingResolver:
     """Cache DNS lookup results for a resolver instance.
@@ -444,3 +469,14 @@ class CachingResolver:
             list: AAAA record values.
         """
         return self._cached(("AAAA", name), self._resolver.get_aaaa, name)
+
+    def get_ptr(self, name: str):
+        """Resolve PTR records with caching.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            list: PTR target values.
+        """
+        return self._cached(("PTR", name), self._resolver.get_ptr, name)

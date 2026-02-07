@@ -48,3 +48,13 @@ def test_caching_resolver_supports_caa():
     cached = CachingResolver(_Resolver())
 
     assert cached.get_caa("example.com") == [(0, "issue", "example.test")]
+
+
+def test_caching_resolver_supports_ptr():
+    class _Resolver:
+        def get_ptr(self, name: str):
+            return ["mail.example.test."]
+
+    cached = CachingResolver(_Resolver())
+
+    assert cached.get_ptr("10.2.0.192.in-addr.arpa") == ["mail.example.test."]

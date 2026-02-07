@@ -81,6 +81,11 @@ def test_build_result_rows_for_specific_record_types():
         "status": "PASS",
         "details": {"expected": {"_srv._tcp.example.test": [(0, 5, 443, "srv.example.test")]}},
     }
+    ptr_result = {
+        "record_type": "PTR",
+        "status": "PASS",
+        "details": {"expected": {"10.2.0.192.in-addr.arpa": ["mail.example.test."]}},
+    }
     txt_result = {
         "record_type": "TXT",
         "status": "PASS",
@@ -95,6 +100,7 @@ def test_build_result_rows_for_specific_record_types():
     assert _build_result_rows(cname_result)
     assert _build_result_rows(a_result)
     assert _build_result_rows(srv_result)
+    assert _build_result_rows(ptr_result)
     assert _build_result_rows(txt_result)
     assert _build_result_rows(dmarc_result)
 

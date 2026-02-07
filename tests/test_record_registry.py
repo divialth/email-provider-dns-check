@@ -11,6 +11,7 @@ from provider_check.provider_config import (
     DMARCSettings,
     MXConfig,
     MXRecord,
+    PTRConfig,
     ProviderConfig,
     SPFConfig,
     SPFOptional,
@@ -69,6 +70,10 @@ def _build_provider() -> ProviderConfig:
         aaaa=AddressConfig(
             required={"mail": ["2001:db8::1"]},
             optional={"optional": ["2001:db8::2"]},
+        ),
+        ptr=PTRConfig(
+            required={"10.2.0.192.in-addr.arpa.": ["mail.test."]},
+            optional={"11.2.0.192.in-addr.arpa.": ["optional.test."]},
         ),
         cname=CNAMEConfig(
             required={"autodiscover": "target.example.test."},

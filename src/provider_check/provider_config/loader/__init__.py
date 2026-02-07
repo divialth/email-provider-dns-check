@@ -13,6 +13,7 @@ from ..models import (
     DKIMConfig,
     DMARCConfig,
     MXConfig,
+    PTRConfig,
     ProviderConfig,
     ProviderVariable,
     SPFConfig,

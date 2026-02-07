@@ -130,6 +130,19 @@ class AddressConfig:
 
 
 @dataclass(frozen=True)
+class PTRConfig:
+    """Define PTR record requirements for a provider.
+
+    Attributes:
+        required (Dict[str, List[str]]): Mapping of reverse DNS names to expected hostnames.
+        optional (Dict[str, List[str]]): Optional reverse DNS mapping.
+    """
+
+    required: Dict[str, List[str]]
+    optional: Dict[str, List[str]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class CAARecord:
     """Define a single CAA record entry.
 
@@ -309,6 +322,7 @@ class ProviderConfig:
         short_description (Optional[str]): Short provider description.
         long_description (Optional[str]): Long provider description.
         variables (Dict[str, ProviderVariable]): Provider variable definitions.
+        ptr (Optional[PTRConfig]): PTR record requirements.
     """
 
     provider_id: str
@@ -327,3 +341,4 @@ class ProviderConfig:
     short_description: Optional[str] = None
     long_description: Optional[str] = None
     variables: Dict[str, ProviderVariable] = field(default_factory=dict)
+    ptr: Optional[PTRConfig] = None

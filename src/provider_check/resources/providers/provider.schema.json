@@ -73,6 +73,9 @@
         "aaaa": {
           "$ref": "#/$defs/address_section"
         },
+        "ptr": {
+          "$ref": "#/$defs/address_section"
+        },
         "cname": {
           "$ref": "#/$defs/cname_section"
         },

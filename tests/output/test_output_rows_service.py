@@ -39,6 +39,18 @@ def test_build_address_rows_without_missing_details():
     assert rows[0]["found"] == "(missing)"
 
 
+def test_build_address_rows_supports_ptr_label():
+    result = {
+        "record_type": "PTR",
+        "status": "PASS",
+        "details": {"expected": {"10.2.0.192.in-addr.arpa": ["mail.example.test."]}},
+    }
+
+    rows = _build_address_rows(result)
+
+    assert rows[0]["message"] == "PTR 10.2.0.192.in-addr.arpa"
+
+
 def test_build_srv_rows_with_missing_and_extra():
     result = {
         "status": "FAIL",

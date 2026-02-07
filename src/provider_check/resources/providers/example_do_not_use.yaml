@@ -136,6 +136,19 @@ records:
       autodiscover:
         - 2001:db8::12
 
+  ptr:
+    # Required PTR records (reverse name -> list of expected hostnames).
+    required:
+      "10.2.0.192.in-addr.arpa.":
+        - mail.{tenant}.example-provider.test.
+      "11.2.0.192.in-addr.arpa.":
+        - mx1.{tenant}.example-provider.test.
+        - mx2.{tenant}.example-provider.test.
+    # Optional PTR records (reverse name -> list of expected hostnames).
+    optional:
+      "12.2.0.192.in-addr.arpa.":
+        - autodiscover.{tenant}.example-provider.test.
+
   cname:
     # Required CNAME records (name -> expected target).
     required:

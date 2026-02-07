@@ -10,6 +10,7 @@ from provider_check.provider_config import (
     DMARCSettings,
     MXConfig,
     MXRecord,
+    PTRConfig,
     ProviderConfig,
     ProviderVariable,
     SPFConfig,
@@ -60,6 +61,10 @@ def test_resolve_provider_config_applies_variables_and_domain():
         aaaa=AddressConfig(
             required={"mail.{domain}": ["2001:db8::1"]},
             optional={"autodiscover.{domain}": ["2001:db8::2"]},
+        ),
+        ptr=PTRConfig(
+            required={"10.2.0.192.in-addr.arpa.": ["mail.{tenant}.example.test."]},
+            optional={"11.2.0.192.in-addr.arpa.": ["mx.{tenant}.example.test."]},
         ),
         cname=CNAMEConfig(
             required={"sip": "sip.{tenant}.example.test.", "discover": "webdir.{tenant}."},
@@ -130,6 +135,8 @@ def test_resolve_provider_config_applies_variables_and_domain():
     assert resolved.a.optional == {"autodiscover.example.test": ["192.0.2.2"]}
     assert resolved.aaaa.required == {"mail.example.test": ["2001:db8::1"]}
     assert resolved.aaaa.optional == {"autodiscover.example.test": ["2001:db8::2"]}
+    assert resolved.ptr.required == {"10.2.0.192.in-addr.arpa.": ["mail.tenant-a.example.test."]}
+    assert resolved.ptr.optional == {"11.2.0.192.in-addr.arpa.": ["mx.tenant-a.example.test."]}
     assert resolved.cname.required == {
         "sip": "sip.tenant-a.example.test.",
         "discover": "webdir.tenant-a.",

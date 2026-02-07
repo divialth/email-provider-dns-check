@@ -21,6 +21,9 @@ RECORD_SCHEMA: dict[str, dict[str, frozenset[str]]] = {
     "aaaa": {
         "section": frozenset({"required", "optional"}),
     },
+    "ptr": {
+        "section": frozenset({"required", "optional"}),
+    },
     "cname": {
         "section": frozenset({"required", "optional"}),
     },

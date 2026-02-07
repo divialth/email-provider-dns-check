@@ -94,6 +94,18 @@ INVALID_RECORD_CASES = [
         name: Invalid Provider
         version: 1
         records:
+          ptr:
+            required:
+              "10.2.0.192.in-addr.arpa.": mail.example.test.
+        """,
+        "Provider config bad ptr required.10.2.0.192.in-addr.arpa. must be a list",
+        id="invalid-ptr-record-values",
+    ),
+    pytest.param(
+        """
+        name: Invalid Provider
+        version: 1
+        records:
           cname:
             required:
               - not-a-map
