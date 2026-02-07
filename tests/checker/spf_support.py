@@ -7,7 +7,7 @@ from provider_check.provider_config import ProviderConfig, SPFConfig, SPFOptiona
 
 def make_spf_config(
     *,
-    required_record: str | None = None,
+    policy: str = "hardfail",
     includes: list[str] | None = None,
     required_mechanisms: list[str] | None = None,
     required_modifiers: dict[str, str] | None = None,
@@ -17,7 +17,7 @@ def make_spf_config(
     """Build an SPF config for tests.
 
     Args:
-        required_record (str | None): Strict SPF record template.
+        policy (str): Required SPF terminator policy.
         includes (list[str] | None): Required include mechanisms.
         required_mechanisms (list[str] | None): Required SPF mechanisms.
         required_modifiers (dict[str, str] | None): Required SPF modifiers.
@@ -29,7 +29,7 @@ def make_spf_config(
     """
     return SPFConfig(
         required=SPFRequired(
-            record=required_record,
+            policy=policy,
             includes=includes or [],
             mechanisms=required_mechanisms or [],
             modifiers=required_modifiers or {},

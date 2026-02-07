@@ -17,7 +17,7 @@ records:
     optional: []
   spf:
     required:
-      record: "v=spf1 include:mailbox.org -all"
+      policy: hardfail
       includes:
         - mailbox.org
       mechanisms: []

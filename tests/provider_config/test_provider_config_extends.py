@@ -55,6 +55,7 @@ def test_extends_merges_and_ignores_base_enabled(monkeypatch, tmp_path):
               target_template: "{selector}.child.test."
           spf:
             required:
+              policy: hardfail
               includes:
                 - spf.child.test
         """,
@@ -124,6 +125,7 @@ def test_extends_multiple_bases(monkeypatch, tmp_path):
         records:
           spf:
             required:
+              policy: hardfail
               includes:
                 - spf.one.test
         """,

@@ -23,6 +23,7 @@ INVALID_RECORD_CASES = [
         records:
           spf:
             required:
+              policy: hardfail
               includes: example.test
         """,
         "Provider config bad spf required includes must be a list",

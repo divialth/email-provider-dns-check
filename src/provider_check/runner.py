@@ -79,7 +79,7 @@ class CheckRequest:
         dmarc_ruf_mailto (Iterable[str]): Required DMARC ruf mailto overrides.
         dmarc_policy (Optional[str]): DMARC policy override.
         dmarc_required_tags (dict[str, str]): DMARC tag overrides.
-        spf_policy (str): SPF policy override (softfail or hardfail).
+        spf_policy (Optional[str]): SPF policy override.
         additional_spf_includes (Iterable[str]): Additional SPF include mechanisms.
         additional_spf_ip4 (Iterable[str]): Additional SPF ip4 entries.
         additional_spf_ip6 (Iterable[str]): Additional SPF ip6 entries.
@@ -105,7 +105,7 @@ class CheckRequest:
     dmarc_ruf_mailto: Iterable[str] = field(default_factory=list)
     dmarc_policy: Optional[str] = None
     dmarc_required_tags: dict[str, str] = field(default_factory=dict)
-    spf_policy: str = "hardfail"
+    spf_policy: Optional[str] = None
     additional_spf_includes: Iterable[str] = field(default_factory=list)
     additional_spf_ip4: Iterable[str] = field(default_factory=list)
     additional_spf_ip6: Iterable[str] = field(default_factory=list)
@@ -251,7 +251,7 @@ class DetectionRequest:
         dmarc_ruf_mailto (Iterable[str]): Required DMARC ruf overrides.
         dmarc_policy (Optional[str]): DMARC policy override.
         dmarc_required_tags (dict[str, str]): DMARC tag overrides.
-        spf_policy (str): SPF policy override.
+        spf_policy (Optional[str]): SPF policy override.
         additional_spf_includes (Iterable[str]): Additional SPF include mechanisms.
         additional_spf_ip4 (Iterable[str]): Additional SPF ip4 entries.
         additional_spf_ip6 (Iterable[str]): Additional SPF ip6 entries.
@@ -278,7 +278,7 @@ class DetectionRequest:
     dmarc_ruf_mailto: Iterable[str] = field(default_factory=list)
     dmarc_policy: Optional[str] = None
     dmarc_required_tags: dict[str, str] = field(default_factory=dict)
-    spf_policy: str = "hardfail"
+    spf_policy: Optional[str] = None
     additional_spf_includes: Iterable[str] = field(default_factory=list)
     additional_spf_ip4: Iterable[str] = field(default_factory=list)
     additional_spf_ip6: Iterable[str] = field(default_factory=list)

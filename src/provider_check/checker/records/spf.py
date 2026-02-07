@@ -12,6 +12,31 @@ from .models import RecordCheck
 class SpfChecksMixin:
     """Validate SPF records."""
 
+    @staticmethod
+    def _policy_token(policy: str) -> str:
+        """Map an SPF policy name to its ``all`` terminator token.
+
+        Args:
+            policy (str): Policy name.
+
+        Returns:
+            str: SPF terminator token.
+
+        Raises:
+            ValueError: If the policy value is not supported.
+        """
+        mapping = {
+            "hardfail": "-all",
+            "softfail": "~all",
+            "neutral": "?all",
+            "allow": "+all",
+        }
+        token = mapping.get(policy.lower())
+        if token is None:
+            allowed = ", ".join(sorted(mapping))
+            raise ValueError(f"Unsupported SPF policy '{policy}'. Allowed values: {allowed}")
+        return token
+
     def _build_expected_spf(self) -> str:
         """Build the expected SPF record string.
 
@@ -25,8 +50,6 @@ class SpfChecksMixin:
             raise ValueError("SPF configuration not available for provider")
 
         spf_config = self.provider.spf
-        if self.strict and spf_config.required.record:
-            return spf_config.required.record
 
         tokens: List[str] = ["v=spf1"]
         tokens.extend(f"include:{value}" for value in spf_config.required.includes)
@@ -38,7 +61,7 @@ class SpfChecksMixin:
         if spf_config.required.modifiers:
             for key in sorted(spf_config.required.modifiers.keys()):
                 tokens.append(f"{key}={spf_config.required.modifiers[key]}")
-        policy_token = "-all" if self.spf_policy == "hardfail" else "~all"
+        policy_token = self._policy_token(self.spf_policy)
         tokens.append(policy_token)
         return " ".join(tokens)
 
@@ -124,7 +147,7 @@ class SpfChecksMixin:
 
         includes = set(include_tokens)
         has_required_includes = required_includes.issubset(includes)
-        policy_required_token = "-all" if self.spf_policy == "hardfail" else "~all"
+        policy_required_token = self._policy_token(self.spf_policy)
         policy_ok = policy_required_token in mechanisms
 
         required_mechanisms = [value.lower() for value in spf_config.required.mechanisms]

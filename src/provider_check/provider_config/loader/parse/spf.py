@@ -5,6 +5,8 @@ from __future__ import annotations
 from ...models import SPFConfig, SPFOptional, SPFRequired
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
 
+_SPF_POLICIES = {"hardfail", "softfail", "neutral", "allow"}
+
 
 def _parse_spf(provider_id: str, records: dict) -> SPFConfig | None:
     """Parse SPF config from records mapping.
@@ -34,13 +36,19 @@ def _parse_spf(provider_id: str, records: dict) -> SPFConfig | None:
         provider_id,
         "spf required",
         required_section,
-        {"record", "includes", "mechanisms", "modifiers"},
+        {"policy", "includes", "mechanisms", "modifiers"},
     )
     _reject_unknown_keys(provider_id, "spf optional", optional_section, {"mechanisms", "modifiers"})
 
-    record = required_section.get("record")
-    if record is not None and not isinstance(record, str):
-        raise ValueError(f"Provider config {provider_id} spf required record must be a string")
+    policy = required_section.get("policy")
+    if not isinstance(policy, str):
+        raise ValueError(f"Provider config {provider_id} spf required policy must be a string")
+    normalized_policy = policy.lower()
+    if normalized_policy not in _SPF_POLICIES:
+        allowed = ", ".join(sorted(_SPF_POLICIES))
+        raise ValueError(
+            f"Provider config {provider_id} spf required policy must be one of: {allowed}"
+        )
 
     includes = _require_list(
         provider_id, "spf required includes", required_section.get("includes", [])
@@ -67,7 +75,7 @@ def _parse_spf(provider_id: str, records: dict) -> SPFConfig | None:
 
     return SPFConfig(
         required=SPFRequired(
-            record=str(record) if record is not None else None,
+            policy=normalized_policy,
             includes=[str(value) for value in includes],
             mechanisms=[str(value) for value in required_mechanisms],
             modifiers=required_modifiers,

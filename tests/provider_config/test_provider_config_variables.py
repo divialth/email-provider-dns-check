@@ -24,6 +24,7 @@ from provider_check.provider_config import (
     TXTSettings,
     resolve_provider_config,
 )
+from provider_check.provider_config.utils import _format_string
 
 
 def test_resolve_provider_config_applies_variables_and_domain():
@@ -37,7 +38,7 @@ def test_resolve_provider_config_applies_variables_and_domain():
         ),
         spf=SPFConfig(
             required=SPFRequired(
-                record="v=spf1 include:spf.{tenant}.example.test -all",
+                policy="hardfail",
                 includes=["spf.{tenant}.example.test"],
                 mechanisms=["exists:%{i}.spf.{tenant}.example.test"],
                 modifiers={"redirect": "_spf.{tenant}.example.test"},
@@ -120,8 +121,8 @@ def test_resolve_provider_config_applies_variables_and_domain():
     )
 
     assert [entry.host for entry in resolved.mx.required] == ["tenant-a.mx.us.example.test."]
+    assert resolved.spf.required.policy == "hardfail"
     assert resolved.spf.required.includes == ["spf.tenant-a.example.test"]
-    assert resolved.spf.required.record == "v=spf1 include:spf.tenant-a.example.test -all"
     assert resolved.spf.required.modifiers["redirect"] == "_spf.tenant-a.example.test"
     assert resolved.dkim.required.selectors == ["sel-tenant-a"]
     assert resolved.dkim.required.target_template == "{selector}._domainkey.tenant-a.example.test."
@@ -211,7 +212,7 @@ def test_resolve_provider_config_returns_original_when_no_values():
     assert resolved is provider
 
 
-def test_resolve_provider_config_formats_none_values():
+def test_resolve_provider_config_formats_spf_values():
     provider = ProviderConfig(
         provider_id="none_values",
         name="None Values",
@@ -219,7 +220,7 @@ def test_resolve_provider_config_formats_none_values():
         mx=None,
         spf=SPFConfig(
             required=SPFRequired(
-                record=None,
+                policy="hardfail",
                 includes=["include.{token}.example.test"],
                 mechanisms=[],
                 modifiers={},
@@ -234,7 +235,8 @@ def test_resolve_provider_config_formats_none_values():
 
     resolved = resolve_provider_config(provider, {"token": "value"})
 
-    assert resolved.spf.required.record is None
+    assert resolved.spf.required.policy == "hardfail"
+    assert resolved.spf.required.includes == ["include.value.example.test"]
 
 
 def test_resolve_provider_config_rejects_invalid_dkim_placeholder():
@@ -259,3 +261,8 @@ def test_resolve_provider_config_rejects_invalid_dkim_placeholder():
 
     with pytest.raises(ValueError, match="unsupported placeholder"):
         resolve_provider_config(provider, {"tenant": "acme"}, domain="example.test")
+
+
+def test_format_string_none_passthrough() -> None:
+    """Return None when the template value is None."""
+    assert _format_string(None, {"token": "value"}) is None

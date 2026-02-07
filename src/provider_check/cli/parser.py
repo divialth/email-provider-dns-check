@@ -217,9 +217,9 @@ def build_parser() -> argparse.ArgumentParser:
     spf_group.add_argument(
         "--spf-policy",
         dest="spf_policy",
-        choices=["softfail", "hardfail"],
-        default="hardfail",
-        help="SPF policy: softfail (~all) or hardfail (-all)",
+        choices=["hardfail", "softfail", "neutral", "allow"],
+        default=None,
+        help="SPF policy override (hardfail=-all, softfail=~all, neutral=?all, allow=+all)",
     )
     spf_group.add_argument(
         "--spf-include",

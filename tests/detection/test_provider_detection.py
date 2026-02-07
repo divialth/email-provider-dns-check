@@ -117,7 +117,7 @@ def test_detect_providers_breaks_ratio_ties_by_score(monkeypatch):
         mx=MXConfig(required=[MXRecord(host="mx.shared.test.")], optional=[]),
         spf=SPFConfig(
             required=SPFRequired(
-                record="v=spf1 include:example.test -all",
+                policy="hardfail",
                 includes=["example.test"],
                 mechanisms=[],
                 modifiers={},

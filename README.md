@@ -149,7 +149,7 @@ DOMAIN                 domain to validate
 
 #### SPF overrides
 ```text
---spf-policy {softfail,hardfail} SPF terminator (~all or -all)
+--spf-policy {hardfail,softfail,neutral,allow} SPF all-terminator policy (defaults to provider config)
 --spf-include VALUE              additional SPF include mechanisms (repeatable)
 --spf-ip4 VALUE                  additional SPF ip mechanisms
 --spf-ip6 VALUE                  additional SPF ip mechanisms
@@ -266,7 +266,7 @@ SPF configs can include additional mechanisms and modifiers beyond includes and 
 
 | Field                  | Description                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------------- |
-| `required.record`      | Exact SPF string to enforce in strict mode.                                              |
+| `required.policy`      | Required SPF all-terminator policy: `hardfail` (`-all`), `softfail` (`~all`), `neutral` (`?all`), or `allow` (`+all`). |
 | `required.includes`    | List of required include values (without the `include:` prefix).                         |
 | `required.mechanisms`  | Required SPF mechanism tokens (e.g., `a`, `mx:mail.example`, `exists:%{i}.spf.example`). |
 | `required.modifiers`   | Mapping of SPF modifiers that must match exact values (e.g., `redirect`, `exp`).         |

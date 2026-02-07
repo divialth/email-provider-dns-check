@@ -42,7 +42,8 @@ class RecordsMixin(
         dmarc_rua_mailto (List[str]): Required rua mailto URIs.
         dmarc_ruf_mailto (List[str]): Required ruf mailto URIs.
         dmarc_required_tags (Dict[str, str]): Required DMARC tag overrides.
-        spf_policy (str): SPF policy enforcement ("hardfail" or "softfail").
+        spf_policy (str): SPF policy enforcement
+            ("hardfail", "softfail", "neutral", or "allow").
         additional_spf_includes (List[str]): Additional SPF include mechanisms.
         additional_spf_ip4 (List[str]): Additional SPF ip4 mechanisms.
         additional_spf_ip6 (List[str]): Additional SPF ip6 mechanisms.

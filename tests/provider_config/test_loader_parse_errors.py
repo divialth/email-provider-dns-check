@@ -89,14 +89,36 @@ def test_load_provider_mx_records_parsed(provider_config_loader) -> None:
     assert config.mx.optional[0].priority is None
 
 
-def test_load_provider_spf_record_requires_string(provider_config_loader) -> None:
-    """Require SPF record values to be strings."""
+def test_load_provider_spf_policy_requires_string(provider_config_loader) -> None:
+    """Require SPF policy values to be strings."""
     data = {
         "version": "1",
-        "records": {"spf": {"required": {"record": 123}}},
+        "records": {"spf": {"required": {"policy": 123}}},
     }
 
-    with pytest.raises(ValueError, match="spf required record must be a string"):
+    with pytest.raises(ValueError, match="spf required policy must be a string"):
+        provider_config_loader._load_provider_from_data("bad", data)
+
+
+def test_load_provider_spf_policy_requires_supported_value(provider_config_loader) -> None:
+    """Require SPF policy values to be supported keywords."""
+    data = {
+        "version": "1",
+        "records": {"spf": {"required": {"policy": "invalid"}}},
+    }
+
+    with pytest.raises(ValueError, match="spf required policy must be one of"):
+        provider_config_loader._load_provider_from_data("bad", data)
+
+
+def test_load_provider_spf_record_key_rejected(provider_config_loader) -> None:
+    """Reject legacy SPF required.record schema usage."""
+    data = {
+        "version": "1",
+        "records": {"spf": {"required": {"record": "v=spf1 include:example.test -all"}}},
+    }
+
+    with pytest.raises(ValueError, match="spf required has unknown keys: record"):
         provider_config_loader._load_provider_from_data("bad", data)
 
 

@@ -47,7 +47,7 @@ def _build_provider() -> ProviderConfig:
         ),
         spf=SPFConfig(
             required=SPFRequired(
-                record=None,
+                policy="hardfail",
                 includes=["spf.test"],
                 mechanisms=[],
                 modifiers={},

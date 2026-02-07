@@ -25,7 +25,8 @@ class DNSChecker(RecordsMixin):
         dmarc_rua_mailto (List[str]): Required rua mailto URIs.
         dmarc_ruf_mailto (List[str]): Required ruf mailto URIs.
         dmarc_required_tags (Dict[str, str]): Required DMARC tag overrides.
-        spf_policy (str): SPF policy enforcement ("hardfail" or "softfail").
+        spf_policy (str): SPF policy enforcement
+            ("hardfail", "softfail", "neutral", or "allow").
         additional_spf_includes (List[str]): Additional SPF include mechanisms.
         additional_spf_ip4 (List[str]): Additional SPF ip4 mechanisms.
         additional_spf_ip6 (List[str]): Additional SPF ip6 mechanisms.
@@ -45,7 +46,7 @@ class DNSChecker(RecordsMixin):
         dmarc_ruf_mailto: Optional[Iterable[str]] = None,
         dmarc_policy: Optional[str] = None,
         dmarc_required_tags: Optional[Dict[str, str]] = None,
-        spf_policy: str = "hardfail",
+        spf_policy: Optional[str] = None,
         additional_spf_includes: Optional[Iterable[str]] = None,
         additional_spf_ip4: Optional[Iterable[str]] = None,
         additional_spf_ip6: Optional[Iterable[str]] = None,
@@ -64,7 +65,8 @@ class DNSChecker(RecordsMixin):
             dmarc_ruf_mailto (Optional[Iterable[str]]): Required DMARC ruf mailto URIs.
             dmarc_policy (Optional[str]): Override DMARC policy (p=).
             dmarc_required_tags (Optional[Dict[str, str]]): DMARC tag overrides to require.
-            spf_policy (str): SPF policy ("hardfail" -> -all, "softfail" -> ~all).
+            spf_policy (Optional[str]): SPF policy override
+                ("hardfail" -> -all, "softfail" -> ~all, "neutral" -> ?all, "allow" -> +all).
             additional_spf_includes (Optional[Iterable[str]]): Additional SPF include entries.
             additional_spf_ip4 (Optional[Iterable[str]]): Additional SPF ip4 entries.
             additional_spf_ip6 (Optional[Iterable[str]]): Additional SPF ip6 entries.
@@ -97,7 +99,10 @@ class DNSChecker(RecordsMixin):
         if dmarc_required_tags:
             for key, value in dmarc_required_tags.items():
                 self.dmarc_required_tags[str(key).lower()] = str(value)
-        self.spf_policy = spf_policy.lower()
+        spf_default_policy = "hardfail"
+        if provider.spf:
+            spf_default_policy = provider.spf.required.policy
+        self.spf_policy = (spf_policy or spf_default_policy).lower()
         self.additional_spf_includes = list(additional_spf_includes or [])
         self.additional_spf_ip4 = list(additional_spf_ip4 or [])
         self.additional_spf_ip6 = list(additional_spf_ip6 or [])

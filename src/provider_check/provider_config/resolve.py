@@ -243,7 +243,7 @@ def resolve_provider_config(
     if provider.spf:
         spf = SPFConfig(
             required=SPFRequired(
-                record=_format_string(provider.spf.required.record, resolved),
+                policy=str(_format_string(provider.spf.required.policy, resolved)).lower(),
                 includes=_format_list(provider.spf.required.includes, resolved),
                 mechanisms=_format_list(provider.spf.required.mechanisms, resolved),
                 modifiers=_format_mapping(provider.spf.required.modifiers, resolved),

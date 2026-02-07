@@ -46,8 +46,9 @@ records:
   spf:
     # Required SPF values.
     required:
-      # Strict mode can enforce a specific SPF string when provided.
-      record: "v=spf1 include:{tenant}.example-provider.test -all"
+      # Required SPF terminator policy:
+      # hardfail=-all, softfail=~all, neutral=?all, allow=+all.
+      policy: hardfail
       # Include mechanisms the provider requires (values only).
       includes:
         - spf.{tenant}.example-provider.test

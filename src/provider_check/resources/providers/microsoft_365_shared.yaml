@@ -24,7 +24,7 @@ records:
     optional: []
   spf:
     required:
-      record: "v=spf1 include:spf.protection.outlook.com -all"
+      policy: hardfail
       includes:
         - spf.protection.outlook.com
       mechanisms: []

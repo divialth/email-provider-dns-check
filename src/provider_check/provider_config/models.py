@@ -37,13 +37,13 @@ class SPFRequired:
     """Define required SPF values.
 
     Attributes:
-        record (Optional[str]): Strict SPF record string, if enforced.
+        policy (str): Required SPF terminator policy (hardfail, softfail, neutral, allow).
         includes (List[str]): Required include mechanisms.
         mechanisms (List[str]): Required SPF mechanisms.
         modifiers (Dict[str, str]): Required SPF modifiers (e.g., redirect).
     """
 
-    record: Optional[str]
+    policy: str
     includes: List[str]
     mechanisms: List[str]
     modifiers: Dict[str, str]

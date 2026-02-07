@@ -83,10 +83,36 @@ def test_spf_policy_not_last_passes():
     assert spf_result.status is Status.PASS
 
 
-def test_spf_strict_uses_strict_record():
+@pytest.mark.parametrize(
+    ("policy", "terminator"),
+    [("neutral", "?all"), ("allow", "+all")],
+)
+def test_spf_policy_additional_terminators(policy: str, terminator: str) -> None:
     provider = make_provider_with_spf(
         make_spf_config(
-            required_record="v=spf1 include:strict.example -all",
+            policy=policy,
+            includes=["custom.example"],
+        ),
+        provider_id=f"spf_{policy}",
+        name=f"{policy.title()} SPF Provider",
+    )
+    domain = "custom.example"
+    resolver = FakeResolver(
+        txt={
+            domain: [f"v=spf1 include:custom.example {terminator}"],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=False)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status is Status.PASS
+
+
+def test_spf_strict_uses_provider_policy():
+    provider = make_provider_with_spf(
+        make_spf_config(
             includes=["strict.example"],
         ),
         provider_id="spf_strict",
@@ -96,6 +122,28 @@ def test_spf_strict_uses_strict_record():
     resolver = FakeResolver(
         txt={
             domain: ["v=spf1 include:strict.example -all"],
+        }
+    )
+
+    checker = DNSChecker(domain, provider, resolver=resolver, strict=True)
+    results = checker.run_checks()
+
+    spf_result = next(r for r in results if r.record_type == "SPF")
+    assert spf_result.status is Status.PASS
+
+
+def test_spf_strict_policy_override_applies():
+    provider = make_provider_with_spf(
+        make_spf_config(
+            includes=["strict.example"],
+        ),
+        provider_id="spf_strict",
+        name="Strict SPF Provider",
+    )
+    domain = "strict.example"
+    resolver = FakeResolver(
+        txt={
+            domain: ["v=spf1 include:strict.example ~all"],
         }
     )
 
@@ -109,7 +157,6 @@ def test_spf_strict_uses_strict_record():
 def test_spf_strict_mismatch_fails():
     provider = make_provider_with_spf(
         make_spf_config(
-            required_record="v=spf1 include:strict.example -all",
             includes=["strict.example"],
         ),
         provider_id="spf_strict",
@@ -132,7 +179,6 @@ def test_spf_strict_mismatch_fails():
 def test_spf_multiple_records_fail():
     provider = make_provider_with_spf(
         make_spf_config(
-            required_record="v=spf1 include:multi.example -all",
             includes=["multi.example"],
         ),
         provider_id="spf_multi",
@@ -162,7 +208,6 @@ def test_spf_dns_failure_returns_unknown():
 
     provider = make_provider_with_spf(
         make_spf_config(
-            required_record="v=spf1 include:dummy.test -all",
             includes=["dummy.test"],
         ),
         provider_id="spf_fail",
@@ -217,3 +262,22 @@ def test_spf_no_records_fails():
 
     spf_result = next(r for r in results if r.record_type == "SPF")
     assert spf_result.status is Status.FAIL
+
+
+def test_spf_policy_invalid_raises_value_error():
+    provider = make_provider_with_spf(
+        make_spf_config(
+            includes=["example.test"],
+        ),
+        provider_id="spf_invalid_policy",
+        name="Invalid SPF Policy Provider",
+    )
+    checker = DNSChecker(
+        "example.test",
+        provider,
+        resolver=FakeResolver(txt={"example.test": ["v=spf1 include:example.test -all"]}),
+        spf_policy="invalid",
+    )
+
+    with pytest.raises(ValueError, match="Unsupported SPF policy"):
+        checker.check_spf()

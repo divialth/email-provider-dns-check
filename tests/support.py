@@ -26,7 +26,7 @@ BASE_PROVIDER = ProviderConfig(
     ),
     spf=SPFConfig(
         required=SPFRequired(
-            record="v=spf1 include:dummy.test -all",
+            policy="hardfail",
             includes=["dummy.test"],
             mechanisms=[],
             modifiers={},
