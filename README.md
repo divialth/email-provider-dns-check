@@ -25,7 +25,7 @@ provider-dns-check --domain example.com --provider dummy_provider
 ```
 
 ## Dependencies
-- Runtime: `dnspython`, `PyYAML`, `Jinja2`
+- Runtime: `dnspython`, `PyYAML`, `Jinja2`, `jsonschema`
 - Development/test (optional): `pytest`, `coverage`, `black`, `yamllint`
 - `requirements.txt` and `requirements-dev.txt` are auto-generated from `pyproject.toml`.
 
@@ -37,6 +37,11 @@ Never run `pip install` as root. Use a virtualenv or `--user` instead.
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+For local development/tests, install dev dependencies instead:
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ### Install directly from the Git repo with pip

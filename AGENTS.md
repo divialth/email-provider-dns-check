@@ -31,6 +31,8 @@
 - Keep modules small and focused; use per-feature submodules (for example, `checker/records/*`, `output/rows/*`, `provider_config/loader/parse/*`, `cli/*`) and re-export via package `__init__` files to preserve stable imports.
 - For Jinja2 templates, keep output expressions visually readable inside control blocks by using spaced expressions (`{{ ... }}`).
 - When editing Markdown tables, align columns so raw Markdown remains readable.
+- Keep `README.md` accurate with current code. Any change to CLI flags/behavior, dependency metadata (`pyproject.toml`, `requirements*.txt`), or released version must include matching README updates in the same change.
+- When dependencies change, verify the README runtime/dev dependency lists match `pyproject.toml` before handoff.
 - Never remove entries from `.gitignore` without explicit user approval first.
 
 ## Provider Schema Consistency
