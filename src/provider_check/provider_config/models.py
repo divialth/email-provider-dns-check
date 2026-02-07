@@ -301,7 +301,7 @@ class ProviderVariable:
     description: Optional[str] = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ProviderConfig:
     """Store a fully parsed provider configuration.
 
