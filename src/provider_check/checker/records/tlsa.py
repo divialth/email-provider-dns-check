@@ -192,7 +192,11 @@ class TlsaChecksMixin:
         if not self._has_pyopenssl():
             raise RuntimeError("pyOpenSSL is not installed")
 
+        if not hasattr(OpenSSL_SSL, "TLS_CLIENT_METHOD"):
+            raise RuntimeError("pyOpenSSL does not expose TLS client method support")
+
         context = OpenSSL_SSL.Context(OpenSSL_SSL.TLS_CLIENT_METHOD)
+        self._set_pyopenssl_tls_minimum(context)
         context.set_verify(OpenSSL_SSL.VERIFY_NONE, lambda *_args: True)
         context.set_default_verify_paths()
 
@@ -220,6 +224,31 @@ class TlsaChecksMixin:
                 pass
             connection.close()
             tcp_socket.close()
+
+    @staticmethod
+    def _set_pyopenssl_tls_minimum(context: "OpenSSL_SSL.Context") -> None:
+        """Require TLSv1.2+ for pyOpenSSL connections.
+
+        Args:
+            context (OpenSSL_SSL.Context): pyOpenSSL context to harden.
+
+        Raises:
+            RuntimeError: If the runtime cannot enforce TLSv1.2 minimum.
+        """
+        if hasattr(context, "set_min_proto_version") and hasattr(OpenSSL_SSL, "TLS1_2_VERSION"):
+            context.set_min_proto_version(OpenSSL_SSL.TLS1_2_VERSION)
+            return
+
+        required_options = ("OP_NO_SSLv2", "OP_NO_SSLv3", "OP_NO_TLSv1", "OP_NO_TLSv1_1")
+        if not all(hasattr(OpenSSL_SSL, option_name) for option_name in required_options):
+            raise RuntimeError("pyOpenSSL does not expose TLSv1.2 minimum protocol controls")
+
+        context.set_options(
+            OpenSSL_SSL.OP_NO_SSLv2
+            | OpenSSL_SSL.OP_NO_SSLv3
+            | OpenSSL_SSL.OP_NO_TLSv1
+            | OpenSSL_SSL.OP_NO_TLSv1_1
+        )
 
     def _fetch_peer_cert_chain_with_openssl(  # pragma: no cover - external OpenSSL integration
         self,
@@ -287,6 +316,7 @@ class TlsaChecksMixin:
             tuple[bool, str]: Validation success flag and human-readable status.
         """
         context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         try:
             with socket.create_connection((host, port), timeout=10) as tcp_socket:
                 with context.wrap_socket(tcp_socket, server_hostname=host):

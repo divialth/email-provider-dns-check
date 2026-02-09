@@ -41,7 +41,7 @@ def test_a_deprecated_exact_match_warns() -> None:
 
     assert result.status is Status.WARN
     assert result.scope == "deprecated"
-    assert "legacy.example.com" in result.details["matched"]
+    assert result.details["matched"] == {"legacy.example.com": ["192.0.2.9"]}
 
 
 def test_a_forbidden_any_match_fails() -> None:
