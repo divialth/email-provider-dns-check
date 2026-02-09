@@ -284,7 +284,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
     class FakeOpenSSLSSL:
         """Fake OpenSSL.SSL module constants and factories."""
 
-        TLS_CLIENT_METHOD = object()
+        SSLv23_METHOD = object()
         TLS1_2_VERSION = object()
         VERIFY_NONE = object()
         OP_NO_SSLv2 = 0x01
@@ -320,7 +320,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
     result = checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
 
     assert result == [b"cert-der"]
-    assert captured["method"] is FakeOpenSSLSSL.TLS_CLIENT_METHOD
+    assert captured["method"] is FakeOpenSSLSSL.SSLv23_METHOD
     assert captured["options"] == 0x0F
     assert captured["minimum_proto"] is FakeOpenSSLSSL.TLS1_2_VERSION
 
@@ -380,7 +380,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_falls_back_to_protocol_options(mon
     class FakeOpenSSLSSL:
         """Fake OpenSSL.SSL module with protocol-option fallback constants."""
 
-        TLS_CLIENT_METHOD = object()
+        SSLv23_METHOD = object()
         VERIFY_NONE = object()
         OP_NO_SSLv2 = 0x01
         OP_NO_SSLv3 = 0x02
@@ -415,12 +415,12 @@ def test_fetch_peer_cert_chain_with_pyopenssl_falls_back_to_protocol_options(mon
     result = checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
 
     assert result == [b"cert-der"]
-    assert captured["method"] is FakeOpenSSLSSL.TLS_CLIENT_METHOD
+    assert captured["method"] is FakeOpenSSLSSL.SSLv23_METHOD
     assert captured["options"] == 0x0F
 
 
-def test_fetch_peer_cert_chain_with_pyopenssl_requires_tls_client_method(monkeypatch) -> None:
-    """Raise a clear error when pyOpenSSL lacks client TLS context support."""
+def test_fetch_peer_cert_chain_with_pyopenssl_requires_tls_negotiation_method(monkeypatch) -> None:
+    """Raise a clear error when pyOpenSSL lacks TLS negotiation method support."""
     checker = _make_checker()
 
     class FakeOpenSSLSSL:
@@ -431,7 +431,9 @@ def test_fetch_peer_cert_chain_with_pyopenssl_requires_tls_client_method(monkeyp
     monkeypatch.setattr(checker, "_has_pyopenssl", lambda: True)
     monkeypatch.setattr(tlsa_module, "OpenSSL_SSL", FakeOpenSSLSSL)
 
-    with pytest.raises(RuntimeError, match="pyOpenSSL does not expose TLS client method support"):
+    with pytest.raises(
+        RuntimeError, match="pyOpenSSL does not expose TLS negotiation method support"
+    ):
         checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
 
 
@@ -442,13 +444,10 @@ def test_fetch_peer_cert_chain_with_pyopenssl_requires_tlsv1_2_controls(monkeypa
     class FakeContext:
         """Fake pyOpenSSL context without minimum-version controls."""
 
-        def __init__(self, _method: object) -> None:
-            return None
-
     class FakeOpenSSLSSL:
         """Fake OpenSSL.SSL module without option flags and min-version API."""
 
-        TLS_CLIENT_METHOD = object()
+        SSLv23_METHOD = object()
         VERIFY_NONE = object()
         Context = FakeContext
 
