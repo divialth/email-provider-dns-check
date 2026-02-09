@@ -68,3 +68,22 @@ def test_caching_resolver_supports_tlsa():
     cached = CachingResolver(_Resolver())
 
     assert cached.get_tlsa("_25._tcp.mail.example.com") == [(3, 1, 1, "aabb")]
+
+
+def test_caching_resolver_supports_tlsa_with_status():
+    class _Resolver:
+        def get_tlsa_with_status(self, name: str):
+            return [(3, 1, 1, "aabb")], True
+
+    cached = CachingResolver(_Resolver())
+
+    assert cached.get_tlsa_with_status("_25._tcp.mail.example.com") == ([(3, 1, 1, "aabb")], True)
+
+
+def test_caching_resolver_propagates_live_tls_verification_flag():
+    class _Resolver:
+        supports_live_tls_verification = True
+
+    cached = CachingResolver(_Resolver())
+
+    assert cached.supports_live_tls_verification is True

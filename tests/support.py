@@ -56,6 +56,8 @@ BASE_PROVIDER = ProviderConfig(
 
 
 class FakeResolver:
+    supports_live_tls_verification = False
+
     def __init__(
         self,
         mx=None,
@@ -64,6 +66,7 @@ class FakeResolver:
         srv=None,
         caa=None,
         tlsa=None,
+        tlsa_dnssec=None,
         a=None,
         aaaa=None,
         ptr=None,
@@ -74,6 +77,7 @@ class FakeResolver:
         self.srv = srv or {}
         self.caa = caa or {}
         self.tlsa = tlsa or {}
+        self.tlsa_dnssec = tlsa_dnssec or {}
         self.a = a or {}
         self.aaaa = aaaa or {}
         self.ptr = ptr or {}
@@ -95,6 +99,12 @@ class FakeResolver:
 
     def get_tlsa(self, name: str):
         return self.tlsa.get(name, [])
+
+    def get_tlsa_with_status(self, name: str):
+        records = self.get_tlsa(name)
+        if not records:
+            return [], None
+        return records, self.tlsa_dnssec.get(name, True)
 
     def get_a(self, name: str):
         return self.a.get(name, [])

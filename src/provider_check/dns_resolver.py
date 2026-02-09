@@ -11,6 +11,7 @@ from typing import Iterable, List, Optional
 
 try:
     import dns.exception
+    import dns.flags
     import dns.resolver
 except ImportError as exc:  # pragma: no cover - handled at runtime
     raise SystemExit("dnspython is required. Install with `pip install dnspython`.") from exc
@@ -65,6 +66,8 @@ class DnsLookupError(RuntimeError):
 
 class DnsResolver:
     """Perform DNS lookups using dnspython."""
+
+    supports_live_tls_verification = True
 
     def __init__(
         self,
@@ -282,6 +285,68 @@ class DnsResolver:
             LOGGER.warning("CAA lookup failed for %s: %s", name, err)
             raise DnsLookupError("CAA", name, err) from err
 
+    def _parse_tlsa_records(self, answers: object) -> List[tuple[int, int, int, str]]:
+        """Parse TLSA answers into normalized tuples.
+
+        Args:
+            answers (object): dnspython answer iterable.
+
+        Returns:
+            List[tuple[int, int, int, str]]: Parsed TLSA tuples.
+        """
+        records: List[tuple[int, int, int, str]] = []
+        for rdata in answers:
+            usage = int(rdata.usage)
+            selector = int(rdata.selector)
+            matching_type_value = (
+                rdata.matching_type if hasattr(rdata, "matching_type") else rdata.mtype
+            )
+            matching_type = int(matching_type_value)
+            certificate_association = (
+                rdata.certificate_association
+                if hasattr(rdata, "certificate_association")
+                else rdata.cert
+            )
+            if isinstance(certificate_association, bytes):
+                certificate_association_text = certificate_association.hex()
+            else:
+                certificate_association_text = str(certificate_association)
+            records.append(
+                (
+                    usage,
+                    selector,
+                    matching_type,
+                    "".join(certificate_association_text.split()).lower(),
+                )
+            )
+        return records
+
+    def get_tlsa_with_status(
+        self, name: str
+    ) -> tuple[List[tuple[int, int, int, str]], Optional[bool]]:
+        """Resolve TLSA records and return DNSSEC authentication status.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            tuple[List[tuple[int, int, int, str]], Optional[bool]]: Parsed TLSA tuples and whether
+                the response was authenticated by DNSSEC (AD bit). ``None`` means no TLSA answer.
+
+        Raises:
+            DnsLookupError: If a DNS error occurs during lookup.
+        """
+        try:
+            answers = self._resolver.resolve(name, "TLSA")
+            response = getattr(answers, "response", None)
+            authenticated = bool(response.flags & dns.flags.AD) if response else False
+            return self._parse_tlsa_records(answers), authenticated
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+            return [], None
+        except dns.exception.DNSException as err:
+            LOGGER.warning("TLSA lookup failed for %s: %s", name, err)
+            raise DnsLookupError("TLSA", name, err) from err
+
     def get_tlsa(self, name: str) -> List[tuple[int, int, int, str]]:
         """Resolve TLSA records for a DNS name.
 
@@ -295,39 +360,8 @@ class DnsResolver:
         Raises:
             DnsLookupError: If a DNS error occurs during lookup.
         """
-        try:
-            answers = self._resolver.resolve(name, "TLSA")
-            records: List[tuple[int, int, int, str]] = []
-            for rdata in answers:
-                usage = int(rdata.usage)
-                selector = int(rdata.selector)
-                matching_type_value = (
-                    rdata.matching_type if hasattr(rdata, "matching_type") else rdata.mtype
-                )
-                matching_type = int(matching_type_value)
-                certificate_association = (
-                    rdata.certificate_association
-                    if hasattr(rdata, "certificate_association")
-                    else rdata.cert
-                )
-                if isinstance(certificate_association, bytes):
-                    certificate_association_text = certificate_association.hex()
-                else:
-                    certificate_association_text = str(certificate_association)
-                records.append(
-                    (
-                        usage,
-                        selector,
-                        matching_type,
-                        "".join(certificate_association_text.split()).lower(),
-                    )
-                )
-            return records
-        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
-            return []
-        except dns.exception.DNSException as err:
-            LOGGER.warning("TLSA lookup failed for %s: %s", name, err)
-            raise DnsLookupError("TLSA", name, err) from err
+        records, _authenticated = self.get_tlsa_with_status(name)
+        return records
 
     def get_a(self, name: str) -> List[str]:
         """Resolve A records for a DNS name.
@@ -412,6 +446,9 @@ class CachingResolver:
         """
         self._resolver = resolver
         self._cache: dict[tuple[str, str], object] = {}
+        self.supports_live_tls_verification = bool(
+            getattr(resolver, "supports_live_tls_verification", False)
+        )
 
     def _cached(self, key: tuple[str, str], fn, name: str):
         """Execute a lookup and cache the result or exception.
@@ -505,6 +542,17 @@ class CachingResolver:
             list: TLSA record tuples.
         """
         return self._cached(("TLSA", name), self._resolver.get_tlsa, name)
+
+    def get_tlsa_with_status(self, name: str):
+        """Resolve TLSA records and DNSSEC status with caching.
+
+        Args:
+            name (str): DNS name to query.
+
+        Returns:
+            tuple: TLSA record tuples and DNSSEC authentication status.
+        """
+        return self._cached(("TLSA_STATUS", name), self._resolver.get_tlsa_with_status, name)
 
     def get_a(self, name: str):
         """Resolve A records with caching.

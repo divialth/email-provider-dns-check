@@ -28,6 +28,7 @@ entrypoint from your virtualenv, install the package first with `pip install .`.
 
 ## Dependencies
 - Runtime: `dnspython`, `PyYAML`, `Jinja2`, `jsonschema`
+- Optional runtime for DANE/TLSA verification: `cryptography` for certificate parsing/SPKI handling, `pyOpenSSL` for peer certificate chain retrieval; system `openssl` binary is used as fallback.
 - Development/test (optional): `pytest`, `coverage`, `black`, `yamllint`
 - `requirements.txt` and `requirements-dev.txt` are auto-generated from `pyproject.toml`.
 
@@ -366,10 +367,30 @@ In non-strict mode, SRV entries with the correct target/port but different prior
 ### TLSA fields
 TLSA configs validate DANE TLSA records:
 
-| Field      | Description                                                                                                                      |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `required` | Mapping of `name: [entries...]` (each entry requires `usage`, `selector`, `matching_type`, `certificate_association`).         |
-| `optional` | Mapping of `name: [entries...]` for optional TLSA values (missing entries WARN; mismatches FAIL).                              |
+| Field                                               | Description                                                                                                 |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `required`                                          | Mapping of `name: [entries...]` for required TLSA values.                                                  |
+| `optional`                                          | Mapping of `name: [entries...]` for optional TLSA values (missing entries WARN; mismatches FAIL).         |
+| `required.<name>[]` / `optional.<name>[]`           | TLSA entry object with `usage`, `selector`, `matching_type`, `certificate_association`.                   |
+| `required.<name>[].usage`                           | TLSA certificate usage (`0`=PKIX-TA, `1`=PKIX-EE, `2`=DANE-TA, `3`=DANE-EE).                              |
+| `required.<name>[].selector`                        | TLSA selector (`0`=full certificate, `1`=SubjectPublicKeyInfo).                                            |
+| `required.<name>[].matching_type`                   | TLSA matching type (`0`=exact bytes, `1`=SHA-256, `2`=SHA-512).                                            |
+| `required.<name>[].certificate_association`         | Certificate association data as hex string (or exact bytes rendered as hex for `matching_type: 0`).       |
+| `required.<name>`                                   | TLSA owner name in `_port._tcp.hostname` form for live DANE certificate verification.                     |
+
+TLSA verification behavior:
+- TLSA answers must be DNSSEC-authenticated (resolver AD bit).
+- For `_port._tcp.hostname` records, the checker verifies the presented TLS certificate chain against TLSA entries.
+- Certificate chain retrieval uses `pyOpenSSL` when installed; SPKI extraction uses `cryptography` when installed.
+- OpenSSL CLI is used as fallback when optional Python modules are unavailable.
+- Usage semantics are enforced (`0/1` require PKIX validation; `2/3` are DANE-only).
+- Selector/matching semantics are enforced (`selector=0|1`, `matching_type=0|1|2`).
+
+Current implementation scope:
+- The checker validates provider-configured TLSA records (`required`/`optional`) and enforces DNSSEC-authenticated TLSA answers.
+- The checker performs live DANE certificate binding checks for direct TLS endpoints expressed as `_port._tcp.hostname`.
+- The checker enforces TLSA usage, selector, and matching-type semantics during certificate comparison.
+- This scope is sufficient for this project because the goal is provider DNS configuration compliance and misconfiguration detection, not full protocol-session simulation.
 
 ### TXT fields
 TXT configs let providers require arbitrary validation records:

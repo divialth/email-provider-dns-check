@@ -139,6 +139,120 @@ def test_tlsa_optional_dns_lookup_error_returns_unknown() -> None:
     assert result.status is Status.UNKNOWN
 
 
+def test_tlsa_optional_fails_when_dnssec_not_authenticated() -> None:
+    """Fail optional TLSA checks when answers are not DNSSEC-authenticated."""
+    provider = make_provider_with_tlsa(make_tlsa_config(optional=OPTIONAL_AUTODISCOVER))
+    resolver = FakeResolver(
+        tlsa={"_443._tcp.autodiscover.example.com": [(3, 1, 1, "ddeeff")]},
+        tlsa_dnssec={"_443._tcp.autodiscover.example.com": False},
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver)
+
+    result = checker.check_tlsa_optional()
+
+    assert result.status is Status.FAIL
+    assert result.message == "TLSA optional records are not DNSSEC-authenticated"
+
+
+def test_tlsa_optional_unknown_when_live_verification_errors(monkeypatch) -> None:
+    """Return UNKNOWN when live TLS verification encounters endpoint errors."""
+    provider = make_provider_with_tlsa(make_tlsa_config(optional=OPTIONAL_AUTODISCOVER))
+
+    class LiveResolver(FakeResolver):
+        """Fake resolver that enables live verification flow."""
+
+        supports_live_tls_verification = True
+
+    resolver = LiveResolver(
+        tlsa={"_443._tcp.autodiscover.example.com": [(3, 1, 1, "ddeeff")]},
+        tlsa_dnssec={"_443._tcp.autodiscover.example.com": True},
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver)
+
+    monkeypatch.setattr(
+        checker,
+        "_verify_tlsa_bindings",
+        lambda _records: {
+            "unsupported_names": {},
+            "unsupported_entries": {},
+            "endpoint_errors": {"_443._tcp.autodiscover.example.com": "connection failed"},
+            "pkix_failures": {},
+            "certificate_mismatches": {},
+        },
+    )
+
+    result = checker.check_tlsa_optional()
+
+    assert result.status is Status.UNKNOWN
+    assert result.message == "TLSA certificate verification failed"
+
+
+def test_tlsa_optional_fails_when_dane_settings_are_unsupported(monkeypatch) -> None:
+    """Fail optional TLSA checks when DANE verification settings are unsupported."""
+    provider = make_provider_with_tlsa(make_tlsa_config(optional=OPTIONAL_AUTODISCOVER))
+
+    class LiveResolver(FakeResolver):
+        """Fake resolver that enables live verification flow."""
+
+        supports_live_tls_verification = True
+
+    resolver = LiveResolver(
+        tlsa={"_443._tcp.autodiscover.example.com": [(3, 1, 1, "ddeeff")]},
+        tlsa_dnssec={"_443._tcp.autodiscover.example.com": True},
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver)
+
+    monkeypatch.setattr(
+        checker,
+        "_verify_tlsa_bindings",
+        lambda _records: {
+            "unsupported_names": {"_443._tcp.autodiscover.example.com": "unsupported"},
+            "unsupported_entries": {},
+            "endpoint_errors": {},
+            "pkix_failures": {},
+            "certificate_mismatches": {},
+        },
+    )
+
+    result = checker.check_tlsa_optional()
+
+    assert result.status is Status.FAIL
+    assert result.message == "TLSA optional records use unsupported DANE settings"
+
+
+def test_tlsa_optional_fails_when_dane_binding_mismatches(monkeypatch) -> None:
+    """Fail optional TLSA checks when certificate bindings do not match."""
+    provider = make_provider_with_tlsa(make_tlsa_config(optional=OPTIONAL_AUTODISCOVER))
+
+    class LiveResolver(FakeResolver):
+        """Fake resolver that enables live verification flow."""
+
+        supports_live_tls_verification = True
+
+    resolver = LiveResolver(
+        tlsa={"_443._tcp.autodiscover.example.com": [(3, 1, 1, "ddeeff")]},
+        tlsa_dnssec={"_443._tcp.autodiscover.example.com": True},
+    )
+    checker = DNSChecker("example.com", provider, resolver=resolver)
+
+    monkeypatch.setattr(
+        checker,
+        "_verify_tlsa_bindings",
+        lambda _records: {
+            "unsupported_names": {},
+            "unsupported_entries": {},
+            "endpoint_errors": {},
+            "pkix_failures": {},
+            "certificate_mismatches": {"_443._tcp.autodiscover.example.com": [(3, 1, 1, "ddeeff")]},
+        },
+    )
+
+    result = checker.check_tlsa_optional()
+
+    assert result.status is Status.FAIL
+    assert result.message == "TLSA optional records do not match presented TLS certificates"
+
+
 def test_run_checks_includes_optional_tlsa() -> None:
     """Include optional TLSA checks in run_checks results when configured."""
     provider = make_provider_with_tlsa(make_tlsa_config(optional=OPTIONAL_AUTODISCOVER))

@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import dns.exception
+import dns.flags
 import dns.resolver
 import pytest
 
@@ -185,6 +186,36 @@ def test_get_tlsa_success(monkeypatch):
         (3, 1, 1, "aabb"),
         (2, 0, 0, "ccdd"),
     ]
+
+
+def test_get_tlsa_with_status_reports_ad_bit(monkeypatch):
+    class _Answer(list):
+        def __init__(self, entries, flags):
+            super().__init__(entries)
+            self.response = SimpleNamespace(flags=flags)
+
+    answers = {
+        ("_25._tcp.mail.example.com", "TLSA"): _Answer(
+            [SimpleNamespace(usage=3, selector=1, matching_type=1, certificate_association="aabb")],
+            dns.flags.AD,
+        ),
+    }
+    resolver = make_dns_resolver(monkeypatch, answers)
+
+    records, authenticated = resolver.get_tlsa_with_status("_25._tcp.mail.example.com")
+
+    assert records == [(3, 1, 1, "aabb")]
+    assert authenticated is True
+
+
+def test_get_tlsa_with_status_returns_none_when_no_answer(monkeypatch):
+    answers = {("_25._tcp.mail.example.com", "TLSA"): dns.resolver.NoAnswer()}
+    resolver = make_dns_resolver(monkeypatch, answers)
+
+    records, authenticated = resolver.get_tlsa_with_status("_25._tcp.mail.example.com")
+
+    assert records == []
+    assert authenticated is None
 
 
 def test_get_tlsa_no_answer_returns_empty(monkeypatch):

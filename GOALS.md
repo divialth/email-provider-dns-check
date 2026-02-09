@@ -2,7 +2,12 @@
 
 ## Current Product Scope
 - Provide a CLI tool that checks whether a domain matches an email provider DNS configuration.
-- Support these record types when present in provider configs: `MX`, `SPF`, `DKIM`, `DMARC`, `TXT`, `CNAME`, `SRV`, `CAA`, `A`, and `AAAA`.
+- Support these record types when present in provider configs: `MX`, `SPF`, `DKIM`, `DMARC`, `TXT`, `CNAME`, `SRV`, `CAA`, `TLSA`, `A`, `AAAA`, and `PTR`.
+- TLSA/DANE scope:
+  Validate provider-configured TLSA records (`required`/`optional`) and enforce DNSSEC-authenticated TLSA answers.
+  Perform live DANE certificate-binding checks for direct TLS endpoints in `_port._tcp.hostname` form.
+  Enforce TLSA usage, selector, and matching-type semantics during certificate comparison.
+  This scope is sufficient for the project because the product goal is provider DNS configuration compliance and misconfiguration detection.
 - Support multiple providers via YAML config files and validate only record types present in the selected provider config.
 - Support `required` and `optional` sections per record type under `records`.
 - Require provider config versioning and allow configs to define any subset of record types.
