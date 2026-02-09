@@ -185,3 +185,107 @@ class PtrChecksMixin:
             {"expected": expected},
             optional=True,
         )
+
+    def _evaluate_ptr_match_rules(
+        self, rules: Dict[str, "ValuesMatchRule"]
+    ) -> tuple[Dict[str, List[str]], Dict[str, List[str]], Dict[str, List[str]]]:
+        """Evaluate negative PTR match rules.
+
+        Args:
+            rules (Dict[str, ValuesMatchRule]): Match rules keyed by reverse DNS name.
+
+        Returns:
+            tuple[Dict[str, List[str]], Dict[str, List[str]], Dict[str, List[str]]]: Matched,
+                expected, and found values keyed by reverse DNS name.
+
+        Raises:
+            DnsLookupError: If DNS lookup fails.
+        """
+        matched: Dict[str, List[str]] = {}
+        expected: Dict[str, List[str]] = {}
+        found: Dict[str, List[str]] = {}
+        for name, rule in rules.items():
+            lookup_name = self._normalize_ptr_name(name)
+            found_values = [
+                self._normalize_host(value) for value in self.resolver.get_ptr(lookup_name)
+            ]
+            found[lookup_name] = found_values
+            expected_values = [self._normalize_host(value) for value in rule.values]
+            expected[lookup_name] = expected_values
+            if rule.match == "any":
+                if found_values:
+                    matched[lookup_name] = sorted(set(found_values))
+                continue
+            overlap = sorted(set(expected_values) & set(found_values))
+            if overlap:
+                matched[lookup_name] = overlap
+        return matched, expected, found
+
+    def _check_ptr_negative(
+        self, rules: Dict[str, "ValuesMatchRule"], *, scope: str
+    ) -> RecordCheck:
+        """Run deprecated/forbidden checks for PTR records.
+
+        Args:
+            rules (Dict[str, ValuesMatchRule]): Match rules keyed by reverse DNS name.
+            scope (str): Result scope ("deprecated" or "forbidden").
+
+        Returns:
+            RecordCheck: Scope-specific PTR match result.
+        """
+        if not rules:
+            return RecordCheck.pass_(
+                "PTR",
+                f"No {scope} PTR records configured",
+                {},
+                scope=scope,
+            )
+        try:
+            matched, expected, found = self._evaluate_ptr_match_rules(rules)
+        except DnsLookupError as err:
+            return RecordCheck.unknown(
+                "PTR",
+                "DNS lookup failed",
+                {"error": str(err)},
+                scope=scope,
+            )
+        if matched:
+            status_builder = RecordCheck.warn if scope == "deprecated" else RecordCheck.fail
+            return status_builder(
+                "PTR",
+                f"{scope.capitalize()} PTR records are present",
+                {"matched": matched, "expected": expected, "found": found},
+                scope=scope,
+            )
+        return RecordCheck.pass_(
+            "PTR",
+            f"No {scope} PTR records present",
+            {"expected": expected},
+            scope=scope,
+        )
+
+    def check_ptr_deprecated(self) -> RecordCheck:
+        """Validate deprecated PTR records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of deprecated PTR record validation.
+
+        Raises:
+            ValueError: If the provider does not define PTR requirements.
+        """
+        if not self.provider.ptr:
+            raise ValueError("PTR configuration not available for provider")
+        return self._check_ptr_negative(self.provider.ptr.deprecated, scope="deprecated")
+
+    def check_ptr_forbidden(self) -> RecordCheck:
+        """Validate forbidden PTR records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of forbidden PTR record validation.
+
+        Raises:
+            ValueError: If the provider does not define PTR requirements.
+        """
+        if not self.provider.ptr:
+            raise ValueError("PTR configuration not available for provider")
+        return self._check_ptr_negative(self.provider.ptr.forbidden, scope="forbidden")

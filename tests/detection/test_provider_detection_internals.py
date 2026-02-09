@@ -304,3 +304,59 @@ def test_detect_providers_ignores_optional_results(monkeypatch):
     candidate = report.candidates[0]
     assert candidate.status_counts["WARN"] == 1
     assert candidate.record_statuses == {"CNAME_OPT": "WARN", "MX": "PASS"}
+
+
+def test_detect_providers_does_not_count_non_required_core_passes(monkeypatch):
+    provider = _provider(
+        provider_id="negative-only",
+        name="Negative Only Provider",
+        mx=MXConfig(required=[MXRecord(host="mx.negative.test.")], optional=[]),
+    )
+
+    class _Checker:
+        def run_checks(self):
+            return [RecordCheck.pass_("MX", "No forbidden MX", {}, scope="forbidden")]
+
+    monkeypatch.setattr(detection, "list_providers", lambda: [provider])
+    monkeypatch.setattr(detection, "DNSChecker", lambda *_args, **_kwargs: _Checker())
+
+    report = detection.detect_providers("example.com", resolver=_Resolver())
+
+    assert report.candidates == []
+
+
+def test_detect_providers_includes_negative_scope_status_keys(monkeypatch):
+    provider = _provider(
+        provider_id="negative-status",
+        name="Negative Status Provider",
+        mx=MXConfig(required=[MXRecord(host="mx.negative.test.")], optional=[]),
+    )
+
+    class _Checker:
+        def run_checks(self):
+            return [
+                RecordCheck.pass_("MX", "ok", {"found": ["mx.negative.test."]}),
+                RecordCheck.fail("MX", "Forbidden MX present", {}, scope="forbidden"),
+                RecordCheck.warn("TXT", "Deprecated TXT present", {}, scope="deprecated"),
+                RecordCheck.pass_("CNAME", "Optional CNAME present", {}, optional=True),
+            ]
+
+    monkeypatch.setattr(detection, "list_providers", lambda: [provider])
+    monkeypatch.setattr(detection, "DNSChecker", lambda *_args, **_kwargs: _Checker())
+
+    report = detection.detect_providers("example.com", resolver=_Resolver())
+
+    assert report.candidates
+    candidate = report.candidates[0]
+    assert candidate.record_statuses["MX"] == "PASS"
+    assert candidate.record_statuses["MX_FORB"] == "FAIL"
+    assert candidate.record_statuses["TXT_DEP"] == "WARN"
+    assert candidate.record_statuses["CNAME_OPT"] == "PASS"
+
+
+def test_result_status_key_handles_unknown_scope_suffix() -> None:
+    class _Result:
+        record_type = "TXT"
+        scope = "customscope"
+
+    assert detection._result_status_key(_Result()) == "TXT_CUSTOMSCOPE"

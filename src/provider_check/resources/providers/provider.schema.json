@@ -1,556 +1,520 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/provider.schema.json",
-  "title": "Provider Configuration",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "enabled": {
-      "type": "boolean"
-    },
-    "extends": {
-      "oneOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      ]
-    },
-    "name": {
-      "type": "string"
-    },
-    "version": {
-      "type": [
-        "string",
-        "number"
-      ]
-    },
-    "short_description": {
-      "type": "string"
-    },
-    "long_description": {
-      "type": "string"
-    },
-    "variables": {
-      "type": "object",
-      "propertyNames": {
-        "type": "string",
-        "minLength": 1,
-        "not": {
-          "enum": [
-            "selector",
-            "domain"
-          ]
-        }
-      },
-      "additionalProperties": {
-        "$ref": "#/$defs/variable_spec"
-      }
-    },
-    "records": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "mx": {
-          "$ref": "#/$defs/mx_section"
-        },
-        "spf": {
-          "$ref": "#/$defs/spf_section"
-        },
-        "dkim": {
-          "$ref": "#/$defs/dkim_section"
-        },
-        "a": {
-          "$ref": "#/$defs/address_section"
-        },
-        "aaaa": {
-          "$ref": "#/$defs/address_section"
-        },
-        "ptr": {
-          "$ref": "#/$defs/address_section"
-        },
-        "cname": {
-          "$ref": "#/$defs/cname_section"
-        },
-        "caa": {
-          "$ref": "#/$defs/caa_section"
-        },
-        "srv": {
-          "$ref": "#/$defs/srv_section"
-        },
-        "tlsa": {
-          "$ref": "#/$defs/tlsa_section"
-        },
-        "txt": {
-          "$ref": "#/$defs/txt_section"
-        },
-        "dmarc": {
-          "$ref": "#/$defs/dmarc_section"
-        }
-      }
-    }
-  },
-  "required": [
-    "version"
-  ],
-  "$defs": {
-    "variable_spec": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "required": {
-              "type": "boolean"
-            },
-            "default": {
-              "type": "string"
-            },
-            "description": {
-              "type": "string"
-            }
-          }
-        }
-      ]
-    },
-    "string_list": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "mx_record": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "host": {
-          "type": "string"
-        },
-        "priority": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "host"
-      ]
-    },
-    "mx_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/mx_record"
-          }
-        },
-        "optional": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/mx_record"
-          }
-        }
-      }
-    },
-    "spf_required": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "policy": {
-          "type": "string",
-          "enum": [
-            "hardfail",
-            "softfail",
-            "neutral",
-            "allow"
-          ]
-        },
-        "includes": {
-          "$ref": "#/$defs/string_list"
-        },
-        "mechanisms": {
-          "$ref": "#/$defs/string_list"
-        },
-        "modifiers": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "policy"
-      ]
-    },
-    "spf_optional": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "mechanisms": {
-          "$ref": "#/$defs/string_list"
-        },
-        "modifiers": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "spf_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "$ref": "#/$defs/spf_required"
-        },
-        "optional": {
-          "$ref": "#/$defs/spf_optional"
-        }
-      },
-      "required": [
-        "required"
-      ]
-    },
-    "dkim_required": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "selectors": {
-          "$ref": "#/$defs/string_list"
-        },
-        "record_type": {
-          "type": "string",
-          "enum": [
-            "cname",
-            "txt"
-          ]
-        },
-        "target_template": {
-          "type": "string"
-        },
-        "txt_values": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "record_type": {
-                "const": "cname"
-              }
-            }
-          },
-          "then": {
-            "required": [
-              "target_template"
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.invalid/provider.schema.json",
+    "title": "Provider Configuration",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "enabled": {"type": "boolean"},
+        "extends": {
+            "oneOf": [
+                {"type": "string", "minLength": 1},
+                {"type": "array", "items": {"type": "string", "minLength": 1}}
             ]
-          }
-        }
-      ]
-    },
-    "dkim_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "$ref": "#/$defs/dkim_required"
-        }
-      }
-    },
-    "address_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/string_list"
-          }
         },
-        "optional": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/string_list"
-          }
-        }
-      }
-    },
-    "cname_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
+        "name": {"type": "string"},
+        "version": {"type": ["string", "number"]},
+        "short_description": {"type": "string"},
+        "long_description": {"type": "string"},
+        "variables": {
+            "type": "object",
+            "propertyNames": {
+                "type": "string",
+                "minLength": 1,
+                "not": {"enum": ["selector", "domain"]}
+            },
+            "additionalProperties": {"$ref": "#/$defs/variable_spec"}
         },
-        "optional": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "caa_record": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "flags": {
-          "type": "integer"
-        },
-        "flag": {
-          "type": "integer"
-        },
-        "tag": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "tag",
-        "value"
-      ],
-      "anyOf": [
-        {
-          "required": [
-            "flags"
-          ]
-        },
-        {
-          "required": [
-            "flag"
-          ]
-        }
-      ]
-    },
-    "caa_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/caa_record"
+        "records": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "mx": {"$ref": "#/$defs/mx_section"},
+                "spf": {"$ref": "#/$defs/spf_section"},
+                "dkim": {"$ref": "#/$defs/dkim_section"},
+                "a": {"$ref": "#/$defs/address_section"},
+                "aaaa": {"$ref": "#/$defs/address_section"},
+                "ptr": {"$ref": "#/$defs/address_section"},
+                "cname": {"$ref": "#/$defs/cname_section"},
+                "caa": {"$ref": "#/$defs/caa_section"},
+                "srv": {"$ref": "#/$defs/srv_section"},
+                "tlsa": {"$ref": "#/$defs/tlsa_section"},
+                "txt": {"$ref": "#/$defs/txt_section"},
+                "dmarc": {"$ref": "#/$defs/dmarc_section"}
             }
-          }
+        }
+    },
+    "required": ["version"],
+    "$defs": {
+        "variable_spec": {
+            "oneOf": [
+                {"type": "null"},
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "required": {"type": "boolean"},
+                        "default": {"type": "string"},
+                        "description": {"type": "string"}
+                    }
+                }
+            ]
         },
-        "optional": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/caa_record"
+        "string_list": {"type": "array", "items": {"type": "string"}},
+        "match_mode": {"type": "string", "enum": ["exact", "any"]},
+        "values_match_rule": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "match": {"$ref": "#/$defs/match_mode"},
+                "values": {"$ref": "#/$defs/string_list"}
             }
-          }
-        }
-      }
-    },
-    "srv_record": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "priority": {
-          "type": "integer"
         },
-        "weight": {
-          "type": "integer"
+        "cname_match_rule": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {"match": {"$ref": "#/$defs/match_mode"}, "target": {"type": "string"}}
         },
-        "port": {
-          "type": "integer"
+        "mx_record": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {"host": {"type": "string"}, "priority": {"type": "integer"}},
+            "required": ["host"]
         },
-        "target": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "priority",
-        "weight",
-        "port",
-        "target"
-      ]
-    },
-    "srv_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/srv_record"
+        "mx_negative_policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {"match": {"$ref": "#/$defs/match_mode"}}
+        },
+        "mx_negative_rule": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "policy": {"$ref": "#/$defs/mx_negative_policy"},
+                "entries": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/mx_record"},
+                    "minItems": 1
+                }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "policy": {
+                                "properties": {"match": {"const": "any"}},
+                                "required": ["match"]
+                            }
+                        },
+                        "required": ["policy"]
+                    },
+                    "then": {"not": {"required": ["entries"]}}
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "policy": {
+                                "properties": {"match": {"const": "exact"}},
+                                "required": ["match"]
+                            }
+                        },
+                        "required": ["policy"]
+                    },
+                    "then": {"required": ["entries"], "properties": {"entries": {"minItems": 1}}}
+                }
+            ]
+        },
+        "mx_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {"type": "array", "items": {"$ref": "#/$defs/mx_record"}},
+                "optional": {"type": "array", "items": {"$ref": "#/$defs/mx_record"}},
+                "deprecated": {"$ref": "#/$defs/mx_negative_rule"},
+                "forbidden": {"$ref": "#/$defs/mx_negative_rule"}
             }
-          }
         },
-        "optional": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/srv_record"
+        "spf_required": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "policy": {"type": "string", "enum": ["hardfail", "softfail", "neutral", "allow"]},
+                "includes": {"$ref": "#/$defs/string_list"},
+                "mechanisms": {"$ref": "#/$defs/string_list"},
+                "modifiers": {"type": "object", "additionalProperties": {"type": "string"}}
+            },
+            "required": ["policy"]
+        },
+        "spf_optional": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "mechanisms": {"$ref": "#/$defs/string_list"},
+                "modifiers": {"type": "object", "additionalProperties": {"type": "string"}}
             }
-          }
-        }
-      }
-    },
-    "tlsa_record": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "usage": {
-          "type": "integer"
         },
-        "selector": {
-          "type": "integer"
+        "spf_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {"$ref": "#/$defs/spf_required"},
+                "optional": {"$ref": "#/$defs/spf_optional"}
+            },
+            "required": ["required"]
         },
-        "matching_type": {
-          "type": "integer"
+        "dkim_required": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "selectors": {"$ref": "#/$defs/string_list"},
+                "record_type": {"type": "string", "enum": ["cname", "txt"]},
+                "target_template": {"type": "string"},
+                "txt_values": {"type": "object", "additionalProperties": {"type": "string"}}
+            },
+            "allOf": [
+                {
+                    "if": {"properties": {"record_type": {"const": "cname"}}},
+                    "then": {"required": ["target_template"]}
+                }
+            ]
         },
-        "certificate_association": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "usage",
-        "selector",
-        "matching_type",
-        "certificate_association"
-      ]
-    },
-    "tlsa_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/tlsa_record"
+        "dkim_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {"required": {"$ref": "#/$defs/dkim_required"}}
+        },
+        "address_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {
+                    "type": "object",
+                    "additionalProperties": {"$ref": "#/$defs/string_list"}
+                },
+                "optional": {
+                    "type": "object",
+                    "additionalProperties": {"$ref": "#/$defs/string_list"}
+                },
+                "deprecated": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"$ref": "#/$defs/string_list"},
+                            {"$ref": "#/$defs/values_match_rule"}
+                        ]
+                    }
+                },
+                "forbidden": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"$ref": "#/$defs/string_list"},
+                            {"$ref": "#/$defs/values_match_rule"}
+                        ]
+                    }
+                }
             }
-          }
         },
-        "optional": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "array",
-            "items": {
-              "$ref": "#/$defs/tlsa_record"
+        "cname_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {"type": "object", "additionalProperties": {"type": "string"}},
+                "optional": {"type": "object", "additionalProperties": {"type": "string"}},
+                "deprecated": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [{"type": "string"}, {"$ref": "#/$defs/cname_match_rule"}]
+                    }
+                },
+                "forbidden": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [{"type": "string"}, {"$ref": "#/$defs/cname_match_rule"}]
+                    }
+                }
             }
-          }
+        },
+        "caa_record": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "flags": {"type": "integer"},
+                "flag": {"type": "integer"},
+                "tag": {"type": "string"},
+                "value": {"type": "string"}
+            },
+            "required": ["tag", "value"],
+            "anyOf": [{"required": ["flags"]}, {"required": ["flag"]}]
+        },
+        "caa_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"$ref": "#/$defs/caa_record"}
+                    }
+                },
+                "optional": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"$ref": "#/$defs/caa_record"}
+                    }
+                },
+                "deprecated": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"type": "array", "items": {"$ref": "#/$defs/caa_record"}},
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "match": {"$ref": "#/$defs/match_mode"},
+                                    "entries": {
+                                        "type": "array",
+                                        "items": {"$ref": "#/$defs/caa_record"}
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "forbidden": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"type": "array", "items": {"$ref": "#/$defs/caa_record"}},
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "match": {"$ref": "#/$defs/match_mode"},
+                                    "entries": {
+                                        "type": "array",
+                                        "items": {"$ref": "#/$defs/caa_record"}
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "srv_record": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "priority": {"type": "integer"},
+                "weight": {"type": "integer"},
+                "port": {"type": "integer"},
+                "target": {"type": "string"}
+            },
+            "required": ["priority", "weight", "port", "target"]
+        },
+        "srv_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"$ref": "#/$defs/srv_record"}
+                    }
+                },
+                "optional": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"$ref": "#/$defs/srv_record"}
+                    }
+                },
+                "deprecated": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"type": "array", "items": {"$ref": "#/$defs/srv_record"}},
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "match": {"$ref": "#/$defs/match_mode"},
+                                    "entries": {
+                                        "type": "array",
+                                        "items": {"$ref": "#/$defs/srv_record"}
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "forbidden": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"type": "array", "items": {"$ref": "#/$defs/srv_record"}},
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "match": {"$ref": "#/$defs/match_mode"},
+                                    "entries": {
+                                        "type": "array",
+                                        "items": {"$ref": "#/$defs/srv_record"}
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "tlsa_record": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "usage": {"type": "integer"},
+                "selector": {"type": "integer"},
+                "matching_type": {"type": "integer"},
+                "certificate_association": {"type": "string"}
+            },
+            "required": ["usage", "selector", "matching_type", "certificate_association"]
+        },
+        "tlsa_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"$ref": "#/$defs/tlsa_record"}
+                    }
+                },
+                "optional": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {"$ref": "#/$defs/tlsa_record"}
+                    }
+                },
+                "deprecated": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"type": "array", "items": {"$ref": "#/$defs/tlsa_record"}},
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "match": {"$ref": "#/$defs/match_mode"},
+                                    "entries": {
+                                        "type": "array",
+                                        "items": {"$ref": "#/$defs/tlsa_record"}
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "forbidden": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"type": "array", "items": {"$ref": "#/$defs/tlsa_record"}},
+                            {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "match": {"$ref": "#/$defs/match_mode"},
+                                    "entries": {
+                                        "type": "array",
+                                        "items": {"$ref": "#/$defs/tlsa_record"}
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "txt_settings": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {"verification_required": {"type": "boolean"}}
+        },
+        "txt_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {
+                    "type": "object",
+                    "additionalProperties": {"$ref": "#/$defs/string_list"}
+                },
+                "optional": {
+                    "type": "object",
+                    "additionalProperties": {"$ref": "#/$defs/string_list"}
+                },
+                "deprecated": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"$ref": "#/$defs/string_list"},
+                            {"$ref": "#/$defs/values_match_rule"}
+                        ]
+                    }
+                },
+                "forbidden": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"$ref": "#/$defs/string_list"},
+                            {"$ref": "#/$defs/values_match_rule"}
+                        ]
+                    }
+                },
+                "settings": {"$ref": "#/$defs/txt_settings"}
+            }
+        },
+        "dmarc_required": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "policy": {"type": "string"},
+                "rua": {"$ref": "#/$defs/string_list"},
+                "ruf": {"$ref": "#/$defs/string_list"},
+                "tags": {"type": "object", "additionalProperties": {"type": "string"}}
+            }
+        },
+        "dmarc_optional": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "rua": {"$ref": "#/$defs/string_list"},
+                "ruf": {"$ref": "#/$defs/string_list"}
+            }
+        },
+        "dmarc_settings": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "rua_required": {"type": "boolean"},
+                "ruf_required": {"type": "boolean"}
+            }
+        },
+        "dmarc_section": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "required": {"$ref": "#/$defs/dmarc_required"},
+                "optional": {"$ref": "#/$defs/dmarc_optional"},
+                "settings": {"$ref": "#/$defs/dmarc_settings"}
+            }
         }
-      }
-    },
-    "txt_settings": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "verification_required": {
-          "type": "boolean"
-        }
-      }
-    },
-    "txt_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/string_list"
-          }
-        },
-        "optional": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/string_list"
-          }
-        },
-        "settings": {
-          "$ref": "#/$defs/txt_settings"
-        }
-      }
-    },
-    "dmarc_required": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "policy": {
-          "type": "string"
-        },
-        "rua": {
-          "$ref": "#/$defs/string_list"
-        },
-        "ruf": {
-          "$ref": "#/$defs/string_list"
-        },
-        "tags": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "dmarc_optional": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "rua": {
-          "$ref": "#/$defs/string_list"
-        },
-        "ruf": {
-          "$ref": "#/$defs/string_list"
-        }
-      }
-    },
-    "dmarc_settings": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "rua_required": {
-          "type": "boolean"
-        },
-        "ruf_required": {
-          "type": "boolean"
-        }
-      }
-    },
-    "dmarc_section": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "required": {
-          "$ref": "#/$defs/dmarc_required"
-        },
-        "optional": {
-          "$ref": "#/$defs/dmarc_optional"
-        },
-        "settings": {
-          "$ref": "#/$defs/dmarc_settings"
-        }
-      }
     }
-  }
 }

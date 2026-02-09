@@ -17,6 +17,8 @@ from provider_check.provider_config import (
     DMARCRequired,
     DMARCSettings,
     MXConfig,
+    MXNegativePolicy,
+    MXNegativeRules,
     PTRConfig,
     SPFConfig,
     SPFOptional,
@@ -74,6 +76,8 @@ def test_record_section_keys_match_config_models(record_type: str, config_model:
         ("spf", "required", SPFRequired),
         ("spf", "optional", SPFOptional),
         ("dkim", "required", DKIMRequired),
+        ("mx", "negative", MXNegativeRules),
+        ("mx", "policy", MXNegativePolicy),
         ("dmarc", "required", DMARCRequired),
         ("dmarc", "optional", DMARCOptional),
         ("dmarc", "settings", DMARCSettings),
@@ -96,7 +100,7 @@ def test_record_nested_keys_match_section_models(
 def test_record_nested_sections_are_explicit_and_bounded() -> None:
     """Ensure only expected records expose nested structured section key lists."""
     expected = {
-        "mx": set(),
+        "mx": {"negative", "policy"},
         "spf": {"required", "optional"},
         "dkim": {"required"},
         "a": set(),

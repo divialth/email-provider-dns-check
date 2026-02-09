@@ -1,7 +1,9 @@
 from provider_check.provider_config import (
     AddressConfig,
+    CAAMatchRule,
     CAAConfig,
     CAARecord,
+    CNAMEMatchRule,
     CNAMEConfig,
     DKIMConfig,
     DKIMRequired,
@@ -10,19 +12,25 @@ from provider_check.provider_config import (
     DMARCRequired,
     DMARCSettings,
     MXConfig,
+    MXNegativePolicy,
+    MXNegativeRules,
     MXRecord,
     PTRConfig,
     ProviderConfig,
     SPFConfig,
     SPFOptional,
     SPFRequired,
+    SRVMatchRule,
     SRVConfig,
     SRVRecord,
+    TLSAMatchRule,
     TLSAConfig,
     TLSARecord,
     TXTConfig,
     TXTSettings,
+    ValuesMatchRule,
 )
+import provider_check.record_registry as record_registry_module
 from provider_check.record_registry import (
     CHECK_SPECS,
     CORE_RECORD_TYPES,
@@ -47,6 +55,11 @@ def _build_provider() -> ProviderConfig:
         mx=MXConfig(
             required=[MXRecord(host="mx.test.")],
             optional=[MXRecord(host="mx.optional.test.")],
+            deprecated=MXNegativeRules(
+                policy=MXNegativePolicy(match="exact"),
+                entries=[MXRecord(host="mx.legacy.test.")],
+            ),
+            forbidden=MXNegativeRules(policy=MXNegativePolicy(match="any")),
         ),
         spf=SPFConfig(
             required=SPFRequired(
@@ -68,22 +81,37 @@ def _build_provider() -> ProviderConfig:
         a=AddressConfig(
             required={"mail": ["192.0.2.1"]},
             optional={"optional": ["192.0.2.2"]},
+            deprecated={"legacy": ValuesMatchRule(match="exact", values=["192.0.2.9"])},
+            forbidden={"blocked": ValuesMatchRule(match="any", values=[])},
         ),
         aaaa=AddressConfig(
             required={"mail": ["2001:db8::1"]},
             optional={"optional": ["2001:db8::2"]},
+            deprecated={"legacy": ValuesMatchRule(match="exact", values=["2001:db8::9"])},
+            forbidden={"blocked": ValuesMatchRule(match="any", values=[])},
         ),
         ptr=PTRConfig(
             required={"10.2.0.192.in-addr.arpa.": ["mail.test."]},
             optional={"11.2.0.192.in-addr.arpa.": ["optional.test."]},
+            deprecated={"12.2.0.192.in-addr.arpa.": ValuesMatchRule(match="any", values=[])},
+            forbidden={"13.2.0.192.in-addr.arpa.": ValuesMatchRule(match="any", values=[])},
         ),
         cname=CNAMEConfig(
             required={"autodiscover": "target.example.test."},
             optional={"optional": "optional.example.test."},
+            deprecated={"legacy": CNAMEMatchRule(match="exact", target="legacy.example.test.")},
+            forbidden={"blocked": CNAMEMatchRule(match="any", target=None)},
         ),
         caa=CAAConfig(
             required={"@": [CAARecord(flags=0, tag="issue", value="example.test")]},
             optional={"@": [CAARecord(flags=0, tag="issue", value="optional.test")]},
+            deprecated={
+                "@": CAAMatchRule(
+                    match="exact",
+                    entries=[CAARecord(flags=0, tag="issue", value="deprecated.test")],
+                )
+            },
+            forbidden={"@": CAAMatchRule(match="any", entries=[])},
         ),
         srv=SRVConfig(
             required={
@@ -92,6 +120,13 @@ def _build_provider() -> ProviderConfig:
             optional={
                 "_sip._udp": [SRVRecord(priority=1, weight=1, port=5060, target="sip.test.")]
             },
+            deprecated={
+                "_sip._tls": SRVMatchRule(
+                    match="exact",
+                    entries=[SRVRecord(priority=1, weight=1, port=443, target="sip.test.")],
+                )
+            },
+            forbidden={"_sip._ws": SRVMatchRule(match="any", entries=[])},
         ),
         tlsa=TLSAConfig(
             required={
@@ -114,10 +149,26 @@ def _build_provider() -> ProviderConfig:
                     )
                 ]
             },
+            deprecated={
+                "_25._tcp.mail": TLSAMatchRule(
+                    match="exact",
+                    entries=[
+                        TLSARecord(
+                            usage=3,
+                            selector=1,
+                            matching_type=1,
+                            certificate_association="aaaaaaaa",
+                        )
+                    ],
+                )
+            },
+            forbidden={"_443._tcp.mail": TLSAMatchRule(match="any", entries=[])},
         ),
         txt=TXTConfig(
             required={"@": ["value"]},
             optional={"@": ["optional"]},
+            deprecated={"_legacy": ValuesMatchRule(match="exact", values=["legacy=true"])},
+            forbidden={"_blocked": ValuesMatchRule(match="any", values=[])},
             settings=TXTSettings(verification_required=False),
         ),
         dmarc=DMARCConfig(
@@ -155,6 +206,8 @@ def test_optional_only_mx_enables_optional_check() -> None:
 
     assert specs["check_mx"].enabled_when(checker) is False
     assert specs["check_mx_optional"].enabled_when(checker) is True
+    assert specs["check_mx_deprecated"].enabled_when(checker) is False
+    assert specs["check_mx_forbidden"].enabled_when(checker) is False
 
 
 def test_record_type_registry_consistency() -> None:
@@ -162,3 +215,12 @@ def test_record_type_registry_consistency() -> None:
     assert record_types == set(TYPE_WEIGHTS)
     assert record_types == set(ROW_BUILDER_NAMES)
     assert CORE_RECORD_TYPES.issubset(record_types)
+
+
+def test_mx_negative_enablement_handles_falsy_rules() -> None:
+    class _MxLike:
+        deprecated = []
+
+    assert (
+        record_registry_module._has_mx_negative_rules(_MxLike(), field_name="deprecated") is False
+    )

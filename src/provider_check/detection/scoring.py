@@ -42,7 +42,11 @@ def _score_results(results: List[RecordCheck]) -> tuple[int, int, float, List[st
         weight = TYPE_WEIGHTS.get(result.record_type, 1)
         max_score += weight * STATUS_SCORES[Status.PASS.value]
         score += weight * STATUS_SCORES.get(status_value, 0)
-        if result.record_type in CORE_RECORD_TYPES and result.status is Status.PASS:
+        if (
+            result.record_type in CORE_RECORD_TYPES
+            and result.status is Status.PASS
+            and result.scope == "required"
+        ):
             core_pass_records.append(result.record_type)
     ratio = score / max_score if max_score else 0
     return score, max_score, ratio, core_pass_records, status_counts

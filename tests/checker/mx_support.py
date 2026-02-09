@@ -2,24 +2,33 @@
 
 from __future__ import annotations
 
-from provider_check.provider_config import MXConfig, MXRecord, ProviderConfig
+from provider_check.provider_config import MXConfig, MXNegativeRules, MXRecord, ProviderConfig
 
 
 def make_mx_config(
     *,
     required: list[MXRecord] | None = None,
     optional: list[MXRecord] | None = None,
+    deprecated: MXNegativeRules | None = None,
+    forbidden: MXNegativeRules | None = None,
 ) -> MXConfig:
     """Build an MX config for tests.
 
     Args:
         required (list[MXRecord] | None): Required MX records.
         optional (list[MXRecord] | None): Optional MX records.
+        deprecated (MXNegativeRules | None): Deprecated MX match rules.
+        forbidden (MXNegativeRules | None): Forbidden MX match rules.
 
     Returns:
         MXConfig: MX config object.
     """
-    return MXConfig(required=required or [], optional=optional or [])
+    return MXConfig(
+        required=required or [],
+        optional=optional or [],
+        deprecated=deprecated or MXNegativeRules(),
+        forbidden=forbidden or MXNegativeRules(),
+    )
 
 
 def make_provider_with_mx(

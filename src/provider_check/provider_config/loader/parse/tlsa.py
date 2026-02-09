@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from ...models import TLSAConfig, TLSARecord
+from ...models import TLSAConfig, TLSAMatchRule, TLSARecord
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .match import _MATCH_ANY, _parse_match_mode
 from .schema import RECORD_SCHEMA
 
 
@@ -59,6 +60,46 @@ def _parse_tlsa_records(
     return tlsa_records
 
 
+def _parse_tlsa_match_rules(
+    provider_id: str, field_label: str, raw_records: Dict[str, object]
+) -> Dict[str, TLSAMatchRule]:
+    """Parse TLSA negative match rules.
+
+    Args:
+        provider_id (str): Provider identifier used in error messages.
+        field_label (str): Label used in error messages.
+        raw_records (Dict[str, object]): Raw TLSA rules mapping.
+
+    Returns:
+        Dict[str, TLSAMatchRule]: Parsed TLSA negative rules.
+
+    Raises:
+        ValueError: If any TLSA rules are invalid.
+    """
+    parsed: Dict[str, TLSAMatchRule] = {}
+    for name, rule in raw_records.items():
+        name_label = f"{field_label}.{name}"
+        if isinstance(rule, dict):
+            _reject_unknown_keys(provider_id, name_label, rule, {"match", "entries"})
+            match_mode = _parse_match_mode(provider_id, name_label, rule.get("match"))
+            if match_mode == _MATCH_ANY:
+                parsed[str(name)] = TLSAMatchRule(match=match_mode, entries=[])
+                continue
+            entries_list = _require_list(
+                provider_id, f"{name_label} entries", rule.get("entries", [])
+            )
+        else:
+            match_mode = "exact"
+            entries_list = _require_list(provider_id, name_label, rule)
+        entries = _parse_tlsa_records(provider_id, field_label, {name: entries_list})[str(name)]
+        if not entries:
+            raise ValueError(
+                f"Provider config {provider_id} {name_label} exact rules require at least one entry"
+            )
+        parsed[str(name)] = TLSAMatchRule(match=match_mode, entries=entries)
+    return parsed
+
+
 def _parse_tlsa(provider_id: str, records: dict) -> TLSAConfig | None:
     """Parse TLSA config from records mapping.
 
@@ -83,6 +124,19 @@ def _parse_tlsa(provider_id: str, records: dict) -> TLSAConfig | None:
     tlsa_optional_raw = _require_mapping(
         provider_id, "tlsa optional", tlsa_section.get("optional", {})
     )
+    tlsa_deprecated_raw = _require_mapping(
+        provider_id, "tlsa deprecated", tlsa_section.get("deprecated", {})
+    )
+    tlsa_forbidden_raw = _require_mapping(
+        provider_id, "tlsa forbidden", tlsa_section.get("forbidden", {})
+    )
     tlsa_required = _parse_tlsa_records(provider_id, "tlsa required", tlsa_required_raw)
     tlsa_optional = _parse_tlsa_records(provider_id, "tlsa optional", tlsa_optional_raw)
-    return TLSAConfig(required=tlsa_required, optional=tlsa_optional)
+    tlsa_deprecated = _parse_tlsa_match_rules(provider_id, "tlsa deprecated", tlsa_deprecated_raw)
+    tlsa_forbidden = _parse_tlsa_match_rules(provider_id, "tlsa forbidden", tlsa_forbidden_raw)
+    return TLSAConfig(
+        required=tlsa_required,
+        optional=tlsa_optional,
+        deprecated=tlsa_deprecated,
+        forbidden=tlsa_forbidden,
+    )

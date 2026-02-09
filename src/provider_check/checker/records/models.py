@@ -7,6 +7,8 @@ from typing import Dict, Optional
 
 from ...status import Status, coerce_status
 
+_RECORD_SCOPES = frozenset({"required", "optional", "deprecated", "forbidden"})
+
 
 @dataclasses.dataclass
 class RecordCheck:
@@ -18,6 +20,7 @@ class RecordCheck:
         message (str): Human-readable summary of the outcome.
         details (Dict[str, object]): Structured details for debugging or output.
         optional (bool): Whether the check is for optional records.
+        scope (str): Check scope ("required", "optional", "deprecated", "forbidden").
     """
 
     record_type: str
@@ -25,11 +28,20 @@ class RecordCheck:
     message: str
     details: Dict[str, object]
     optional: bool = False
+    scope: str = "required"
 
     def __post_init__(self) -> None:
-        """Normalize status values to Status."""
+        """Normalize status and scope values."""
         if not isinstance(self.status, Status):
             self.status = coerce_status(self.status)
+        normalized_scope = str(self.scope or "required").lower()
+        if self.optional and normalized_scope == "required":
+            normalized_scope = "optional"
+        if normalized_scope not in _RECORD_SCOPES:
+            allowed = ", ".join(sorted(_RECORD_SCOPES))
+            raise ValueError(f"RecordCheck scope must be one of: {allowed}")
+        self.scope = normalized_scope
+        self.optional = normalized_scope == "optional"
 
     @classmethod
     def with_status(
@@ -40,6 +52,7 @@ class RecordCheck:
         details: Optional[Dict[str, object]] = None,
         *,
         optional: bool = False,
+        scope: Optional[str] = None,
     ) -> "RecordCheck":
         """Build a RecordCheck for a specific status.
 
@@ -49,11 +62,20 @@ class RecordCheck:
             message (str): Human-readable summary of the outcome.
             details (Optional[Dict[str, object]]): Structured details for output.
             optional (bool): Whether the check is optional.
+            scope (Optional[str]): Check scope override.
 
         Returns:
             RecordCheck: Record check result.
         """
-        return cls(record_type, status, message, details or {}, optional=optional)
+        normalized_scope = scope or ("optional" if optional else "required")
+        return cls(
+            record_type,
+            status,
+            message,
+            details or {},
+            optional=optional,
+            scope=normalized_scope,
+        )
 
     @classmethod
     def pass_(
@@ -63,6 +85,7 @@ class RecordCheck:
         details: Optional[Dict[str, object]] = None,
         *,
         optional: bool = False,
+        scope: Optional[str] = None,
     ) -> "RecordCheck":
         """Build a passing RecordCheck.
 
@@ -71,6 +94,7 @@ class RecordCheck:
             message (str): Human-readable summary of the outcome.
             details (Optional[Dict[str, object]]): Structured details for output.
             optional (bool): Whether the check is optional.
+            scope (Optional[str]): Check scope override.
 
         Returns:
             RecordCheck: Record check result with PASS status.
@@ -81,6 +105,7 @@ class RecordCheck:
             message,
             details,
             optional=optional,
+            scope=scope,
         )
 
     @classmethod
@@ -91,6 +116,7 @@ class RecordCheck:
         details: Optional[Dict[str, object]] = None,
         *,
         optional: bool = False,
+        scope: Optional[str] = None,
     ) -> "RecordCheck":
         """Build a warning RecordCheck.
 
@@ -99,6 +125,7 @@ class RecordCheck:
             message (str): Human-readable summary of the outcome.
             details (Optional[Dict[str, object]]): Structured details for output.
             optional (bool): Whether the check is optional.
+            scope (Optional[str]): Check scope override.
 
         Returns:
             RecordCheck: Record check result with WARN status.
@@ -109,6 +136,7 @@ class RecordCheck:
             message,
             details,
             optional=optional,
+            scope=scope,
         )
 
     @classmethod
@@ -119,6 +147,7 @@ class RecordCheck:
         details: Optional[Dict[str, object]] = None,
         *,
         optional: bool = False,
+        scope: Optional[str] = None,
     ) -> "RecordCheck":
         """Build a failed RecordCheck.
 
@@ -127,6 +156,7 @@ class RecordCheck:
             message (str): Human-readable summary of the outcome.
             details (Optional[Dict[str, object]]): Structured details for output.
             optional (bool): Whether the check is optional.
+            scope (Optional[str]): Check scope override.
 
         Returns:
             RecordCheck: Record check result with FAIL status.
@@ -137,6 +167,7 @@ class RecordCheck:
             message,
             details,
             optional=optional,
+            scope=scope,
         )
 
     @classmethod
@@ -147,6 +178,7 @@ class RecordCheck:
         details: Optional[Dict[str, object]] = None,
         *,
         optional: bool = False,
+        scope: Optional[str] = None,
     ) -> "RecordCheck":
         """Build an unknown RecordCheck.
 
@@ -155,6 +187,7 @@ class RecordCheck:
             message (str): Human-readable summary of the outcome.
             details (Optional[Dict[str, object]]): Structured details for output.
             optional (bool): Whether the check is optional.
+            scope (Optional[str]): Check scope override.
 
         Returns:
             RecordCheck: Record check result with UNKNOWN status.
@@ -165,4 +198,5 @@ class RecordCheck:
             message,
             details,
             optional=optional,
+            scope=scope,
         )

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from ...models import CAAConfig, CAARecord
+from ...models import CAAMatchRule, CAAConfig, CAARecord
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .match import _MATCH_ANY, _parse_match_mode
 from .schema import RECORD_SCHEMA
 
 
@@ -46,6 +47,46 @@ def _parse_caa_records(
     return caa_records
 
 
+def _parse_caa_match_rules(
+    provider_id: str, field_label: str, raw_records: Dict[str, object]
+) -> Dict[str, CAAMatchRule]:
+    """Parse CAA negative match rules.
+
+    Args:
+        provider_id (str): Provider identifier used in error messages.
+        field_label (str): Label used in error messages.
+        raw_records (Dict[str, object]): Raw CAA records mapping.
+
+    Returns:
+        Dict[str, CAAMatchRule]: Parsed CAA negative rules.
+
+    Raises:
+        ValueError: If any CAA rules are invalid.
+    """
+    parsed: Dict[str, CAAMatchRule] = {}
+    for name, rule in raw_records.items():
+        name_label = f"{field_label}.{name}"
+        if isinstance(rule, dict):
+            _reject_unknown_keys(provider_id, name_label, rule, {"match", "entries"})
+            match_mode = _parse_match_mode(provider_id, name_label, rule.get("match"))
+            if match_mode == _MATCH_ANY:
+                parsed[str(name)] = CAAMatchRule(match=match_mode, entries=[])
+                continue
+            entries_list = _require_list(
+                provider_id, f"{name_label} entries", rule.get("entries", [])
+            )
+        else:
+            match_mode = "exact"
+            entries_list = _require_list(provider_id, name_label, rule)
+        entries = _parse_caa_records(provider_id, field_label, {name: entries_list})[str(name)]
+        if not entries:
+            raise ValueError(
+                f"Provider config {provider_id} {name_label} exact rules require at least one entry"
+            )
+        parsed[str(name)] = CAAMatchRule(match=match_mode, entries=entries)
+    return parsed
+
+
 def _parse_caa(provider_id: str, records: dict) -> CAAConfig | None:
     """Parse CAA config from records mapping.
 
@@ -70,6 +111,19 @@ def _parse_caa(provider_id: str, records: dict) -> CAAConfig | None:
     caa_optional_raw = _require_mapping(
         provider_id, "caa optional", caa_section.get("optional", {})
     )
+    caa_deprecated_raw = _require_mapping(
+        provider_id, "caa deprecated", caa_section.get("deprecated", {})
+    )
+    caa_forbidden_raw = _require_mapping(
+        provider_id, "caa forbidden", caa_section.get("forbidden", {})
+    )
     caa_required = _parse_caa_records(provider_id, "caa required", caa_required_raw)
     caa_optional = _parse_caa_records(provider_id, "caa optional", caa_optional_raw)
-    return CAAConfig(required=caa_required, optional=caa_optional)
+    caa_deprecated = _parse_caa_match_rules(provider_id, "caa deprecated", caa_deprecated_raw)
+    caa_forbidden = _parse_caa_match_rules(provider_id, "caa forbidden", caa_forbidden_raw)
+    return CAAConfig(
+        required=caa_required,
+        optional=caa_optional,
+        deprecated=caa_deprecated,
+        forbidden=caa_forbidden,
+    )

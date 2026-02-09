@@ -38,6 +38,29 @@ from .utils import (
 
 LOGGER = logging.getLogger(__name__)
 
+
+def _result_status_key(result: object) -> str:
+    """Build a detection status key for a result scope.
+
+    Args:
+        result (object): RecordCheck-like object.
+
+    Returns:
+        str: Status key including scope suffix when needed.
+    """
+    scope = getattr(result, "scope", "required")
+    record_type = getattr(result, "record_type")
+    if scope == "required":
+        return str(record_type)
+    if scope == "optional":
+        return f"{record_type}_OPT"
+    if scope == "deprecated":
+        return f"{record_type}_DEP"
+    if scope == "forbidden":
+        return f"{record_type}_FORB"
+    return f"{record_type}_{str(scope).upper()}"
+
+
 __all__ = [
     "CORE_RECORD_TYPES",
     "DEFAULT_TOP_N",
@@ -103,17 +126,21 @@ def detect_providers(
             continue
         checker = DNSChecker(normalized_domain, resolved_provider, resolver=resolver, strict=False)
         results = checker.run_checks()
-        required_results = [result for result in results if not result.optional]
-        optional_results = [result for result in results if result.optional]
-        if not required_results:
+        scored_results = [
+            result for result in results if result.scope in {"required", "deprecated", "forbidden"}
+        ]
+        optional_results = [result for result in results if result.scope == "optional"]
+        if not scored_results:
             continue
-        score, max_score, ratio, core_pass_records, status_counts = _score_results(required_results)
+        score, max_score, ratio, core_pass_records, status_counts = _score_results(scored_results)
         if not core_pass_records:
             continue
         optional_bonus = _optional_bonus(optional_results)
-        record_statuses = {result.record_type: result.status.value for result in required_results}
+        record_statuses = {
+            _result_status_key(result): result.status.value for result in scored_results
+        }
         for result in optional_results:
-            record_statuses[f"{result.record_type}_OPT"] = result.status.value
+            record_statuses[_result_status_key(result)] = result.status.value
             status_value = result.status.value
             status_counts[status_value] = status_counts.get(status_value, 0) + 1
         candidates.append(

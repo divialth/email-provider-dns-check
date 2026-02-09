@@ -29,6 +29,7 @@ records:
   # Record sections are ordered for readability; order has no functional effect.
   # Use trailing dots for fully-qualified names; omit for names relative to the checked domain.
   # required values must be present; optional values warn if missing.
+  # deprecated values warn when present; forbidden values fail when present.
   mx:
     # Required MX host/priority pairs.
     required:
@@ -42,6 +43,18 @@ records:
     optional:
       - host: mx4.{tenant}.example-provider.test.
         priority: 40
+    # MX negative rules use policy + entries:
+    # - policy.match: exact|any (default exact)
+    # - entries are used only for exact mode and must be omitted for any mode.
+    deprecated:
+      policy:
+        match: exact
+      entries:
+        - host: legacy-mx.{tenant}.example-provider.test.
+          priority: 5
+    forbidden:
+      policy:
+        match: any
 
   spf:
     # Required SPF values.
@@ -125,6 +138,15 @@ records:
     optional:
       autodiscover:
         - 192.0.2.12
+    # Deprecated/forbidden A rules support:
+    # - exact shorthand: name -> [values...]
+    # - object syntax: {match: exact|any, values: [...]}
+    deprecated:
+      legacy:
+        - 192.0.2.200
+    forbidden:
+      blocked:
+        match: any
 
   aaaa:
     # Required AAAA records (name -> list of IPv6 addresses).
@@ -135,6 +157,12 @@ records:
     optional:
       autodiscover:
         - 2001:db8::12
+    deprecated:
+      legacy-v6:
+        - 2001:db8::200
+    forbidden:
+      blocked-v6:
+        match: any
 
   ptr:
     # Required PTR records (reverse name -> list of expected hostnames).
@@ -148,6 +176,12 @@ records:
     optional:
       "12.2.0.192.in-addr.arpa.":
         - autodiscover.{tenant}.example-provider.test.
+    deprecated:
+      "13.2.0.192.in-addr.arpa.":
+        - legacy.{tenant}.example-provider.test.
+    forbidden:
+      "14.2.0.192.in-addr.arpa.":
+        match: any
 
   cname:
     # Required CNAME records (name -> expected target).
@@ -157,6 +191,16 @@ records:
     # Optional CNAME records (name -> expected target).
     optional:
       autoconfig: autoconfig.example-provider.test.
+    # CNAME negative rules:
+    # - exact shorthand: name -> target
+    # - object syntax: {match: exact|any, target: value}
+    deprecated:
+      lyncdiscover:
+        match: exact
+        target: legacy-webdir.example-provider.test.
+    forbidden:
+      legacy-login:
+        match: any
 
   caa:
     # Required CAA records (name -> list of entries).
@@ -174,6 +218,14 @@ records:
         - flags: 0
           tag: iodef
           value: "mailto:security@{domain}"
+    deprecated:
+      "@":
+        - flags: 0
+          tag: issue
+          value: legacy-ca.example-provider.test
+    forbidden:
+      "admin.{domain}":
+        match: any
 
   srv:
     # Required SRV records (name -> list of entries).
@@ -195,6 +247,17 @@ records:
           weight: 0
           port: 443
           target: autodiscover.{region}.example-provider.test.
+    deprecated:
+      _sip._tcp:
+        match: exact
+        entries:
+          - priority: 10
+            weight: 5
+            port: 5060
+            target: sip-legacy.{region}.example-provider.test.
+    forbidden:
+      _sip._ws:
+        match: any
 
   tlsa:
     # Required TLSA records (name -> list of entries).
@@ -211,6 +274,15 @@ records:
           selector: 1
           matching_type: 1
           certificate_association: "9f4cf4b2a8e2d76c5d8d3a4e2c1f9b8a7e6d5c4b3a291807f6e5d4c3b2a1908f"
+    deprecated:
+      _587._tcp.mail:
+        - usage: 3
+          selector: 1
+          matching_type: 1
+          certificate_association: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    forbidden:
+      _2525._tcp.mail:
+        match: any
 
   txt:
     # Required TXT records for any purpose (name -> list of expected values).
@@ -229,6 +301,13 @@ records:
     optional:
       _provider-optional:
         - "optional-flag=true"
+    # TXT negative rules use either shorthand lists or object syntax with match: exact|any.
+    deprecated:
+      _provider-old-token:
+        - "legacy=true"
+    forbidden:
+      _provider-blocked:
+        match: any
     settings:
       # When true, the provider requires a user-supplied TXT verification record.
       # The user must pass it via --txt-verification. If omitted, the result is WARN (unless skipped).

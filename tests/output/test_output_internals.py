@@ -18,6 +18,7 @@ def test_serialize_results_marks_mismatched_dkim():
     serialized = _serialize_results([result])
     selector_row = serialized[0]["selector_rows"][0]
 
+    assert serialized[0]["scope"] == "required"
     assert selector_row["status"] == "WARN"
     assert selector_row["details"]["found"] == "wrong.target."
 

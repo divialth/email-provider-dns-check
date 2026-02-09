@@ -142,3 +142,107 @@ class CnameChecksMixin:
             {"expected": expected_targets},
             optional=True,
         )
+
+    def _evaluate_cname_match_rules(
+        self, rules: Dict[str, "CNAMEMatchRule"]
+    ) -> tuple[Dict[str, str], Dict[str, str], Dict[str, str]]:
+        """Evaluate deprecated/forbidden CNAME rules.
+
+        Args:
+            rules (Dict[str, CNAMEMatchRule]): Match rules keyed by record name.
+
+        Returns:
+            tuple[Dict[str, str], Dict[str, str], Dict[str, str]]: Matched, expected,
+                and found values keyed by record name.
+
+        Raises:
+            DnsLookupError: If DNS lookup fails.
+        """
+        matched: Dict[str, str] = {}
+        expected: Dict[str, str] = {}
+        found: Dict[str, str] = {}
+        for name, rule in rules.items():
+            lookup_name = self._normalize_record_name(name)
+            found_target = self.resolver.get_cname(lookup_name)
+            if found_target is not None:
+                found[lookup_name] = found_target
+            if rule.match == "any":
+                if found_target is not None:
+                    matched[lookup_name] = found_target
+                continue
+            if rule.target is None:
+                continue
+            expected_target = self._normalize_host(rule.target)
+            expected[lookup_name] = expected_target
+            if found_target and self._normalize_host(found_target) == expected_target:
+                matched[lookup_name] = found_target
+        return matched, expected, found
+
+    def _check_cname_negative(
+        self, rules: Dict[str, "CNAMEMatchRule"], *, scope: str
+    ) -> RecordCheck:
+        """Run deprecated/forbidden checks for CNAME records.
+
+        Args:
+            rules (Dict[str, CNAMEMatchRule]): Match rules keyed by record name.
+            scope (str): Result scope ("deprecated" or "forbidden").
+
+        Returns:
+            RecordCheck: Scope-specific CNAME match result.
+        """
+        if not rules:
+            return RecordCheck.pass_(
+                "CNAME",
+                f"No {scope} CNAME records configured",
+                {},
+                scope=scope,
+            )
+        try:
+            matched, expected, found = self._evaluate_cname_match_rules(rules)
+        except DnsLookupError as err:
+            return RecordCheck.unknown(
+                "CNAME",
+                "DNS lookup failed",
+                {"error": str(err)},
+                scope=scope,
+            )
+        if matched:
+            status_builder = RecordCheck.warn if scope == "deprecated" else RecordCheck.fail
+            return status_builder(
+                "CNAME",
+                f"{scope.capitalize()} CNAME records are present",
+                {"matched": matched, "expected": expected, "found": found},
+                scope=scope,
+            )
+        return RecordCheck.pass_(
+            "CNAME",
+            f"No {scope} CNAME records present",
+            {"expected": expected},
+            scope=scope,
+        )
+
+    def check_cname_deprecated(self) -> RecordCheck:
+        """Validate deprecated CNAME records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of deprecated CNAME validation.
+
+        Raises:
+            ValueError: If the provider does not define CNAME requirements.
+        """
+        if not self.provider.cname:
+            raise ValueError("CNAME configuration not available for provider")
+        return self._check_cname_negative(self.provider.cname.deprecated, scope="deprecated")
+
+    def check_cname_forbidden(self) -> RecordCheck:
+        """Validate forbidden CNAME records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of forbidden CNAME validation.
+
+        Raises:
+            ValueError: If the provider does not define CNAME requirements.
+        """
+        if not self.provider.cname:
+            raise ValueError("CNAME configuration not available for provider")
+        return self._check_cname_negative(self.provider.cname.forbidden, scope="forbidden")

@@ -171,3 +171,111 @@ class CaaChecksMixin:
             {"expected": expected},
             optional=True,
         )
+
+    def _evaluate_caa_match_rules(self, rules: Dict[str, "CAAMatchRule"]) -> tuple[
+        Dict[str, List[tuple[int, str, str]]],
+        Dict[str, List[tuple[int, str, str]]],
+        Dict[str, List[tuple[int, str, str]]],
+    ]:
+        """Evaluate deprecated/forbidden CAA rules.
+
+        Args:
+            rules (Dict[str, CAAMatchRule]): Match rules keyed by record name.
+
+        Returns:
+            tuple[Dict[str, List[tuple[int, str, str]]], ...]: Matched, expected, and found
+                entries keyed by record name.
+
+        Raises:
+            DnsLookupError: If DNS lookup fails.
+        """
+        matched: Dict[str, List[tuple[int, str, str]]] = {}
+        expected: Dict[str, List[tuple[int, str, str]]] = {}
+        found: Dict[str, List[tuple[int, str, str]]] = {}
+        for name, rule in rules.items():
+            lookup_name = self._normalize_record_name(name)
+            found_entries = [
+                self._normalize_caa_entry(flags, tag, value)
+                for flags, tag, value in self.resolver.get_caa(lookup_name)
+            ]
+            found[lookup_name] = sorted(found_entries)
+            expected_entries = [
+                self._normalize_caa_entry(entry.flags, entry.tag, entry.value)
+                for entry in rule.entries
+            ]
+            expected[lookup_name] = sorted(expected_entries)
+            if rule.match == "any":
+                if found_entries:
+                    matched[lookup_name] = sorted(found_entries)
+                continue
+            overlap = sorted(set(expected_entries) & set(found_entries))
+            if overlap:
+                matched[lookup_name] = overlap
+        return matched, expected, found
+
+    def _check_caa_negative(self, rules: Dict[str, "CAAMatchRule"], *, scope: str) -> RecordCheck:
+        """Run deprecated/forbidden checks for CAA records.
+
+        Args:
+            rules (Dict[str, CAAMatchRule]): Match rules keyed by record name.
+            scope (str): Result scope ("deprecated" or "forbidden").
+
+        Returns:
+            RecordCheck: Scope-specific CAA match result.
+        """
+        if not rules:
+            return RecordCheck.pass_(
+                "CAA",
+                f"No {scope} CAA records configured",
+                {},
+                scope=scope,
+            )
+        try:
+            matched, expected, found = self._evaluate_caa_match_rules(rules)
+        except DnsLookupError as err:
+            return RecordCheck.unknown(
+                "CAA",
+                "DNS lookup failed",
+                {"error": str(err)},
+                scope=scope,
+            )
+        if matched:
+            status_builder = RecordCheck.warn if scope == "deprecated" else RecordCheck.fail
+            return status_builder(
+                "CAA",
+                f"{scope.capitalize()} CAA records are present",
+                {"matched": matched, "expected": expected, "found": found},
+                scope=scope,
+            )
+        return RecordCheck.pass_(
+            "CAA",
+            f"No {scope} CAA records present",
+            {"expected": expected},
+            scope=scope,
+        )
+
+    def check_caa_deprecated(self) -> RecordCheck:
+        """Validate deprecated CAA records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of deprecated CAA validation.
+
+        Raises:
+            ValueError: If the provider does not define CAA requirements.
+        """
+        if not self.provider.caa:
+            raise ValueError("CAA configuration not available for provider")
+        return self._check_caa_negative(self.provider.caa.deprecated, scope="deprecated")
+
+    def check_caa_forbidden(self) -> RecordCheck:
+        """Validate forbidden CAA records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of forbidden CAA validation.
+
+        Raises:
+            ValueError: If the provider does not define CAA requirements.
+        """
+        if not self.provider.caa:
+            raise ValueError("CAA configuration not available for provider")
+        return self._check_caa_negative(self.provider.caa.forbidden, scope="forbidden")

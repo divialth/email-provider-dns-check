@@ -108,6 +108,7 @@ def build_json_payload(
                 "message": result.message,
                 "details": result.details,
                 "optional": result.optional,
+                "scope": result.scope,
             }
             for result in results
         ],

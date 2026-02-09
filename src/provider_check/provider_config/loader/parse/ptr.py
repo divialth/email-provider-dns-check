@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from ...models import PTRConfig
 from ...utils import _reject_unknown_keys, _require_list, _require_mapping
+from .match import _parse_values_match_rules
 from .schema import RECORD_SCHEMA
 
 
@@ -71,6 +72,19 @@ def _parse_ptr(provider_id: str, records: dict) -> PTRConfig | None:
     ptr_optional_raw = _require_mapping(
         provider_id, "ptr optional", ptr_section.get("optional", {})
     )
+    ptr_deprecated_raw = _require_mapping(
+        provider_id, "ptr deprecated", ptr_section.get("deprecated", {})
+    )
+    ptr_forbidden_raw = _require_mapping(
+        provider_id, "ptr forbidden", ptr_section.get("forbidden", {})
+    )
     ptr_required = _parse_ptr_records(provider_id, "ptr required", ptr_required_raw)
     ptr_optional = _parse_ptr_records(provider_id, "ptr optional", ptr_optional_raw)
-    return PTRConfig(required=ptr_required, optional=ptr_optional)
+    ptr_deprecated = _parse_values_match_rules(provider_id, "ptr deprecated", ptr_deprecated_raw)
+    ptr_forbidden = _parse_values_match_rules(provider_id, "ptr forbidden", ptr_forbidden_raw)
+    return PTRConfig(
+        required=ptr_required,
+        optional=ptr_optional,
+        deprecated=ptr_deprecated,
+        forbidden=ptr_forbidden,
+    )

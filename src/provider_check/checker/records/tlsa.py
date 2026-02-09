@@ -793,3 +793,129 @@ class TlsaChecksMixin:
             },
             optional=True,
         )
+
+    def _evaluate_tlsa_match_rules(self, rules: Dict[str, "TLSAMatchRule"]) -> tuple[
+        Dict[str, List[tuple[int, int, int, str]]],
+        Dict[str, List[tuple[int, int, int, str]]],
+        Dict[str, List[tuple[int, int, int, str]]],
+        Dict[str, Optional[bool]],
+    ]:
+        """Evaluate deprecated/forbidden TLSA rules.
+
+        Args:
+            rules (Dict[str, TLSAMatchRule]): Match rules keyed by record name.
+
+        Returns:
+            tuple[Dict[str, List[tuple[int, int, int, str]]], ...]: Matched, expected, found, and
+                DNSSEC authentication status keyed by record name.
+
+        Raises:
+            DnsLookupError: If DNS lookup fails.
+        """
+        matched: Dict[str, List[tuple[int, int, int, str]]] = {}
+        expected: Dict[str, List[tuple[int, int, int, str]]] = {}
+        found: Dict[str, List[tuple[int, int, int, str]]] = {}
+        dnssec_status: Dict[str, Optional[bool]] = {}
+        for name, rule in rules.items():
+            lookup_name = self._normalize_record_name(name)
+            if hasattr(self.resolver, "get_tlsa_with_status"):
+                found_entries_raw, authenticated = self.resolver.get_tlsa_with_status(lookup_name)
+            else:
+                found_entries_raw = self.resolver.get_tlsa(lookup_name)
+                authenticated = None
+            dnssec_status[lookup_name] = authenticated
+            found_entries = sorted(
+                self._normalize_tlsa_entry(usage, selector, matching_type, certificate_association)
+                for usage, selector, matching_type, certificate_association in found_entries_raw
+            )
+            expected_entries = sorted(
+                self._normalize_tlsa_entry(
+                    entry.usage,
+                    entry.selector,
+                    entry.matching_type,
+                    entry.certificate_association,
+                )
+                for entry in rule.entries
+            )
+            found[lookup_name] = found_entries
+            expected[lookup_name] = expected_entries
+            if rule.match == "any":
+                if found_entries:
+                    matched[lookup_name] = found_entries
+                continue
+            overlap = sorted(set(expected_entries) & set(found_entries))
+            if overlap:
+                matched[lookup_name] = overlap
+        return matched, expected, found, dnssec_status
+
+    def _check_tlsa_negative(self, rules: Dict[str, "TLSAMatchRule"], *, scope: str) -> RecordCheck:
+        """Run deprecated/forbidden checks for TLSA records.
+
+        Args:
+            rules (Dict[str, TLSAMatchRule]): Match rules keyed by record name.
+            scope (str): Result scope ("deprecated" or "forbidden").
+
+        Returns:
+            RecordCheck: Scope-specific TLSA match result.
+        """
+        if not rules:
+            return RecordCheck.pass_(
+                "TLSA",
+                f"No {scope} TLSA records configured",
+                {},
+                scope=scope,
+            )
+        try:
+            matched, expected, found, dnssec_status = self._evaluate_tlsa_match_rules(rules)
+        except DnsLookupError as err:
+            return RecordCheck.unknown(
+                "TLSA",
+                "DNS lookup failed",
+                {"error": str(err)},
+                scope=scope,
+            )
+        if matched:
+            status_builder = RecordCheck.warn if scope == "deprecated" else RecordCheck.fail
+            return status_builder(
+                "TLSA",
+                f"{scope.capitalize()} TLSA records are present",
+                {
+                    "matched": matched,
+                    "expected": expected,
+                    "found": found,
+                    "dnssec_status": dnssec_status,
+                },
+                scope=scope,
+            )
+        return RecordCheck.pass_(
+            "TLSA",
+            f"No {scope} TLSA records present",
+            {"expected": expected, "dnssec_status": dnssec_status},
+            scope=scope,
+        )
+
+    def check_tlsa_deprecated(self) -> RecordCheck:
+        """Validate deprecated TLSA records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of deprecated TLSA validation.
+
+        Raises:
+            ValueError: If the provider does not define TLSA requirements.
+        """
+        if not self.provider.tlsa:
+            raise ValueError("TLSA configuration not available for provider")
+        return self._check_tlsa_negative(self.provider.tlsa.deprecated, scope="deprecated")
+
+    def check_tlsa_forbidden(self) -> RecordCheck:
+        """Validate forbidden TLSA records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of forbidden TLSA validation.
+
+        Raises:
+            ValueError: If the provider does not define TLSA requirements.
+        """
+        if not self.provider.tlsa:
+            raise ValueError("TLSA configuration not available for provider")
+        return self._check_tlsa_negative(self.provider.tlsa.forbidden, scope="forbidden")

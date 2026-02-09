@@ -2,6 +2,7 @@ import pytest
 
 from provider_check.provider_config import (
     AddressConfig,
+    CAAMatchRule,
     DKIMConfig,
     DKIMRequired,
     DMARCConfig,
@@ -9,6 +10,8 @@ from provider_check.provider_config import (
     DMARCRequired,
     DMARCSettings,
     MXConfig,
+    MXNegativePolicy,
+    MXNegativeRules,
     MXRecord,
     PTRConfig,
     ProviderConfig,
@@ -18,13 +21,17 @@ from provider_check.provider_config import (
     SPFRequired,
     CAAConfig,
     CAARecord,
+    CNAMEMatchRule,
     CNAMEConfig,
+    SRVMatchRule,
     SRVConfig,
     SRVRecord,
+    TLSAMatchRule,
     TLSAConfig,
     TLSARecord,
     TXTConfig,
     TXTSettings,
+    ValuesMatchRule,
     resolve_provider_config,
 )
 from provider_check.provider_config.utils import _format_string
@@ -299,3 +306,125 @@ def test_resolve_provider_config_rejects_invalid_dkim_placeholder():
 def test_format_string_none_passthrough() -> None:
     """Return None when the template value is None."""
     assert _format_string(None, {"token": "value"}) is None
+
+
+def test_resolve_provider_config_formats_negative_match_rules() -> None:
+    """Format deprecated/forbidden exact rules with provider variables."""
+    provider = ProviderConfig(
+        provider_id="negative_rules",
+        name="Negative Rules",
+        version="1",
+        mx=MXConfig(
+            required=[],
+            optional=[],
+            deprecated=MXNegativeRules(
+                policy=MXNegativePolicy(match="exact"),
+                entries=[MXRecord(host="legacy.{tenant}.mx.example.test.", priority=5)],
+            ),
+            forbidden=MXNegativeRules(policy=MXNegativePolicy(match="any")),
+        ),
+        spf=None,
+        dkim=None,
+        a=AddressConfig(
+            required={},
+            deprecated={"legacy": ValuesMatchRule(match="exact", values=["192.0.2.{octet}"])},
+            forbidden={"blocked": ValuesMatchRule(match="any", values=[])},
+        ),
+        aaaa=AddressConfig(
+            required={},
+            deprecated={"legacy6": ValuesMatchRule(match="exact", values=["2001:db8::{octet}"])},
+            forbidden={"blocked6": ValuesMatchRule(match="any", values=[])},
+        ),
+        ptr=PTRConfig(
+            required={},
+            deprecated={
+                "10.2.0.192.in-addr.arpa.": ValuesMatchRule(
+                    match="exact",
+                    values=["mail.{tenant}.example.test."],
+                )
+            },
+            forbidden={"11.2.0.192.in-addr.arpa.": ValuesMatchRule(match="any", values=[])},
+        ),
+        cname=CNAMEConfig(
+            required={},
+            deprecated={"legacy": CNAMEMatchRule(match="exact", target="legacy.{tenant}.test.")},
+            forbidden={"blocked": CNAMEMatchRule(match="any", target=None)},
+        ),
+        caa=CAAConfig(
+            required={},
+            deprecated={
+                "@": CAAMatchRule(
+                    match="exact",
+                    entries=[CAARecord(flags=0, tag="issue", value="ca.{tenant}.example.test")],
+                )
+            },
+            forbidden={"@": CAAMatchRule(match="any", entries=[])},
+        ),
+        srv=SRVConfig(
+            required={},
+            deprecated={
+                "_sip._tls": SRVMatchRule(
+                    match="exact",
+                    entries=[
+                        SRVRecord(
+                            priority=1,
+                            weight=1,
+                            port=443,
+                            target="srv.{tenant}.example.test.",
+                        )
+                    ],
+                )
+            },
+            forbidden={"_sip._tcp": SRVMatchRule(match="any", entries=[])},
+        ),
+        tlsa=TLSAConfig(
+            required={},
+            deprecated={
+                "_25._tcp.mail": TLSAMatchRule(
+                    match="exact",
+                    entries=[
+                        TLSARecord(
+                            usage=3,
+                            selector=1,
+                            matching_type=1,
+                            certificate_association="abc{tenant}",
+                        )
+                    ],
+                )
+            },
+            forbidden={"_443._tcp.mail": TLSAMatchRule(match="any", entries=[])},
+        ),
+        txt=TXTConfig(
+            required={},
+            deprecated={"_legacy": ValuesMatchRule(match="exact", values=["legacy={tenant}"])},
+            forbidden={"_blocked": ValuesMatchRule(match="any", values=[])},
+            settings=TXTSettings(verification_required=False),
+        ),
+        dmarc=None,
+        variables={
+            "tenant": ProviderVariable(name="tenant", required=True),
+            "octet": ProviderVariable(name="octet", default="9"),
+        },
+    )
+
+    resolved = resolve_provider_config(provider, {"tenant": "acme"}, domain="example.test")
+
+    assert resolved.mx is not None
+    assert resolved.mx.deprecated.entries[0].host == "legacy.acme.mx.example.test."
+    assert resolved.mx.forbidden.policy.match == "any"
+    assert resolved.a is not None
+    assert resolved.a.deprecated["legacy"].values == ["192.0.2.9"]
+    assert resolved.aaaa is not None
+    assert resolved.aaaa.deprecated["legacy6"].values == ["2001:db8::9"]
+    assert resolved.ptr is not None
+    assert resolved.ptr.deprecated["10.2.0.192.in-addr.arpa."].values == ["mail.acme.example.test."]
+    assert resolved.cname is not None
+    assert resolved.cname.deprecated["legacy"].target == "legacy.acme.test."
+    assert resolved.caa is not None
+    assert resolved.caa.deprecated["@"].entries[0].value == "ca.acme.example.test"
+    assert resolved.srv is not None
+    assert resolved.srv.deprecated["_sip._tls"].entries[0].target == "srv.acme.example.test."
+    assert resolved.tlsa is not None
+    assert resolved.tlsa.deprecated["_25._tcp.mail"].entries[0].certificate_association == "abcacme"
+    assert resolved.txt is not None
+    assert resolved.txt.deprecated["_legacy"].values == ["legacy=acme"]

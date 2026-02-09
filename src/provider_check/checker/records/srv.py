@@ -218,3 +218,121 @@ class SrvChecksMixin:
             {"expected": expected},
             optional=True,
         )
+
+    def _evaluate_srv_match_rules(self, rules: Dict[str, "SRVMatchRule"]) -> tuple[
+        Dict[str, List[tuple[int, int, int, str]]],
+        Dict[str, List[tuple[int, int, int, str]]],
+        Dict[str, List[tuple[int, int, int, str]]],
+    ]:
+        """Evaluate deprecated/forbidden SRV rules.
+
+        Args:
+            rules (Dict[str, SRVMatchRule]): Match rules keyed by record name.
+
+        Returns:
+            tuple[Dict[str, List[tuple[int, int, int, str]]], ...]: Matched, expected, and found
+                entries keyed by record name.
+
+        Raises:
+            DnsLookupError: If DNS lookup fails.
+        """
+        matched: Dict[str, List[tuple[int, int, int, str]]] = {}
+        expected: Dict[str, List[tuple[int, int, int, str]]] = {}
+        found: Dict[str, List[tuple[int, int, int, str]]] = {}
+        for name, rule in rules.items():
+            lookup_name = self._normalize_record_name(name)
+            found_entries = sorted(
+                (
+                    int(priority),
+                    int(weight),
+                    int(port),
+                    self._normalize_host(target),
+                )
+                for priority, weight, port, target in self.resolver.get_srv(lookup_name)
+            )
+            found[lookup_name] = found_entries
+            expected_entries = sorted(
+                (
+                    int(entry.priority),
+                    int(entry.weight),
+                    int(entry.port),
+                    self._normalize_host(entry.target),
+                )
+                for entry in rule.entries
+            )
+            expected[lookup_name] = expected_entries
+            if rule.match == "any":
+                if found_entries:
+                    matched[lookup_name] = found_entries
+                continue
+            overlap = sorted(set(expected_entries) & set(found_entries))
+            if overlap:
+                matched[lookup_name] = overlap
+        return matched, expected, found
+
+    def _check_srv_negative(self, rules: Dict[str, "SRVMatchRule"], *, scope: str) -> RecordCheck:
+        """Run deprecated/forbidden checks for SRV records.
+
+        Args:
+            rules (Dict[str, SRVMatchRule]): Match rules keyed by record name.
+            scope (str): Result scope ("deprecated" or "forbidden").
+
+        Returns:
+            RecordCheck: Scope-specific SRV match result.
+        """
+        if not rules:
+            return RecordCheck.pass_(
+                "SRV",
+                f"No {scope} SRV records configured",
+                {},
+                scope=scope,
+            )
+        try:
+            matched, expected, found = self._evaluate_srv_match_rules(rules)
+        except DnsLookupError as err:
+            return RecordCheck.unknown(
+                "SRV",
+                "DNS lookup failed",
+                {"error": str(err)},
+                scope=scope,
+            )
+        if matched:
+            status_builder = RecordCheck.warn if scope == "deprecated" else RecordCheck.fail
+            return status_builder(
+                "SRV",
+                f"{scope.capitalize()} SRV records are present",
+                {"matched": matched, "expected": expected, "found": found},
+                scope=scope,
+            )
+        return RecordCheck.pass_(
+            "SRV",
+            f"No {scope} SRV records present",
+            {"expected": expected},
+            scope=scope,
+        )
+
+    def check_srv_deprecated(self) -> RecordCheck:
+        """Validate deprecated SRV records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of deprecated SRV validation.
+
+        Raises:
+            ValueError: If the provider does not define SRV requirements.
+        """
+        if not self.provider.srv:
+            raise ValueError("SRV configuration not available for provider")
+        return self._check_srv_negative(self.provider.srv.deprecated, scope="deprecated")
+
+    def check_srv_forbidden(self) -> RecordCheck:
+        """Validate forbidden SRV records for the configured provider.
+
+        Returns:
+            RecordCheck: Result of forbidden SRV validation.
+
+        Raises:
+            ValueError: If the provider does not define SRV requirements.
+        """
+        if not self.provider.srv:
+            raise ValueError("SRV configuration not available for provider")
+        return self._check_srv_negative(self.provider.srv.forbidden, scope="forbidden")

@@ -15,3 +15,4 @@ def test_to_json_includes_provider_and_domain():
     assert payload["report_time_utc"] == "2026-01-31 19:37"
     assert payload["results"][0]["record_type"] == "MX"
     assert payload["results"][0]["optional"] is False
+    assert payload["results"][0]["scope"] == "required"

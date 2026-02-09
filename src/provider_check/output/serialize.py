@@ -76,6 +76,7 @@ def _serialize_results(results: List[RecordCheck]) -> List[dict]:
             "message": result.message,
             "details": details,
             "optional": result.optional,
+            "scope": result.scope,
             "selectors": selectors,
             "selector_rows": selector_rows,
         }

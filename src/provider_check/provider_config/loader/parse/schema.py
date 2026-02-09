@@ -4,7 +4,9 @@ from __future__ import annotations
 
 RECORD_SCHEMA: dict[str, dict[str, frozenset[str]]] = {
     "mx": {
-        "section": frozenset({"required", "optional"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden"}),
+        "negative": frozenset({"policy", "entries"}),
+        "policy": frozenset({"match"}),
     },
     "spf": {
         "section": frozenset({"required", "optional"}),
@@ -16,28 +18,28 @@ RECORD_SCHEMA: dict[str, dict[str, frozenset[str]]] = {
         "required": frozenset({"selectors", "record_type", "target_template", "txt_values"}),
     },
     "a": {
-        "section": frozenset({"required", "optional"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden"}),
     },
     "aaaa": {
-        "section": frozenset({"required", "optional"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden"}),
     },
     "ptr": {
-        "section": frozenset({"required", "optional"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden"}),
     },
     "cname": {
-        "section": frozenset({"required", "optional"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden"}),
     },
     "caa": {
-        "section": frozenset({"required", "optional"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden"}),
     },
     "srv": {
-        "section": frozenset({"required", "optional"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden"}),
     },
     "tlsa": {
-        "section": frozenset({"required", "optional"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden"}),
     },
     "txt": {
-        "section": frozenset({"required", "optional", "settings"}),
+        "section": frozenset({"required", "optional", "deprecated", "forbidden", "settings"}),
         "settings": frozenset({"verification_required"}),
     },
     "dmarc": {

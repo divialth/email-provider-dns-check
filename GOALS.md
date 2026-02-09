@@ -9,7 +9,8 @@
   Enforce TLSA usage, selector, and matching-type semantics during certificate comparison.
   This scope is sufficient for the project because the product goal is provider DNS configuration compliance and misconfiguration detection.
 - Support multiple providers via YAML config files and validate only record types present in the selected provider config.
-- Support `required` and `optional` sections per record type under `records`.
+- Support `required` and `optional` sections per record type under `records`, plus
+  `deprecated`/`forbidden` where supported by the record schema.
 - Require provider config versioning and allow configs to define any subset of record types.
 - Provide provider detection and provider autoselect flows with cached DNS lookups.
 - Allow provider config extension via `extends` and variable substitution.

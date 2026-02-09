@@ -7,8 +7,10 @@ from typing import Dict, Iterable, List, Optional
 
 from .models import (
     AddressConfig,
+    CAAMatchRule,
     CAAConfig,
     CAARecord,
+    CNAMEMatchRule,
     CNAMEConfig,
     DKIMConfig,
     DKIMRequired,
@@ -17,18 +19,23 @@ from .models import (
     DMARCRequired,
     DMARCSettings,
     MXConfig,
+    MXNegativePolicy,
+    MXNegativeRules,
     MXRecord,
     PTRConfig,
     ProviderConfig,
     SPFConfig,
     SPFOptional,
     SPFRequired,
+    SRVMatchRule,
     SRVConfig,
     SRVRecord,
+    TLSAMatchRule,
     TLSAConfig,
     TLSARecord,
     TXTConfig,
     TXTSettings,
+    ValuesMatchRule,
 )
 from .utils import _format_string
 
@@ -87,6 +94,27 @@ def _format_mapping(values: Dict[str, str], variables: Dict[str, str]) -> Dict[s
     }
 
 
+def _format_cname_match_rules(
+    values: Dict[str, CNAMEMatchRule], variables: Dict[str, str]
+) -> Dict[str, CNAMEMatchRule]:
+    """Format CNAME match rules using provider variables.
+
+    Args:
+        values (Dict[str, CNAMEMatchRule]): CNAME match rules to format.
+        variables (Dict[str, str]): Provider variables.
+
+    Returns:
+        Dict[str, CNAMEMatchRule]: Formatted CNAME match rules.
+    """
+    return {
+        _format_string(name, variables): CNAMEMatchRule(
+            match=str(rule.match),
+            target=_format_string(rule.target, variables),
+        )
+        for name, rule in values.items()
+    }
+
+
 def _format_list_mapping(
     values: Dict[str, Iterable[str]],
     variables: Dict[str, str],
@@ -103,6 +131,27 @@ def _format_list_mapping(
     return {
         _format_string(name, variables): [_format_string(value, variables) for value in entries]
         for name, entries in values.items()
+    }
+
+
+def _format_values_match_rules(
+    values: Dict[str, ValuesMatchRule], variables: Dict[str, str]
+) -> Dict[str, ValuesMatchRule]:
+    """Format list-valued match rules using provider variables.
+
+    Args:
+        values (Dict[str, ValuesMatchRule]): Match rules to format.
+        variables (Dict[str, str]): Provider variables.
+
+    Returns:
+        Dict[str, ValuesMatchRule]: Formatted match rules.
+    """
+    return {
+        _format_string(name, variables): ValuesMatchRule(
+            match=str(rule.match),
+            values=[_format_string(value, variables) for value in rule.values],
+        )
+        for name, rule in values.items()
     }
 
 
@@ -133,6 +182,33 @@ def _format_caa_mapping(
     return formatted
 
 
+def _format_caa_match_rules(
+    values: Dict[str, CAAMatchRule], variables: Dict[str, str]
+) -> Dict[str, CAAMatchRule]:
+    """Format CAA match rules using provider variables.
+
+    Args:
+        values (Dict[str, CAAMatchRule]): CAA match rules to format.
+        variables (Dict[str, str]): Provider variables.
+
+    Returns:
+        Dict[str, CAAMatchRule]: Formatted CAA match rules.
+    """
+    formatted: Dict[str, CAAMatchRule] = {}
+    for name, rule in values.items():
+        formatted_name = _format_string(name, variables)
+        formatted_entries = [
+            CAARecord(
+                flags=int(entry.flags),
+                tag=str(_format_string(entry.tag, variables)),
+                value=str(_format_string(entry.value, variables)),
+            )
+            for entry in rule.entries
+        ]
+        formatted[formatted_name] = CAAMatchRule(match=str(rule.match), entries=formatted_entries)
+    return formatted
+
+
 def _format_srv_mapping(
     values: Dict[str, List[SRVRecord]],
     variables: Dict[str, str],
@@ -160,6 +236,35 @@ def _format_srv_mapping(
     }
 
 
+def _format_srv_match_rules(
+    values: Dict[str, SRVMatchRule], variables: Dict[str, str]
+) -> Dict[str, SRVMatchRule]:
+    """Format SRV match rules using provider variables.
+
+    Args:
+        values (Dict[str, SRVMatchRule]): SRV match rules to format.
+        variables (Dict[str, str]): Provider variables.
+
+    Returns:
+        Dict[str, SRVMatchRule]: Formatted SRV match rules.
+    """
+    return {
+        _format_string(name, variables): SRVMatchRule(
+            match=str(rule.match),
+            entries=[
+                SRVRecord(
+                    priority=int(entry.priority),
+                    weight=int(entry.weight),
+                    port=int(entry.port),
+                    target=_format_string(entry.target, variables),
+                )
+                for entry in rule.entries
+            ],
+        )
+        for name, rule in values.items()
+    }
+
+
 def _format_mx_records(values: List[MXRecord], variables: Dict[str, str]) -> List[MXRecord]:
     """Format MX record entries using provider variables.
 
@@ -177,6 +282,22 @@ def _format_mx_records(values: List[MXRecord], variables: Dict[str, str]) -> Lis
         )
         for entry in values
     ]
+
+
+def _format_mx_negative_rules(rules: MXNegativeRules, variables: Dict[str, str]) -> MXNegativeRules:
+    """Format MX negative rules using provider variables.
+
+    Args:
+        rules (MXNegativeRules): MX negative rules to format.
+        variables (Dict[str, str]): Provider variables.
+
+    Returns:
+        MXNegativeRules: Formatted MX negative rules.
+    """
+    return MXNegativeRules(
+        policy=MXNegativePolicy(match=str(rules.policy.match)),
+        entries=_format_mx_records(rules.entries, variables),
+    )
 
 
 def _format_tlsa_mapping(
@@ -203,6 +324,37 @@ def _format_tlsa_mapping(
             for entry in entries
         ]
         for name, entries in values.items()
+    }
+
+
+def _format_tlsa_match_rules(
+    values: Dict[str, TLSAMatchRule], variables: Dict[str, str]
+) -> Dict[str, TLSAMatchRule]:
+    """Format TLSA match rules using provider variables.
+
+    Args:
+        values (Dict[str, TLSAMatchRule]): TLSA match rules to format.
+        variables (Dict[str, str]): Provider variables.
+
+    Returns:
+        Dict[str, TLSAMatchRule]: Formatted TLSA match rules.
+    """
+    return {
+        _format_string(name, variables): TLSAMatchRule(
+            match=str(rule.match),
+            entries=[
+                TLSARecord(
+                    usage=int(entry.usage),
+                    selector=int(entry.selector),
+                    matching_type=int(entry.matching_type),
+                    certificate_association=_format_string(
+                        entry.certificate_association, variables
+                    ),
+                )
+                for entry in rule.entries
+            ],
+        )
+        for name, rule in values.items()
     }
 
 
@@ -267,6 +419,8 @@ def resolve_provider_config(
         mx = MXConfig(
             required=_format_mx_records(provider.mx.required, resolved),
             optional=_format_mx_records(provider.mx.optional, resolved),
+            deprecated=_format_mx_negative_rules(provider.mx.deprecated, resolved),
+            forbidden=_format_mx_negative_rules(provider.mx.forbidden, resolved),
         )
 
     spf = None
@@ -307,6 +461,8 @@ def resolve_provider_config(
         a = AddressConfig(
             required=_format_list_mapping(provider.a.required, resolved),
             optional=_format_list_mapping(provider.a.optional, resolved),
+            deprecated=_format_values_match_rules(provider.a.deprecated, resolved),
+            forbidden=_format_values_match_rules(provider.a.forbidden, resolved),
         )
 
     aaaa = None
@@ -314,6 +470,8 @@ def resolve_provider_config(
         aaaa = AddressConfig(
             required=_format_list_mapping(provider.aaaa.required, resolved),
             optional=_format_list_mapping(provider.aaaa.optional, resolved),
+            deprecated=_format_values_match_rules(provider.aaaa.deprecated, resolved),
+            forbidden=_format_values_match_rules(provider.aaaa.forbidden, resolved),
         )
 
     ptr = None
@@ -321,6 +479,8 @@ def resolve_provider_config(
         ptr = PTRConfig(
             required=_format_list_mapping(provider.ptr.required, resolved),
             optional=_format_list_mapping(provider.ptr.optional, resolved),
+            deprecated=_format_values_match_rules(provider.ptr.deprecated, resolved),
+            forbidden=_format_values_match_rules(provider.ptr.forbidden, resolved),
         )
 
     cname = None
@@ -328,33 +488,60 @@ def resolve_provider_config(
         cname = CNAMEConfig(
             required=_format_mapping(provider.cname.required, resolved),
             optional=_format_mapping(provider.cname.optional, resolved),
+            deprecated=_format_cname_match_rules(provider.cname.deprecated, resolved),
+            forbidden=_format_cname_match_rules(provider.cname.forbidden, resolved),
         )
 
     caa = None
     if provider.caa:
         caa_required = _format_caa_mapping(provider.caa.required, resolved)
         caa_optional = _format_caa_mapping(provider.caa.optional, resolved)
-        caa = CAAConfig(required=caa_required, optional=caa_optional)
+        caa_deprecated = _format_caa_match_rules(provider.caa.deprecated, resolved)
+        caa_forbidden = _format_caa_match_rules(provider.caa.forbidden, resolved)
+        caa = CAAConfig(
+            required=caa_required,
+            optional=caa_optional,
+            deprecated=caa_deprecated,
+            forbidden=caa_forbidden,
+        )
 
     srv = None
     if provider.srv:
         srv_required = _format_srv_mapping(provider.srv.required, resolved)
         srv_optional = _format_srv_mapping(provider.srv.optional, resolved)
-        srv = SRVConfig(required=srv_required, optional=srv_optional)
+        srv_deprecated = _format_srv_match_rules(provider.srv.deprecated, resolved)
+        srv_forbidden = _format_srv_match_rules(provider.srv.forbidden, resolved)
+        srv = SRVConfig(
+            required=srv_required,
+            optional=srv_optional,
+            deprecated=srv_deprecated,
+            forbidden=srv_forbidden,
+        )
 
     tlsa = None
     if provider.tlsa:
         tlsa_required = _format_tlsa_mapping(provider.tlsa.required, resolved)
         tlsa_optional = _format_tlsa_mapping(provider.tlsa.optional, resolved)
-        tlsa = TLSAConfig(required=tlsa_required, optional=tlsa_optional)
+        tlsa_deprecated = _format_tlsa_match_rules(provider.tlsa.deprecated, resolved)
+        tlsa_forbidden = _format_tlsa_match_rules(provider.tlsa.forbidden, resolved)
+        tlsa = TLSAConfig(
+            required=tlsa_required,
+            optional=tlsa_optional,
+            deprecated=tlsa_deprecated,
+            forbidden=tlsa_forbidden,
+        )
 
     txt = None
     if provider.txt:
         required_txt = _format_list_mapping(provider.txt.required, resolved)
         optional_txt = _format_list_mapping(provider.txt.optional, resolved)
+        deprecated_txt = _format_values_match_rules(provider.txt.deprecated, resolved)
+        forbidden_txt = _format_values_match_rules(provider.txt.forbidden, resolved)
         txt = TXTConfig(
             required=required_txt,
             optional=optional_txt,
+            deprecated=deprecated_txt,
+            forbidden=forbidden_txt,
             settings=TXTSettings(verification_required=provider.txt.settings.verification_required),
         )
 

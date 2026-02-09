@@ -209,7 +209,7 @@ Provider definitions are YAML files. Packaged providers live in
 `src/provider_check/resources/providers/*.yaml`. Each file must include a version and can define any
 subset of MX/SPF/DKIM/CNAME/CAA/SRV/TLSA/TXT/DMARC/A/AAAA/PTR. For a fully documented example, see
 `src/provider_check/resources/providers/example_do_not_use.yaml`.
-Record type definitions use `required`/`optional` (and `settings` where applicable) as shown below.
+Record type definitions use `required`/`optional`/`deprecated`/`forbidden` (and `settings` where applicable) as shown below.
 
 ### Locations
 Add or override providers by dropping files into one of these locations (first match wins if
@@ -270,13 +270,38 @@ records:
       target_template: "{selector}._domainkey.{tenant}.onmicrosoft.com."
 ```
 
+### Negative Match Rules (`deprecated` / `forbidden`)
+For supported record types, provider configs can define negative checks:
+- `deprecated`: matching records produce `WARN`
+- `forbidden`: matching records produce `FAIL`
+
+Each rule supports:
+- `match: exact` (default): match one of the configured values/entries.
+- `match: any`: match when any record exists at that name.
+
+Shorthand exact forms are supported:
+- CNAME: `name: "target.example."` (exact target match)
+- A/AAAA/PTR/TXT: `name: ["value1", "value2"]`
+- CAA/SRV/TLSA: `name: [entry, ...]`
+
+MX uses a section-level object instead of name mappings:
+- `policy.match: exact|any` (default `exact`)
+- `entries: [{host, priority?}, ...]` for exact mode only
+- when `entries` is present, it must include at least one item
+- `entries` must be omitted when `policy.match: any`
+- empty blocks (`deprecated: {}` / `forbidden: {}`) are allowed and act as no-op
+
 ### MX fields
 MX configs validate hostnames and (optionally) priorities:
 
-| Field      | Description                                                                |
-| ---------- | -------------------------------------------------------------------------- |
-| `required` | List of required `{host, priority}` entries (priority optional).           |
-| `optional` | List of optional `{host, priority}` entries (missing entries WARN).        |
+| Field                     | Description                                                             |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `required`                | List of required `{host, priority}` entries (priority optional).        |
+| `optional`                | List of optional `{host, priority}` entries (missing entries WARN).     |
+| `deprecated.policy.match` | MX deprecated matching mode (`exact` or `any`; default `exact`).        |
+| `deprecated.entries`      | Deprecated MX entries used only when `deprecated.policy.match: exact`.  |
+| `forbidden.policy.match`  | MX forbidden matching mode (`exact` or `any`; default `exact`).         |
+| `forbidden.entries`       | Forbidden MX entries used only when `forbidden.policy.match: exact`.    |
 
 ### SPF fields
 SPF configs can include additional mechanisms and modifiers beyond includes and IP ranges:
@@ -321,6 +346,8 @@ A configs validate IPv4 address records:
 | ---------- | ---------------------------------------------------------------------------- |
 | `required` | Mapping of `name: [values...]` for required A values.                        |
 | `optional` | Mapping of `name: [values...]` for optional A values (missing entries WARN). |
+| `deprecated` | Mapping of `name: rule` for deprecated A values (`match: exact|any`; matches WARN). |
+| `forbidden` | Mapping of `name: rule` for forbidden A values (`match: exact|any`; matches FAIL). |
 
 ### AAAA fields
 AAAA configs validate IPv6 address records:
@@ -329,6 +356,8 @@ AAAA configs validate IPv6 address records:
 | ---------- | ------------------------------------------------------------------------------ |
 | `required` | Mapping of `name: [values...]` for required AAAA values.                       |
 | `optional` | Mapping of `name: [values...]` for optional AAAA values (missing entries WARN). |
+| `deprecated` | Mapping of `name: rule` for deprecated AAAA values (`match: exact|any`; matches WARN). |
+| `forbidden` | Mapping of `name: rule` for forbidden AAAA values (`match: exact|any`; matches FAIL). |
 
 ### PTR fields
 PTR configs validate reverse DNS mappings:
@@ -337,6 +366,8 @@ PTR configs validate reverse DNS mappings:
 | ---------- | ---------------------------------------------------------------------------- |
 | `required` | Mapping of reverse `name: [values...]` (name must end with `in-addr.arpa` or `ip6.arpa`) for required PTR hostnames. |
 | `optional` | Mapping of reverse `name: [values...]` for optional PTR hostnames (missing entries WARN). |
+| `deprecated` | Mapping of reverse `name: rule` for deprecated PTR hostnames (`match: exact|any`; matches WARN). |
+| `forbidden` | Mapping of reverse `name: rule` for forbidden PTR hostnames (`match: exact|any`; matches FAIL). |
 
 ### CNAME fields
 CNAME configs validate arbitrary CNAME records:
@@ -345,6 +376,8 @@ CNAME configs validate arbitrary CNAME records:
 | ---------- | ----------------------------------------------------------------------------- |
 | `required` | Mapping of `name: target` for required CNAME values.                          |
 | `optional` | Mapping of `name: target` for optional CNAME values (missing entries WARN; mismatches FAIL). |
+| `deprecated` | Mapping of `name: rule` for deprecated CNAME values (`match: exact|any`; matches WARN). |
+| `forbidden` | Mapping of `name: rule` for forbidden CNAME values (`match: exact|any`; matches FAIL). |
 
 ### CAA fields
 CAA configs validate CA authorization records:
@@ -353,6 +386,8 @@ CAA configs validate CA authorization records:
 | ---------- | --------------------------------------------------------------------------------------------------- |
 | `required` | Mapping of `name: [entries...]` (each entry requires `flags`, `tag`, `value`).                      |
 | `optional` | Mapping of `name: [entries...]` for optional CAA values (missing entries WARN).                    |
+| `deprecated` | Mapping of `name: rule` for deprecated CAA entries (`match: exact|any`; matches WARN).             |
+| `forbidden` | Mapping of `name: rule` for forbidden CAA entries (`match: exact|any`; matches FAIL).              |
 
 ### SRV fields
 SRV configs validate required SRV records:
@@ -361,6 +396,8 @@ SRV configs validate required SRV records:
 | ---------- | ---------------------------------------------------------------------------------------------- |
 | `required` | Mapping of `name: [entries...]` (each entry requires `priority`, `weight`, `port`, `target`).  |
 | `optional` | Mapping of `name: [entries...]` for optional SRV values (missing entries WARN; mismatches FAIL). |
+| `deprecated` | Mapping of `name: rule` for deprecated SRV entries (`match: exact|any`; matches WARN).        |
+| `forbidden` | Mapping of `name: rule` for forbidden SRV entries (`match: exact|any`; matches FAIL).         |
 
 In non-strict mode, SRV entries with the correct target/port but different priority or weight report as WARN.
 
@@ -371,6 +408,8 @@ TLSA configs validate DANE TLSA records:
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `required`                                          | Mapping of `name: [entries...]` for required TLSA values.                                                  |
 | `optional`                                          | Mapping of `name: [entries...]` for optional TLSA values (missing entries WARN; mismatches FAIL).         |
+| `deprecated`                                        | Mapping of `name: rule` for deprecated TLSA entries (`match: exact|any`; matches WARN).                   |
+| `forbidden`                                         | Mapping of `name: rule` for forbidden TLSA entries (`match: exact|any`; matches FAIL).                    |
 | `required.<name>[]` / `optional.<name>[]`           | TLSA entry object with `usage`, `selector`, `matching_type`, `certificate_association`.                   |
 | `required.<name>[].usage`                           | TLSA certificate usage (`0`=PKIX-TA, `1`=PKIX-EE, `2`=DANE-TA, `3`=DANE-EE).                              |
 | `required.<name>[].selector`                        | TLSA selector (`0`=full certificate, `1`=SubjectPublicKeyInfo).                                            |
@@ -399,6 +438,8 @@ TXT configs let providers require arbitrary validation records:
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `required`                        | Mapping of `name: [values...]` for required TXT values.                                                          |
 | `optional`                        | Mapping of `name: [values...]` for optional TXT values (missing entries WARN).                                  |
+| `deprecated`                      | Mapping of `name: rule` for deprecated TXT values (`match: exact|any`; matches WARN).                           |
+| `forbidden`                       | Mapping of `name: rule` for forbidden TXT values (`match: exact|any`; matches FAIL).                            |
 | `settings.verification_required`  | Whether a user-supplied TXT verification record is required (warns if missing unless `--skip-txt-verification`). |
 
 ## Provider detection
@@ -407,19 +448,21 @@ TXT configs let providers require arbitrary validation records:
 - Detection infers provider variables from DNS templates when possible (for example, MX/DKIM/CNAME/SRV targets).
 - Optional records (from `optional` sections) add a small tie-breaker bonus when present and appear as `*_OPT`
   entries in detection record summaries.
+- Deprecated/forbidden checks appear as `*_DEP` / `*_FORB` in detection record summaries and contribute to
+  the weighted score.
 - If no match is found or the top candidates are tied, detection returns `UNKNOWN` (exit code 3).
 - JSON output includes a detection payload with candidates and scores; autoselect JSON also embeds the normal report.
 
 Detection score details:
-- Required records only contribute to the core score and ratio.
+- Required/deprecated/forbidden records contribute to the core score and ratio.
 - Each record type has a weight (`MX=5`, `SPF=4`, `DKIM=4`, `CNAME=3`, `SRV=2`, `CAA=1`, `TLSA=1`, `TXT=1`, `DMARC=1`, `A=1`, `AAAA=1`, `PTR=1`).
 - Status scores are `PASS=2`, `WARN=1`, `FAIL=0`, `UNKNOWN=0`.
 - Optional records do not increase `max_score`; they add a small `optional_bonus` when present.
 
 Formula (per provider):
 ```
-score = sum(weight(record_type) * status_score(status)) for required results
-max_score = sum(weight(record_type) * status_score(PASS)) for required results
+score = sum(weight(record_type) * status_score(status)) for required/deprecated/forbidden results
+max_score = sum(weight(record_type) * status_score(PASS)) for required/deprecated/forbidden results
 score_ratio = score / max_score (or 0 if max_score is 0)
 optional_bonus = sum(weight(record_type)) for optional PASS results
 ```
@@ -445,7 +488,7 @@ Template overrides are treated as trusted local configuration. Do not use untrus
 
 Template context includes:
 - `domain`, `report_time`, `provider_name`, `provider_version`, `provider_label`, `summary`
-- `results` (list of dicts with `record_type`, `status`, `message`, `details`, `selectors`, `rows`)
+- `results` (list of dicts with `record_type`, `status`, `message`, `details`, `scope`, `optional`, `selectors`, `rows`)
 - `lines` (legacy list of rendered output lines, populated by text output)
 - `table_headers`, `format_row` (human output only)
 - `text_headers`, `format_text_row` (text output only)

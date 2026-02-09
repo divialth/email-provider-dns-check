@@ -6,6 +6,7 @@ from typing import Dict
 
 from ...models import CNAMEConfig
 from ...utils import _reject_unknown_keys, _require_mapping
+from .match import _parse_cname_match_rules
 from .schema import RECORD_SCHEMA
 
 
@@ -33,6 +34,12 @@ def _parse_cname(provider_id: str, records: dict) -> CNAMEConfig | None:
     cname_optional_raw = _require_mapping(
         provider_id, "cname optional", cname_section.get("optional", {})
     )
+    cname_deprecated_raw = _require_mapping(
+        provider_id, "cname deprecated", cname_section.get("deprecated", {})
+    )
+    cname_forbidden_raw = _require_mapping(
+        provider_id, "cname forbidden", cname_section.get("forbidden", {})
+    )
     cname_required: Dict[str, str] = {}
     for name, target in cname_required_raw.items():
         if target is None or isinstance(target, (dict, list)):
@@ -47,4 +54,13 @@ def _parse_cname(provider_id: str, records: dict) -> CNAMEConfig | None:
                 f"Provider config {provider_id} cname optional '{name}' must be a string"
             )
         cname_optional[str(name)] = str(target)
-    return CNAMEConfig(required=cname_required, optional=cname_optional)
+    cname_deprecated = _parse_cname_match_rules(
+        provider_id, "cname deprecated", cname_deprecated_raw
+    )
+    cname_forbidden = _parse_cname_match_rules(provider_id, "cname forbidden", cname_forbidden_raw)
+    return CNAMEConfig(
+        required=cname_required,
+        optional=cname_optional,
+        deprecated=cname_deprecated,
+        forbidden=cname_forbidden,
+    )

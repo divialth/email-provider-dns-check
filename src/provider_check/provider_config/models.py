@@ -20,16 +20,44 @@ class MXRecord:
 
 
 @dataclass(frozen=True)
+class MXNegativePolicy:
+    """Define MX negative-check matching policy.
+
+    Attributes:
+        match (str): Matching mode ("exact" or "any").
+    """
+
+    match: str = "exact"
+
+
+@dataclass(frozen=True)
+class MXNegativeRules:
+    """Define MX deprecated/forbidden matching rules.
+
+    Attributes:
+        policy (MXNegativePolicy): Matching policy for MX negative checks.
+        entries (List[MXRecord]): MX entries used when ``policy.match`` is ``exact``.
+    """
+
+    policy: MXNegativePolicy = field(default_factory=MXNegativePolicy)
+    entries: List[MXRecord] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class MXConfig:
     """Define MX record requirements for a provider.
 
     Attributes:
         required (List[MXRecord]): Required MX host/priority entries.
         optional (List[MXRecord]): Optional MX host/priority entries.
+        deprecated (MXNegativeRules): Deprecated MX record rules.
+        forbidden (MXNegativeRules): Forbidden MX record rules.
     """
 
     required: List[MXRecord]
     optional: List[MXRecord] = field(default_factory=list)
+    deprecated: MXNegativeRules = field(default_factory=MXNegativeRules)
+    forbidden: MXNegativeRules = field(default_factory=MXNegativeRules)
 
 
 @dataclass(frozen=True)
@@ -110,10 +138,40 @@ class CNAMEConfig:
     Attributes:
         required (Dict[str, str]): Mapping of record name to expected target.
         optional (Dict[str, str]): Optional record mapping.
+        deprecated (Dict[str, CNAMEMatchRule]): Deprecated CNAME record rules.
+        forbidden (Dict[str, CNAMEMatchRule]): Forbidden CNAME record rules.
     """
 
     required: Dict[str, str]
     optional: Dict[str, str] = field(default_factory=dict)
+    deprecated: Dict[str, "CNAMEMatchRule"] = field(default_factory=dict)
+    forbidden: Dict[str, "CNAMEMatchRule"] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class CNAMEMatchRule:
+    """Define a CNAME negative match rule.
+
+    Attributes:
+        match (str): Matching mode ("exact" or "any").
+        target (Optional[str]): Target hostname to match in exact mode.
+    """
+
+    match: str
+    target: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class ValuesMatchRule:
+    """Define a generic list-valued negative match rule.
+
+    Attributes:
+        match (str): Matching mode ("exact" or "any").
+        values (List[str]): Values to match in exact mode.
+    """
+
+    match: str
+    values: List[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -123,10 +181,14 @@ class AddressConfig:
     Attributes:
         required (Dict[str, List[str]]): Mapping of record name to expected IP values.
         optional (Dict[str, List[str]]): Optional record mapping.
+        deprecated (Dict[str, ValuesMatchRule]): Deprecated address record rules.
+        forbidden (Dict[str, ValuesMatchRule]): Forbidden address record rules.
     """
 
     required: Dict[str, List[str]]
     optional: Dict[str, List[str]] = field(default_factory=dict)
+    deprecated: Dict[str, ValuesMatchRule] = field(default_factory=dict)
+    forbidden: Dict[str, ValuesMatchRule] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -136,10 +198,14 @@ class PTRConfig:
     Attributes:
         required (Dict[str, List[str]]): Mapping of reverse DNS names to expected hostnames.
         optional (Dict[str, List[str]]): Optional reverse DNS mapping.
+        deprecated (Dict[str, ValuesMatchRule]): Deprecated PTR record rules.
+        forbidden (Dict[str, ValuesMatchRule]): Forbidden PTR record rules.
     """
 
     required: Dict[str, List[str]]
     optional: Dict[str, List[str]] = field(default_factory=dict)
+    deprecated: Dict[str, ValuesMatchRule] = field(default_factory=dict)
+    forbidden: Dict[str, ValuesMatchRule] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -158,16 +224,33 @@ class CAARecord:
 
 
 @dataclass(frozen=True)
+class CAAMatchRule:
+    """Define a CAA negative match rule.
+
+    Attributes:
+        match (str): Matching mode ("exact" or "any").
+        entries (List[CAARecord]): CAA entries to match in exact mode.
+    """
+
+    match: str
+    entries: List[CAARecord] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class CAAConfig:
     """Define CAA record requirements for a provider.
 
     Attributes:
         required (Dict[str, List[CAARecord]]): CAA records keyed by name.
         optional (Dict[str, List[CAARecord]]): Optional CAA records keyed by name.
+        deprecated (Dict[str, CAAMatchRule]): Deprecated CAA record rules.
+        forbidden (Dict[str, CAAMatchRule]): Forbidden CAA record rules.
     """
 
     required: Dict[str, List[CAARecord]]
     optional: Dict[str, List[CAARecord]] = field(default_factory=dict)
+    deprecated: Dict[str, CAAMatchRule] = field(default_factory=dict)
+    forbidden: Dict[str, CAAMatchRule] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -188,16 +271,33 @@ class SRVRecord:
 
 
 @dataclass(frozen=True)
+class SRVMatchRule:
+    """Define an SRV negative match rule.
+
+    Attributes:
+        match (str): Matching mode ("exact" or "any").
+        entries (List[SRVRecord]): SRV entries to match in exact mode.
+    """
+
+    match: str
+    entries: List[SRVRecord] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class SRVConfig:
     """Define SRV record requirements for a provider.
 
     Attributes:
         required (Dict[str, List[SRVRecord]]): SRV records keyed by name.
         optional (Dict[str, List[SRVRecord]]): Optional SRV records keyed by name.
+        deprecated (Dict[str, SRVMatchRule]): Deprecated SRV record rules.
+        forbidden (Dict[str, SRVMatchRule]): Forbidden SRV record rules.
     """
 
     required: Dict[str, List[SRVRecord]]
     optional: Dict[str, List[SRVRecord]] = field(default_factory=dict)
+    deprecated: Dict[str, SRVMatchRule] = field(default_factory=dict)
+    forbidden: Dict[str, SRVMatchRule] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -218,16 +318,33 @@ class TLSARecord:
 
 
 @dataclass(frozen=True)
+class TLSAMatchRule:
+    """Define a TLSA negative match rule.
+
+    Attributes:
+        match (str): Matching mode ("exact" or "any").
+        entries (List[TLSARecord]): TLSA entries to match in exact mode.
+    """
+
+    match: str
+    entries: List[TLSARecord] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class TLSAConfig:
     """Define TLSA record requirements for a provider.
 
     Attributes:
         required (Dict[str, List[TLSARecord]]): TLSA records keyed by name.
         optional (Dict[str, List[TLSARecord]]): Optional TLSA records keyed by name.
+        deprecated (Dict[str, TLSAMatchRule]): Deprecated TLSA record rules.
+        forbidden (Dict[str, TLSAMatchRule]): Forbidden TLSA record rules.
     """
 
     required: Dict[str, List[TLSARecord]]
     optional: Dict[str, List[TLSARecord]] = field(default_factory=dict)
+    deprecated: Dict[str, TLSAMatchRule] = field(default_factory=dict)
+    forbidden: Dict[str, TLSAMatchRule] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -248,11 +365,15 @@ class TXTConfig:
     Attributes:
         required (Dict[str, List[str]]): Required TXT values keyed by record name.
         optional (Dict[str, List[str]]): Optional TXT values keyed by record name.
+        deprecated (Dict[str, ValuesMatchRule]): Deprecated TXT record rules.
+        forbidden (Dict[str, ValuesMatchRule]): Forbidden TXT record rules.
         settings (TXTSettings): TXT settings.
     """
 
     required: Dict[str, List[str]]
     optional: Dict[str, List[str]] = field(default_factory=dict)
+    deprecated: Dict[str, ValuesMatchRule] = field(default_factory=dict)
+    forbidden: Dict[str, ValuesMatchRule] = field(default_factory=dict)
     settings: TXTSettings = field(default_factory=TXTSettings)
 
 

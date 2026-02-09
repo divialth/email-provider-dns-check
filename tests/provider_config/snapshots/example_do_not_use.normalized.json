@@ -5,6 +5,16 @@
   "name": "Example Provider (DO NOT USE)",
   "records": {
     "a": {
+      "deprecated": {
+        "legacy": [
+          "192.0.2.200"
+        ]
+      },
+      "forbidden": {
+        "blocked": {
+          "match": "any"
+        }
+      },
       "optional": {
         "autodiscover": [
           "192.0.2.12"
@@ -18,6 +28,16 @@
       }
     },
     "aaaa": {
+      "deprecated": {
+        "legacy-v6": [
+          "2001:db8::200"
+        ]
+      },
+      "forbidden": {
+        "blocked-v6": {
+          "match": "any"
+        }
+      },
       "optional": {
         "autodiscover": [
           "2001:db8::12"
@@ -30,6 +50,20 @@
       }
     },
     "caa": {
+      "deprecated": {
+        "@": [
+          {
+            "flags": 0,
+            "tag": "issue",
+            "value": "legacy-ca.example-provider.test"
+          }
+        ]
+      },
+      "forbidden": {
+        "admin.{domain}": {
+          "match": "any"
+        }
+      },
       "optional": {
         "mail.{domain}": [
           {
@@ -55,6 +89,17 @@
       }
     },
     "cname": {
+      "deprecated": {
+        "lyncdiscover": {
+          "match": "exact",
+          "target": "legacy-webdir.example-provider.test."
+        }
+      },
+      "forbidden": {
+        "legacy-login": {
+          "match": "any"
+        }
+      },
       "optional": {
         "autoconfig": "autoconfig.example-provider.test."
       },
@@ -103,6 +148,22 @@
       }
     },
     "mx": {
+      "deprecated": {
+        "entries": [
+          {
+            "host": "legacy-mx.{tenant}.example-provider.test.",
+            "priority": 5
+          }
+        ],
+        "policy": {
+          "match": "exact"
+        }
+      },
+      "forbidden": {
+        "policy": {
+          "match": "any"
+        }
+      },
       "optional": [
         {
           "host": "mx4.{tenant}.example-provider.test.",
@@ -125,6 +186,16 @@
       ]
     },
     "ptr": {
+      "deprecated": {
+        "13.2.0.192.in-addr.arpa.": [
+          "legacy.{tenant}.example-provider.test."
+        ]
+      },
+      "forbidden": {
+        "14.2.0.192.in-addr.arpa.": {
+          "match": "any"
+        }
+      },
       "optional": {
         "12.2.0.192.in-addr.arpa.": [
           "autodiscover.{tenant}.example-provider.test."
@@ -168,6 +239,24 @@
       }
     },
     "srv": {
+      "deprecated": {
+        "_sip._tcp": {
+          "entries": [
+            {
+              "port": 5060,
+              "priority": 10,
+              "target": "sip-legacy.{region}.example-provider.test.",
+              "weight": 5
+            }
+          ],
+          "match": "exact"
+        }
+      },
+      "forbidden": {
+        "_sip._ws": {
+          "match": "any"
+        }
+      },
       "optional": {
         "_autodiscover._tcp": [
           {
@@ -198,6 +287,21 @@
       }
     },
     "tlsa": {
+      "deprecated": {
+        "_587._tcp.mail": [
+          {
+            "certificate_association": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "matching_type": 1,
+            "selector": 1,
+            "usage": 3
+          }
+        ]
+      },
+      "forbidden": {
+        "_2525._tcp.mail": {
+          "match": "any"
+        }
+      },
       "optional": {
         "_443._tcp.autodiscover": [
           {
@@ -220,6 +324,16 @@
       }
     },
     "txt": {
+      "deprecated": {
+        "_provider-old-token": [
+          "legacy=true"
+        ]
+      },
+      "forbidden": {
+        "_provider-blocked": {
+          "match": "any"
+        }
+      },
       "optional": {
         "_provider-optional": [
           "optional-flag=true"
