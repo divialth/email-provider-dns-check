@@ -9,7 +9,7 @@ import provider_check
 
 def test_source_checkout_prefers_source_version() -> None:
     assert provider_check._is_source_checkout(Path(provider_check.__file__))
-    assert provider_check.__version__ == "2.1.0"
+    assert provider_check.__version__ == "2.2.0"
 
 
 def test_resolve_version_uses_metadata_outside_source_checkout(monkeypatch) -> None:
@@ -27,4 +27,4 @@ def test_resolve_version_falls_back_when_metadata_missing(monkeypatch) -> None:
 
     monkeypatch.setattr(provider_check, "version", _raise)
 
-    assert provider_check._resolve_version() == "2.1.0"
+    assert provider_check._resolve_version() == "2.2.0"
