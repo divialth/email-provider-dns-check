@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import api, runner
 
-_SOURCE_VERSION = "2.0.0"
+_SOURCE_VERSION = "2.1.0"
 
 
 def _is_source_checkout(module_path: Path) -> bool:
