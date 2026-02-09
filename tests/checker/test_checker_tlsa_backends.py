@@ -227,7 +227,7 @@ def test_fetch_peer_cert_chain_dispatches_between_backends(monkeypatch) -> None:
 
 
 def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatch) -> None:
-    """Build pyOpenSSL contexts with client negotiation and TLSv1.2 floor."""
+    """Build pyOpenSSL contexts with client negotiation and TLSv1.2+ controls."""
     checker = _make_checker()
     captured: dict[str, object] = {}
 
@@ -244,6 +244,9 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
         @staticmethod
         def set_default_verify_paths() -> None:
             return None
+
+        def set_options(self, options: object) -> None:
+            captured["options"] = options
 
         def set_min_proto_version(self, version: object) -> None:
             captured["minimum_proto"] = version
@@ -284,6 +287,10 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
         TLS_CLIENT_METHOD = object()
         TLS1_2_VERSION = object()
         VERIFY_NONE = object()
+        OP_NO_SSLv2 = 0x01
+        OP_NO_SSLv3 = 0x02
+        OP_NO_TLSv1 = 0x04
+        OP_NO_TLSv1_1 = 0x08
         Context = FakeContext
         Connection = FakeConnection
 
@@ -314,6 +321,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
 
     assert result == [b"cert-der"]
     assert captured["method"] is FakeOpenSSLSSL.TLS_CLIENT_METHOD
+    assert captured["options"] == 0x0F
     assert captured["minimum_proto"] is FakeOpenSSLSSL.TLS1_2_VERSION
 
 

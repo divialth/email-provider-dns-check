@@ -235,10 +235,6 @@ class TlsaChecksMixin:
         Raises:
             RuntimeError: If the runtime cannot enforce TLSv1.2 minimum.
         """
-        if hasattr(context, "set_min_proto_version") and hasattr(OpenSSL_SSL, "TLS1_2_VERSION"):
-            context.set_min_proto_version(OpenSSL_SSL.TLS1_2_VERSION)
-            return
-
         required_options = ("OP_NO_SSLv2", "OP_NO_SSLv3", "OP_NO_TLSv1", "OP_NO_TLSv1_1")
         if not all(hasattr(OpenSSL_SSL, option_name) for option_name in required_options):
             raise RuntimeError("pyOpenSSL does not expose TLSv1.2 minimum protocol controls")
@@ -249,6 +245,9 @@ class TlsaChecksMixin:
             | OpenSSL_SSL.OP_NO_TLSv1
             | OpenSSL_SSL.OP_NO_TLSv1_1
         )
+
+        if hasattr(context, "set_min_proto_version") and hasattr(OpenSSL_SSL, "TLS1_2_VERSION"):
+            context.set_min_proto_version(OpenSSL_SSL.TLS1_2_VERSION)
 
     def _fetch_peer_cert_chain_with_openssl(  # pragma: no cover - external OpenSSL integration
         self,
