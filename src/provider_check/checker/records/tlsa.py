@@ -188,6 +188,8 @@ class TlsaChecksMixin:
             RuntimeError: If no secure TLS client method is available.
         """
         if hasattr(openssl_ssl_module, "TLSv1_2_METHOD"):
+            # codeql[py/insecure-protocol]
+            # TLSv1_2_METHOD pins a secure protocol floor for this context.
             return openssl_ssl_module.Context(openssl_ssl_module.TLSv1_2_METHOD)
         if not hasattr(openssl_ssl_module, "TLS_CLIENT_METHOD"):
             raise RuntimeError("pyOpenSSL does not expose secure TLS client method support")
@@ -196,6 +198,8 @@ class TlsaChecksMixin:
         if not all(hasattr(openssl_ssl_module, option_name) for option_name in required_options):
             raise RuntimeError("pyOpenSSL does not expose TLSv1.2 minimum protocol controls")
 
+        # codeql[py/insecure-protocol]
+        # TLS client context is hardened immediately below to TLSv1.2+.
         context = openssl_ssl_module.Context(openssl_ssl_module.TLS_CLIENT_METHOD)
         if hasattr(context, "set_min_proto_version") and hasattr(
             openssl_ssl_module, "TLS1_2_VERSION"
