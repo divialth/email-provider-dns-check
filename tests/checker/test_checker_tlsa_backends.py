@@ -236,6 +236,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
 
         def __init__(self, method: object) -> None:
             captured["method"] = method
+            captured["calls"] = []
 
         @staticmethod
         def set_verify(_mode: object, _callback) -> None:
@@ -246,9 +247,11 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
             return None
 
         def set_options(self, options: object) -> None:
+            captured["calls"].append("set_options")
             captured["options"] = options
 
         def set_min_proto_version(self, version: object) -> None:
+            captured["calls"].append("set_min_proto_version")
             captured["minimum_proto"] = version
 
     class FakeConnection:
@@ -323,6 +326,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
     assert captured["method"] is FakeOpenSSLSSL.TLS_CLIENT_METHOD
     assert captured["options"] == 0x0F
     assert captured["minimum_proto"] is FakeOpenSSLSSL.TLS1_2_VERSION
+    assert captured["calls"] == ["set_min_proto_version", "set_options"]
 
 
 def test_fetch_peer_cert_chain_with_pyopenssl_falls_back_to_protocol_options(monkeypatch) -> None:
