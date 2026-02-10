@@ -285,12 +285,12 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
         """Fake OpenSSL.SSL module constants and factories."""
 
         TLS_CLIENT_METHOD = object()
-        TLS1_2_VERSION = object()
         VERIFY_NONE = object()
         OP_NO_SSLv2 = 0x01
         OP_NO_SSLv3 = 0x02
         OP_NO_TLSv1 = 0x04
         OP_NO_TLSv1_1 = 0x08
+        TLS1_2_VERSION = object()
         Context = FakeContext
         Connection = FakeConnection
 
@@ -420,7 +420,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_falls_back_to_protocol_options(mon
 
 
 def test_fetch_peer_cert_chain_with_pyopenssl_uses_tlsv1_2_method_fallback(monkeypatch) -> None:
-    """Use TLSv1.2 method when generic TLS client method is unavailable."""
+    """Prefer TLSv1.2 method when it is available."""
     checker = _make_checker()
     captured: dict[str, object] = {}
 
@@ -437,12 +437,6 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tlsv1_2_method_fallback(monke
         @staticmethod
         def set_default_verify_paths() -> None:
             return None
-
-        def set_options(self, options: object) -> None:
-            captured["options"] = options
-
-        def set_min_proto_version(self, version: object) -> None:
-            captured["minimum_proto"] = version
 
     class FakeConnection:
         """Fake pyOpenSSL connection."""
@@ -475,15 +469,11 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tlsv1_2_method_fallback(monke
             return None
 
     class FakeOpenSSLSSL:
-        """Fake OpenSSL.SSL module without TLS_CLIENT_METHOD."""
+        """Fake OpenSSL.SSL module exposing both client methods."""
 
+        TLS_CLIENT_METHOD = object()
         TLSv1_2_METHOD = object()
-        TLS1_2_VERSION = object()
         VERIFY_NONE = object()
-        OP_NO_SSLv2 = 0x01
-        OP_NO_SSLv3 = 0x02
-        OP_NO_TLSv1 = 0x04
-        OP_NO_TLSv1_1 = 0x08
         Context = FakeContext
         Connection = FakeConnection
 
@@ -514,8 +504,8 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tlsv1_2_method_fallback(monke
 
     assert result == [b"cert-der"]
     assert captured["method"] is FakeOpenSSLSSL.TLSv1_2_METHOD
-    assert captured["options"] == 0x0F
-    assert captured["minimum_proto"] is FakeOpenSSLSSL.TLS1_2_VERSION
+    assert "options" not in captured
+    assert "minimum_proto" not in captured
 
 
 def test_fetch_peer_cert_chain_with_pyopenssl_requires_secure_client_method(monkeypatch) -> None:
@@ -542,9 +532,6 @@ def test_fetch_peer_cert_chain_with_pyopenssl_requires_tlsv1_2_controls(monkeypa
 
     class FakeContext:
         """Fake pyOpenSSL context without minimum-version controls."""
-
-        def __init__(self, _method: object) -> None:
-            return None
 
     class FakeOpenSSLSSL:
         """Fake OpenSSL.SSL module without option flags and min-version API."""
