@@ -226,13 +226,105 @@ def test_fetch_peer_cert_chain_dispatches_between_backends(monkeypatch) -> None:
     assert checker._fetch_peer_cert_chain("mail.example.com", 25) == [b"openssl"]
 
 
-def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatch) -> None:
-    """Build pyOpenSSL contexts with client negotiation and TLSv1.2+ controls."""
+def test_fetch_peer_cert_chain_with_pyopenssl_prefers_tlsv1_2_context(monkeypatch) -> None:
+    """Prefer TLSv1.2 method when pyOpenSSL exposes it."""
     checker = _make_checker()
     captured: dict[str, object] = {}
 
     class FakeContext:
         """Fake pyOpenSSL context."""
+
+        def __init__(self, method: object) -> None:
+            captured["method"] = method
+
+        @staticmethod
+        def set_verify(_mode: object, _callback) -> None:
+            return None
+
+        @staticmethod
+        def set_default_verify_paths() -> None:
+            return None
+
+    class FakeConnection:
+        """Fake pyOpenSSL connection."""
+
+        def __init__(self, _context: FakeContext, _tcp_socket: object) -> None:
+            return None
+
+        @staticmethod
+        def set_tlsext_host_name(_hostname: bytes) -> None:
+            return None
+
+        @staticmethod
+        def set_connect_state() -> None:
+            return None
+
+        @staticmethod
+        def do_handshake() -> None:
+            return None
+
+        @staticmethod
+        def get_peer_cert_chain() -> list[object]:
+            return ["cert"]
+
+        @staticmethod
+        def shutdown() -> None:
+            return None
+
+        @staticmethod
+        def close() -> None:
+            return None
+
+    class FakeOpenSSLSSL:
+        """Fake OpenSSL.SSL module constants and factories."""
+
+        TLSv1_2_METHOD = object()
+        TLS_CLIENT_METHOD = object()
+        VERIFY_NONE = object()
+        OP_NO_SSLv2 = 0x01
+        OP_NO_SSLv3 = 0x02
+        OP_NO_TLSv1 = 0x04
+        OP_NO_TLSv1_1 = 0x08
+        TLS1_2_VERSION = object()
+        Context = FakeContext
+        Connection = FakeConnection
+
+    class FakeOpenSSLCrypto:
+        """Fake OpenSSL.crypto module constants and dump helper."""
+
+        FILETYPE_ASN1 = object()
+
+        @staticmethod
+        def dump_certificate(_filetype: object, _certificate: object) -> bytes:
+            return b"cert-der"
+
+    class FakeSocket:
+        """Fake TCP socket."""
+
+        @staticmethod
+        def close() -> None:
+            return None
+
+    monkeypatch.setattr(checker, "_has_pyopenssl", lambda: True)
+    monkeypatch.setattr(tlsa_module, "OpenSSL_SSL", FakeOpenSSLSSL)
+    monkeypatch.setattr(tlsa_module, "OpenSSL_crypto", FakeOpenSSLCrypto)
+    monkeypatch.setattr(
+        tlsa_module.socket, "create_connection", lambda _endpoint, timeout=10: FakeSocket()
+    )
+
+    result = checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
+
+    assert result == [b"cert-der"]
+    assert captured["method"] is FakeOpenSSLSSL.TLSv1_2_METHOD
+
+
+def test_fetch_peer_cert_chain_with_pyopenssl_falls_back_to_protocol_options(monkeypatch) -> None:
+    """Exercise TLS_CLIENT fallback hardening path when TLSv1.2 check is bypassed."""
+    checker = _make_checker()
+    captured: dict[str, object] = {}
+
+    class FakeContext:
+        """Fake pyOpenSSL context with hardening hooks."""
 
         def __init__(self, method: object) -> None:
             captured["method"] = method
@@ -285,15 +377,16 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
             return None
 
     class FakeOpenSSLSSL:
-        """Fake OpenSSL.SSL module constants and factories."""
+        """Fake OpenSSL.SSL module with protocol-option fallback constants."""
 
+        TLSv1_2_METHOD = object()
         TLS_CLIENT_METHOD = object()
+        TLS1_2_VERSION = object()
         VERIFY_NONE = object()
         OP_NO_SSLv2 = 0x01
         OP_NO_SSLv3 = 0x02
         OP_NO_TLSv1 = 0x04
         OP_NO_TLSv1_1 = 0x08
-        TLS1_2_VERSION = object()
         Context = FakeContext
         Connection = FakeConnection
 
@@ -319,108 +412,24 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
     monkeypatch.setattr(
         tlsa_module.socket, "create_connection", lambda _endpoint, timeout=10: FakeSocket()
     )
+    original_hasattr = hasattr
+    forced: dict[str, bool] = {"used": False}
+
+    def fake_hasattr(obj: object, name: str) -> bool:
+        if obj is FakeOpenSSLSSL and name == "TLSv1_2_METHOD" and not forced["used"]:
+            forced["used"] = True
+            return False
+        return original_hasattr(obj, name)
+
+    monkeypatch.setattr("builtins.hasattr", fake_hasattr)
 
     result = checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
 
     assert result == [b"cert-der"]
-    assert captured["method"] is FakeOpenSSLSSL.TLS_CLIENT_METHOD
+    assert captured["method"] is FakeOpenSSLSSL.TLSv1_2_METHOD
     assert captured["options"] == 0x0F
     assert captured["minimum_proto"] is FakeOpenSSLSSL.TLS1_2_VERSION
     assert captured["calls"] == ["set_min_proto_version", "set_options"]
-
-
-def test_fetch_peer_cert_chain_with_pyopenssl_falls_back_to_protocol_options(monkeypatch) -> None:
-    """Disable legacy protocols when min-version API is unavailable."""
-    checker = _make_checker()
-    captured: dict[str, object] = {}
-
-    class FakeContext:
-        """Fake pyOpenSSL context without set_min_proto_version API."""
-
-        def __init__(self, method: object) -> None:
-            captured["method"] = method
-
-        @staticmethod
-        def set_verify(_mode: object, _callback) -> None:
-            return None
-
-        @staticmethod
-        def set_default_verify_paths() -> None:
-            return None
-
-        def set_options(self, options: object) -> None:
-            captured["options"] = options
-
-    class FakeConnection:
-        """Fake pyOpenSSL connection."""
-
-        def __init__(self, _context: FakeContext, _tcp_socket: object) -> None:
-            return None
-
-        @staticmethod
-        def set_tlsext_host_name(_hostname: bytes) -> None:
-            return None
-
-        @staticmethod
-        def set_connect_state() -> None:
-            return None
-
-        @staticmethod
-        def do_handshake() -> None:
-            return None
-
-        @staticmethod
-        def get_peer_cert_chain() -> list[object]:
-            return ["cert"]
-
-        @staticmethod
-        def shutdown() -> None:
-            return None
-
-        @staticmethod
-        def close() -> None:
-            return None
-
-    class FakeOpenSSLSSL:
-        """Fake OpenSSL.SSL module with protocol-option fallback constants."""
-
-        TLS_CLIENT_METHOD = object()
-        VERIFY_NONE = object()
-        OP_NO_SSLv2 = 0x01
-        OP_NO_SSLv3 = 0x02
-        OP_NO_TLSv1 = 0x04
-        OP_NO_TLSv1_1 = 0x08
-        Context = FakeContext
-        Connection = FakeConnection
-
-    class FakeOpenSSLCrypto:
-        """Fake OpenSSL.crypto module constants and dump helper."""
-
-        FILETYPE_ASN1 = object()
-
-        @staticmethod
-        def dump_certificate(_filetype: object, _certificate: object) -> bytes:
-            return b"cert-der"
-
-    class FakeSocket:
-        """Fake TCP socket."""
-
-        @staticmethod
-        def close() -> None:
-            return None
-
-    monkeypatch.setattr(checker, "_has_pyopenssl", lambda: True)
-    monkeypatch.setattr(tlsa_module, "OpenSSL_SSL", FakeOpenSSLSSL)
-    monkeypatch.setattr(tlsa_module, "OpenSSL_crypto", FakeOpenSSLCrypto)
-    monkeypatch.setattr(
-        tlsa_module.socket, "create_connection", lambda _endpoint, timeout=10: FakeSocket()
-    )
-
-    result = checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
-
-    assert result == [b"cert-der"]
-    assert captured["method"] is FakeOpenSSLSSL.TLS_CLIENT_METHOD
-    assert captured["options"] == 0x0F
 
 
 def test_fetch_peer_cert_chain_with_pyopenssl_uses_tlsv1_2_method_fallback(monkeypatch) -> None:
