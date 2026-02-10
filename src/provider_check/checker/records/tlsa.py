@@ -172,6 +172,27 @@ class TlsaChecksMixin:
         """
         return cryptography_x509 is not None and Encoding is not None and PublicFormat is not None
 
+    @staticmethod
+    def _create_secure_pyopenssl_context(
+        openssl_ssl_module: "OpenSSL_SSL",
+    ) -> "OpenSSL_SSL.Context":
+        """Create a pyOpenSSL context using secure TLS client methods.
+
+        Args:
+            openssl_ssl_module (OpenSSL_SSL): pyOpenSSL SSL module object.
+
+        Returns:
+            OpenSSL_SSL.Context: TLS client context with a secure method.
+
+        Raises:
+            RuntimeError: If no secure TLS client method is available.
+        """
+        if hasattr(openssl_ssl_module, "TLS_CLIENT_METHOD"):
+            return openssl_ssl_module.Context(openssl_ssl_module.TLS_CLIENT_METHOD)
+        if hasattr(openssl_ssl_module, "TLSv1_2_METHOD"):
+            return openssl_ssl_module.Context(openssl_ssl_module.TLSv1_2_METHOD)
+        raise RuntimeError("pyOpenSSL does not expose secure TLS client method support")
+
     def _fetch_peer_cert_chain_with_pyopenssl(  # pragma: no cover - external pyOpenSSL integration
         self,
         host: str,
@@ -192,14 +213,10 @@ class TlsaChecksMixin:
         if not self._has_pyopenssl():
             raise RuntimeError("pyOpenSSL is not installed")
 
-        if not hasattr(OpenSSL_SSL, "SSLv23_METHOD"):
-            raise RuntimeError("pyOpenSSL does not expose TLS negotiation method support")
-
+        context = self._create_secure_pyopenssl_context(OpenSSL_SSL)
         required_options = ("OP_NO_SSLv2", "OP_NO_SSLv3", "OP_NO_TLSv1", "OP_NO_TLSv1_1")
         if not all(hasattr(OpenSSL_SSL, option_name) for option_name in required_options):
             raise RuntimeError("pyOpenSSL does not expose TLSv1.2 minimum protocol controls")
-
-        context = OpenSSL_SSL.Context(OpenSSL_SSL.SSLv23_METHOD)
         context.set_options(
             OpenSSL_SSL.OP_NO_SSLv2
             | OpenSSL_SSL.OP_NO_SSLv3

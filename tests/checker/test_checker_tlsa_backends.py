@@ -284,7 +284,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
     class FakeOpenSSLSSL:
         """Fake OpenSSL.SSL module constants and factories."""
 
-        SSLv23_METHOD = object()
+        TLS_CLIENT_METHOD = object()
         TLS1_2_VERSION = object()
         VERIFY_NONE = object()
         OP_NO_SSLv2 = 0x01
@@ -320,7 +320,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_uses_tls_client_context(monkeypatc
     result = checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
 
     assert result == [b"cert-der"]
-    assert captured["method"] is FakeOpenSSLSSL.SSLv23_METHOD
+    assert captured["method"] is FakeOpenSSLSSL.TLS_CLIENT_METHOD
     assert captured["options"] == 0x0F
     assert captured["minimum_proto"] is FakeOpenSSLSSL.TLS1_2_VERSION
 
@@ -380,7 +380,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_falls_back_to_protocol_options(mon
     class FakeOpenSSLSSL:
         """Fake OpenSSL.SSL module with protocol-option fallback constants."""
 
-        SSLv23_METHOD = object()
+        TLS_CLIENT_METHOD = object()
         VERIFY_NONE = object()
         OP_NO_SSLv2 = 0x01
         OP_NO_SSLv3 = 0x02
@@ -415,16 +415,115 @@ def test_fetch_peer_cert_chain_with_pyopenssl_falls_back_to_protocol_options(mon
     result = checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
 
     assert result == [b"cert-der"]
-    assert captured["method"] is FakeOpenSSLSSL.SSLv23_METHOD
+    assert captured["method"] is FakeOpenSSLSSL.TLS_CLIENT_METHOD
     assert captured["options"] == 0x0F
 
 
-def test_fetch_peer_cert_chain_with_pyopenssl_requires_tls_negotiation_method(monkeypatch) -> None:
-    """Raise a clear error when pyOpenSSL lacks TLS negotiation method support."""
+def test_fetch_peer_cert_chain_with_pyopenssl_uses_tlsv1_2_method_fallback(monkeypatch) -> None:
+    """Use TLSv1.2 method when generic TLS client method is unavailable."""
+    checker = _make_checker()
+    captured: dict[str, object] = {}
+
+    class FakeContext:
+        """Fake pyOpenSSL context."""
+
+        def __init__(self, method: object) -> None:
+            captured["method"] = method
+
+        @staticmethod
+        def set_verify(_mode: object, _callback) -> None:
+            return None
+
+        @staticmethod
+        def set_default_verify_paths() -> None:
+            return None
+
+        def set_options(self, options: object) -> None:
+            captured["options"] = options
+
+        def set_min_proto_version(self, version: object) -> None:
+            captured["minimum_proto"] = version
+
+    class FakeConnection:
+        """Fake pyOpenSSL connection."""
+
+        def __init__(self, _context: FakeContext, _tcp_socket: object) -> None:
+            return None
+
+        @staticmethod
+        def set_tlsext_host_name(_hostname: bytes) -> None:
+            return None
+
+        @staticmethod
+        def set_connect_state() -> None:
+            return None
+
+        @staticmethod
+        def do_handshake() -> None:
+            return None
+
+        @staticmethod
+        def get_peer_cert_chain() -> list[object]:
+            return ["cert"]
+
+        @staticmethod
+        def shutdown() -> None:
+            return None
+
+        @staticmethod
+        def close() -> None:
+            return None
+
+    class FakeOpenSSLSSL:
+        """Fake OpenSSL.SSL module without TLS_CLIENT_METHOD."""
+
+        TLSv1_2_METHOD = object()
+        TLS1_2_VERSION = object()
+        VERIFY_NONE = object()
+        OP_NO_SSLv2 = 0x01
+        OP_NO_SSLv3 = 0x02
+        OP_NO_TLSv1 = 0x04
+        OP_NO_TLSv1_1 = 0x08
+        Context = FakeContext
+        Connection = FakeConnection
+
+    class FakeOpenSSLCrypto:
+        """Fake OpenSSL.crypto module constants and dump helper."""
+
+        FILETYPE_ASN1 = object()
+
+        @staticmethod
+        def dump_certificate(_filetype: object, _certificate: object) -> bytes:
+            return b"cert-der"
+
+    class FakeSocket:
+        """Fake TCP socket."""
+
+        @staticmethod
+        def close() -> None:
+            return None
+
+    monkeypatch.setattr(checker, "_has_pyopenssl", lambda: True)
+    monkeypatch.setattr(tlsa_module, "OpenSSL_SSL", FakeOpenSSLSSL)
+    monkeypatch.setattr(tlsa_module, "OpenSSL_crypto", FakeOpenSSLCrypto)
+    monkeypatch.setattr(
+        tlsa_module.socket, "create_connection", lambda _endpoint, timeout=10: FakeSocket()
+    )
+
+    result = checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
+
+    assert result == [b"cert-der"]
+    assert captured["method"] is FakeOpenSSLSSL.TLSv1_2_METHOD
+    assert captured["options"] == 0x0F
+    assert captured["minimum_proto"] is FakeOpenSSLSSL.TLS1_2_VERSION
+
+
+def test_fetch_peer_cert_chain_with_pyopenssl_requires_secure_client_method(monkeypatch) -> None:
+    """Raise a clear error when pyOpenSSL lacks secure TLS client methods."""
     checker = _make_checker()
 
     class FakeOpenSSLSSL:
-        """Fake OpenSSL.SSL module without TLS client method constant."""
+        """Fake OpenSSL.SSL module without secure TLS client method constants."""
 
         VERIFY_NONE = object()
 
@@ -432,7 +531,7 @@ def test_fetch_peer_cert_chain_with_pyopenssl_requires_tls_negotiation_method(mo
     monkeypatch.setattr(tlsa_module, "OpenSSL_SSL", FakeOpenSSLSSL)
 
     with pytest.raises(
-        RuntimeError, match="pyOpenSSL does not expose TLS negotiation method support"
+        RuntimeError, match="pyOpenSSL does not expose secure TLS client method support"
     ):
         checker._fetch_peer_cert_chain_with_pyopenssl("mail.example.com", 25)
 
@@ -444,10 +543,13 @@ def test_fetch_peer_cert_chain_with_pyopenssl_requires_tlsv1_2_controls(monkeypa
     class FakeContext:
         """Fake pyOpenSSL context without minimum-version controls."""
 
+        def __init__(self, _method: object) -> None:
+            return None
+
     class FakeOpenSSLSSL:
         """Fake OpenSSL.SSL module without option flags and min-version API."""
 
-        SSLv23_METHOD = object()
+        TLS_CLIENT_METHOD = object()
         VERIFY_NONE = object()
         Context = FakeContext
 
