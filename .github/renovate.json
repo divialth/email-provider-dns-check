@@ -8,7 +8,9 @@
     "helpers:pinGitHubActionDigests"
   ],
   "labels": ["dependencies"],
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "matchManagers": ["pep621", "poetry", "pip_requirements"],
